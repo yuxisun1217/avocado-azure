@@ -1,0 +1,18 @@
+project: 7.3
+#rhel_version: RHEL-6.8-20160413.0
+rhel_version: None
+#wala_version: 2.1.4-1
+wala_version: None
+base_url: "http://download.eng.pek2.redhat.com/rel-eng/"
+store_dir: "/home/autotest/"
+AzureSub:
+    username: your Azure account username
+    password: your Azure account password
+RedhatSub:
+    username: your Red Hat Subscription username
+    password: your Red Hat Subscription username
+VMUser:
+    username: your Azure VM's username
+    password: your Azure VM's password
+    new_username: your Azure VM's new username to change to
+    new_password: your Azure VM's new password to change to

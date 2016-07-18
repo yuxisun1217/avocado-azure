@@ -1,0 +1,25 @@
+azure_mode: !mux
+    asm:
+        vm_sizes:
+          Small:
+              region:
+              cpu:
+              memory:
+              disk_size:
+          Medium:
+              region:
+              cpu:
+              memory:
+              disk_size:
+          Large:
+              region:
+              cpu:
+              memory:
+              disk_size:
+    arm:
+        vm_sizes:
+          Standard_A3:
+              region:
+              cpu: 4
+              memory: 7
+              disk_size: 285

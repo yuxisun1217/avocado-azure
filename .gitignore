@@ -1,0 +1,13 @@
+config.yaml
+common.yaml
+BQ
+job-results
+run-results
+test.yaml
+rerun_cases.yaml
+test_rerun.yaml
+avocado-data
+avocado-vt
+*.pyc
+*~
+~
