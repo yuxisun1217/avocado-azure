@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python
 import os
 import sys
 import urllib2
@@ -27,10 +27,12 @@ Verbose=n                                   # Enable verbose logs
 ImageSize=8                                 # The VM image disk size in GB
 """
 
+
 class ConfigurationProvider(object):
     """
     Parse and store key:values in azure_image_prepare.conf
     """
+
     def __init__(self, configfile_path):
         self.values = dict()
         if configfile_path is None:
@@ -67,65 +69,65 @@ class Params(object):
     """
     Global parameters class
     """
+
     def __init__(self, configfile_path, realpath):
         self.realpath = realpath
-        c=ConfigurationProvider(configfile_path)
-        self.Project=c.get("Project")
-        self.Version=c.get("Version")
+        c = ConfigurationProvider(configfile_path)
+        self.Project = c.get("Project")
+        self.Version = c.get("Version")
         if self.Version is not None:
-            self.Project=self.Version.split('-')[1]
-        self.WalaVersion=c.get("WalaVersion")
-        self.Upstream=bool(c.get("Upstream"))
-        self.TmpDir=c.get("TmpDir")
-        self.MainDir=c.get("MainDir")
-        self.Baseurl=c.get("Baseurl")
-        get_verbose=c.get("Verbose")
-        self.Logfile=c.get("Logfile")
-        self.ImageSize=int(c.get("ImageSize"))
+            self.Project = self.Version.split('-')[1]
+        self.WalaVersion = c.get("WalaVersion")
+        self.Upstream = bool(c.get("Upstream"))
+        self.TmpDir = c.get("TmpDir")
+        self.MainDir = c.get("MainDir")
+        self.Baseurl = c.get("Baseurl")
+        get_verbose = c.get("Verbose")
+        self.Logfile = c.get("Logfile")
+        self.ImageSize = int(c.get("ImageSize"))
         if get_verbose is not None and get_verbose.lower().startswith("y"):
             myLogger.verbose = True
-       # self.ConfigDir=os.path.dirname(configfile_path)+"/"
-        self.walaDir=self.MainDir+"wala/RHEL-"+self.Project[0]+"/"
-        self.ksDir=self.MainDir+"ks/"
-        self.toolsDir=self.MainDir+"tools/"
-        self.vhdDir=self.MainDir+"vhd/"
-        self.isoDir=self.MainDir+"iso/RHEL-"+self.Project+"/"
-        self.newisoDir=self.TmpDir+"newiso/"
-        self.srcksPath=self.ksDir+"RHEL-"+self.Project.split('.')[0]+".cfg"
-        self.isoName=""
-        self.walaName=""
+            # self.ConfigDir=os.path.dirname(configfile_path)+"/"
+        self.walaDir = self.MainDir + "wala/RHEL-" + self.Project[0] + "/"
+        self.ksDir = self.MainDir + "ks/"
+        self.toolsDir = self.MainDir + "tools/"
+        self.vhdDir = self.MainDir + "vhd/"
+        self.isoDir = self.MainDir + "iso/RHEL-" + self.Project + "/"
+        self.newisoDir = self.TmpDir + "newiso/"
+        self.srcksPath = self.ksDir + "RHEL-" + self.Project.split('.')[0] + ".cfg"
+        self.isoName = ""
+        self.walaName = ""
 
 
 class Logger(object):
-
     def __init__(self, filepath, verbose=False):
         """
         Construct an instance of Logger.
         """
-        self.verbose=verbose
-        self.filepath=filepath
+        self.verbose = verbose
+        self.filepath = filepath
 
-    def Log(self,message):
+    def Log(self, message):
         """
         Write 'message' to logfile.
         """
-        timestr=time.strftime('[%Y-%m-%d %H:%M:%S] ')
+        timestr = time.strftime('[%Y-%m-%d %H:%M:%S] ')
         if self.filepath:
             try:
-                with open(self.filepath, "a") as F :
-                    message = filter(lambda x : x in string.printable, message)
-                    F.write(timestr+message.encode('ascii','ignore') + "\n")
+                with open(self.filepath, "a") as F:
+                    message = filter(lambda x: x in string.printable, message)
+                    F.write(timestr + message.encode('ascii', 'ignore') + "\n")
             except IOError, e:
                 print e
                 pass
 
-    def LogIfVerbose(self,message):
+    def LogIfVerbose(self, message):
         if self.verbose:
             Log(message)
         else:
             pass
 
-    def LogWithPrefix(self,prefix, message):
+    def LogWithPrefix(self, prefix, message):
         """
         Prefix each line of 'message' with 'prefix'.
         """
@@ -133,7 +135,7 @@ class Logger(object):
             line = prefix + line
             self.Log(line)
 
-    def Warn(self,message):
+    def Warn(self, message):
         """
         Prepend the text "WARNING:" to the prefix for each line in 'message'.
         """
@@ -145,59 +147,64 @@ class Logger(object):
         """
         self.LogWithPrefix("ERROR:", message)
 
-def LoggerInit(logfile_path,verbose=False):
+
+def LoggerInit(logfile_path, verbose=False):
     """
     Create log object and export its methods to global scope.
     """
-    global Log,LogWithPrefix,LogIfVerbose,Error,Warn,myLogger
-    l=Logger(logfile_path,verbose)
-    Log,LogWithPrefix,LogIfVerbose,Error,Warn,myLogger = l.Log,l.LogWithPrefix,l.LogIfVerbose,l.Error,l.Warn,l
+    global Log, LogWithPrefix, LogIfVerbose, Error, Warn, myLogger
+    l = Logger(logfile_path, verbose)
+    Log, LogWithPrefix, LogIfVerbose, Error, Warn, myLogger = l.Log, l.LogWithPrefix, l.LogIfVerbose, l.Error, l.Warn, l
+
 
 def ErrorAndExit(message):
     """
     Error(msaage);sys.exit(1)
     """
-    Error(message+". Exit.")
+    Error(message + ". Exit.")
     sys.exit(1)
 
-def GetFileContents(filepath,asbin=False):
+
+def GetFileContents(filepath, asbin=False):
     """
     Read and return contents of 'filepath'.
     """
-    mode='r'
+    mode = 'r'
     if asbin:
-        mode+='b'
-    c=None
+        mode += 'b'
     try:
         with open(filepath, mode) as F:
-            c=F.read()
+            c = F.read()
     except IOError, e:
         Error('Reading from file ' + filepath + 'failed. Exception: ' + str(e))
         return None
     return c
 
+
 def SetFileContents(filepath, contents):
     """
     Write 'contents' to 'filepath'.
     """
-    if type(contents) == str :
-        contents=contents.encode('latin-1', 'ignore')
+    if type(contents) == str:
+        contents = contents.encode('latin-1', 'ignore')
     try:
-        with open(filepath, "wb+") as F :
+        with open(filepath, "wb+") as F:
             F.write(contents)
-    except (IOError,TypeError) as e:
+    except (IOError, TypeError) as e:
         Error('Writing to file ' + filepath + ' failed. Exception: ' + str(e))
         return None
     return 0
 
-def Run(cmd,chk_err=True):
+
+def Run(cmd, chk_err=True):
     """
     Calls RunGetOutput on 'cmd', returning only the return code.
     If chk_err=True then errors will be reported in the log.
     If chk_err=False then errors will be suppressed from the log.
     """
-    retcode,out=RunGetOutput(cmd,chk_err)
+    retcode, out = RunGetOutput(cmd, chk_err)
     return retcode
+
 
 def RunGetOutput(cmd, chk_err=True, log_cmd=True):
     """
@@ -208,14 +215,15 @@ def RunGetOutput(cmd, chk_err=True, log_cmd=True):
     if log_cmd:
         LogIfVerbose(cmd)
     try:
-        output=subprocess.check_output(cmd,stderr=subprocess.STDOUT,shell=True)
-    except subprocess.CalledProcessError,e :
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    except subprocess.CalledProcessError, e:
         if chk_err and log_cmd:
-            Error('CalledProcessError.  Error Code is ' + str(e.returncode)  )
-            Error('CalledProcessError.  Command string was ' + e.cmd  )
+            Error('CalledProcessError.  Error Code is ' + str(e.returncode))
+            Error('CalledProcessError.  Command string was ' + e.cmd)
             Error('CalledProcessError.  Command result was ' + (e.output[:-1]).decode('latin-1'))
-        return e.returncode,e.output.decode('latin-1')
-    return 0,output.decode('latin-1')
+        return e.returncode, e.output.decode('latin-1')
+    return 0, output.decode('latin-1')
+
 
 def CheckPlatform():
     """
@@ -226,6 +234,7 @@ def CheckPlatform():
     if distro != 'redhat':
         ErrorAndExit("Must run qemu-img on RHEL")
 
+
 def ChangeOwner(filepath, user):
     """
     Lookup user.  Attempt chown 'filepath' to 'user'.
@@ -235,8 +244,9 @@ def ChangeOwner(filepath, user):
         u = pwd.getpwnam(user)
     except:
         pass
-    if u != None:
+    if u is not None:
         os.chown(filepath, u[2], u[3])
+
 
 def CreateDir(dirpath, user=None, mode=0755):
     """
@@ -245,47 +255,50 @@ def CreateDir(dirpath, user=None, mode=0755):
     """
     if not user:
         user = RunGetOutput("whoami")[1].split('\n')
-    LogIfVerbose("Try to create "+dirpath)
+    LogIfVerbose("Try to create " + dirpath)
     if os.path.exists(dirpath):
-        LogIfVerbose(dirpath+" already exists.")
+        LogIfVerbose(dirpath + " already exists.")
         return True
     else:
         try:
             os.makedirs(dirpath, mode)
         except Exception, e:
-            Error("Cannot make dir "+dirpath+". Exception: "+str(e))
+            Error("Cannot make dir " + dirpath + ". Exception: " + str(e))
             return False
         ChangeOwner(dirpath, user)
-        LogIfVerbose("Create "+dirpath+" successfully.")
+        LogIfVerbose("Create " + dirpath + " successfully.")
         return True
 
-def CheckFileExist(filepath,ifexit=True):
+
+def CheckFileExist(filepath, ifexit=True):
     """
     Check if file exists. If not, save log and exit.
     """
-    if os.path.isfile(filepath)==False:
+    if os.path.isfile(filepath) == False:
         if ifexit:
-            ErrorAndExit(filepath+" doesn't exist")
+            ErrorAndExit(filepath + " doesn't exist")
         else:
-            Error(filepath+" doesn't exist.")
+            Error(filepath + " doesn't exist.")
             return False
     return True
 
-def CheckFileNotExist(filepath,ifexit=True):
+
+def CheckFileNotExist(filepath, ifexit=True):
     """
     If file exists, remove it.
     """
     if os.path.isfile(filepath):
-        Warn(filepath+" already exists. Remove it.")
+        Warn(filepath + " already exists. Remove it.")
         try:
             os.remove(filepath)
         except Exception, e:
             if ifexit:
-                ErrorAndExit("Cannot remove "+filepath+". Exception: "+str(e))
+                ErrorAndExit("Cannot remove " + filepath + ". Exception: " + str(e))
             else:
-                Error("Cannot remove "+filepath+". Exception: "+str(e))
+                Error("Cannot remove " + filepath + ". Exception: " + str(e))
                 return False
     return True
+
 
 def _hashfile(afile, hasher, blocksize=65536):
     buf = afile.read(blocksize)
@@ -294,38 +307,41 @@ def _hashfile(afile, hasher, blocksize=65536):
         buf = afile.read(blocksize)
     return hasher.hexdigest()
 
+
 ###### Download the latest build ######
 
 def calculate_md5(afile):
     return _hashfile(open(afile, 'rb'), hashlib.md5())
+
 
 def get_latest_build():
     """
     Make a dictionary to store project:version pairs.
     """
     LogIfVerbose("Getting RHEL build dictionary...")
-    LogIfVerbose("Open "+p.Baseurl)
+    LogIfVerbose("Open " + p.Baseurl)
     try:
-        alldata=urllib2.urlopen(p.Baseurl).read()
+        alldata = urllib2.urlopen(p.Baseurl).read()
     except urllib2.HTTPError, e:
-        ErrorAndExit("Cannot open "+p.Baseurl+". Exception: "+str(e))
-    r=re.compile('RHEL-\d.\d-\d+.\d')
-    tree_list=r.findall(alldata)
-    tree_list=list(set(tree_list))
-    tree_project_dict={}
-    tree_version_dict={}
+        ErrorAndExit("Cannot open " + p.Baseurl + ". Exception: " + str(e))
+    r = re.compile('RHEL-\d.\d-\d+.\d')
+    tree_list = r.findall(alldata)
+    tree_list = list(set(tree_list))
+    tree_project_dict = {}
+    tree_version_dict = {}
     for tree in tree_list:
-        _,tree_project,tree_version=tree.split('-')
-        tree_date,tree_subversion=tree_version.split('.')
-        tree_project_dict.setdefault(tree_project,[]).append(tree_date)
-        tree_version_dict.setdefault(tree_date,[]).append(tree_subversion)
-    max_dict={}
+        _, tree_project, tree_version = tree.split('-')
+        tree_date, tree_subversion = tree_version.split('.')
+        tree_project_dict.setdefault(tree_project, []).append(tree_date)
+        tree_version_dict.setdefault(tree_date, []).append(tree_subversion)
+    max_dict = {}
     for tree_project in tree_project_dict.keys():
-        max_date=max(list(tree_project_dict[tree_project]))
-        max_version=max(list(tree_version_dict[max_date]))
-        max_dict.setdefault(tree_project,[]).append('RHEL-'+tree_project+'-'+max_date+'.'+max_version)
+        max_date = max(list(tree_project_dict[tree_project]))
+        max_version = max(list(tree_version_dict[max_date]))
+        max_dict.setdefault(tree_project, []).append('RHEL-' + tree_project + '-' + max_date + '.' + max_version)
     return max_dict
-    
+
+
 def download_iso(version=None):
     """
     Call get_latest_build()
@@ -335,108 +351,109 @@ def download_iso(version=None):
     if version is not None:
         latest_build = version
     elif p.Project != "":
-        latest_build=get_latest_build()[p.Project][0]
+        latest_build = get_latest_build()[p.Project][0]
     else:
         ErrorAndExit("There must be Version or Project parameter in the azure_image_prepare.conf")
-    iso_name = latest_build+'-Server-x86_64-dvd1.iso'
-    iso_url = p.Baseurl+latest_build+'/compose/Server/x86_64/iso/'+iso_name
-    md5_url = iso_url+'.MD5SUM'
-    iso_folder = p.MainDir+'iso/RHEL-'+p.Project+'/'
-    iso_fullpath = iso_folder+iso_name
+    iso_name = latest_build + '-Server-x86_64-dvd1.iso'
+    iso_url = p.Baseurl + latest_build + '/compose/Server/x86_64/iso/' + iso_name
+    md5_url = iso_url + '.MD5SUM'
+    iso_folder = p.MainDir + 'iso/RHEL-' + p.Project + '/'
+    iso_fullpath = iso_folder + iso_name
     CreateDir(iso_folder)
-#    if os.path.exists(iso_folder)==False:
-#        os.makedirs(iso_folder)
     try:
-        md5url=urllib2.urlopen(md5_url)
+        md5url = urllib2.urlopen(md5_url)
     except urllib2.HTTPError, e:
-        ErrorAndExit("Cannot open "+md5_url+". Exception: "+str(e))
-    if float(p.Project) < 7.0:
-        md5 = md5url.read().split(' ')[-1].strip('\n')
-    else:
-        md5 = md5url.read().split(' ')[0]
+        ErrorAndExit("Cannot open " + md5_url + ". Exception: " + str(e))
+    md5 = re.findall(re.compile('[0-9a-z]{32}'), md5url.read())[0]
     while True:
-        if os.path.isfile(iso_fullpath)==False:
-            outf=open(iso_fullpath,'wb')
+        if os.path.isfile(iso_fullpath) is False:
+            outf = open(iso_fullpath, 'wb')
             try:
-                f=urllib2.urlopen(iso_url)
+                f = urllib2.urlopen(iso_url)
             except urllib2.HTTPError, e:
-                ErrorAndExit("Cannot open "+iso_url+". Exception: "+str(e))
-#            f=urllib2.urlopen(md5_url)
-            c=0
-            Log("Download "+iso_fullpath+" begin.")
+                ErrorAndExit("Cannot open " + iso_url + ". Exception: " + str(e))
+            #            f=urllib2.urlopen(md5_url)
+            c = 0
+            Log("Download " + iso_fullpath + " begin.")
             while True:
-                s=f.read(1024*1024*10)
-                if len(s)==0:
+                s = f.read(1024 * 1024 * 10)
+                if len(s) == 0:
                     break
                 outf.write(s)
-                c+=len(s)
-                LogIfVerbose("Downloading "+str(c))
-            Log("Download "+iso_fullpath+" finished.")
+                c += len(s)
+                LogIfVerbose("Downloading " + str(c))
+            Log("Download " + iso_fullpath + " finished.")
         else:
-            Warn(iso_fullpath+" already exists.")
+            Warn(iso_fullpath + " already exists.")
         time.sleep(1)
         Log("Checking MD5...")
-        realmd5=calculate_md5(iso_fullpath)
-        LogIfVerbose("Target MD5: "+md5)
-        LogIfVerbose("Real MD5:   "+realmd5)
+        realmd5 = calculate_md5(iso_fullpath)
+        LogIfVerbose("Target MD5: " + md5)
+        LogIfVerbose("Real MD5:   " + realmd5)
         if realmd5 == md5:
-#        if calculate_md5("/home/images/iso/RHEL-6.8-20160413.0-Server-x86_64-dvd1.iso") == md5:
-            Log("MD5 matches. ISO is ready.")    
+            Log("MD5 matches. ISO is ready.")
             break
         Error("MD5 does not match. Download again.")
         os.remove(iso_fullpath)
     return 0
 
+
 def get_newest_local_isoname():
     """
     Return the newest version iso name in the p.isoDir.
     """
-    version_dict={}
-    filelist=os.listdir(p.isoDir)
+    version_dict = {}
+    filelist = os.listdir(p.isoDir)
     for filename in filelist:
-        version=filename.split("-")[2]
-        version_dict.setdefault(version.split('.')[0],[]).append(version.split('.')[1])
-    max_date=max(list(version_dict.keys()))
-    max_subversion=max(list(version_dict[max_date]))
-    p.isoName="RHEL-"+p.Project+"-"+max_date+"."+max_subversion+"-Server-x86_64-dvd1"
-    return 0
+        version = filename.split("-")[2]
+        version_dict.setdefault(version.split('.')[0], []).append(version.split('.')[1])
+    if not version_dict:
+        p.isoName = None
+        return None
+    max_date = max(list(version_dict.keys()))
+    max_subversion = max(list(version_dict[max_date]))
+    p.isoName = "RHEL-" + p.Project + "-" + max_date + "." + max_subversion + "-Server-x86_64-dvd1"
+    return p.isoName
+
 
 def get_latest_wala():
     """
     Get the latest wala build
     """
     if float(p.Project) < 7.0:
-        brewcmd="brew latest-build extras-rhel-6 WALinuxAgent|grep WALinuxAgent|awk '{print $1}'"
+        brewcmd = "brew latest-build extras-rhel-6 WALinuxAgent|grep WALinuxAgent|awk '{print $1}'"
     else:
-        brewcmd="brew latest-build extras-rhel-"+str(p.Project)+" WALinuxAgent|grep WALinuxAgent|awk '{print $1}'"
-    rcode, walabuild=RunGetOutput(brewcmd)
+        brewcmd = "brew latest-build extras-rhel-" + str(p.Project) + " WALinuxAgent|grep WALinuxAgent|awk '{print $1}'"
+    rcode, walabuild = RunGetOutput(brewcmd)
     if rcode != 0:
         ErrorAndExit("Cannot get the latest wala build")
-#    For brewkoji-1.9-1
-#    return walabuild.strip('\n')+".noarch.rpm"
+    #    For brewkoji-1.9-1
+    #    return walabuild.strip('\n')+".noarch.rpm"
     return walabuild.strip('\n')
+
 
 def download_wala(version=None):
     """
     Download the latest wala package from brew.
     """
     if version != None:
-#        For brewkoji-19-1
-#        p.walaName = "WALinuxAgent-%s.el%s.noarch.rpm" % (version, str(p.Project).split('.')[0])
+        #        For brewkoji-19-1
+        #        p.walaName = "WALinuxAgent-%s.el%s.noarch.rpm" % (version, str(p.Project).split('.')[0])
         p.walaName = "WALinuxAgent-%s.el%s" % (version, str(p.Project).split('.')[0])
     else:
-        p.walaName=get_latest_wala()
+        p.walaName = get_latest_wala()
     CreateDir(p.walaDir)
     for walafile in os.listdir(p.walaDir):
-        if walafile.find(p.walaName+".noarch.rpm") != -1:
+        if walafile.find(p.walaName + ".noarch.rpm") != -1:
             Log("%s.noarch.rpm already exists." % p.walaName)
             return 0
     os.chdir(p.walaDir)
-#    For brewkoji-19-1
-#    Run("brew download-build --rpm "+p.walaName)
+    #    For brewkoji-19-1
+    #    Run("brew download-build --rpm "+p.walaName)
     Run("brew download-build --arch=noarch %s" % p.walaName)
-    Log("Download "+p.walaDir+p.walaName+".noarch.rpm successfully.")
+    Log("Download " + p.walaDir + p.walaName + ".noarch.rpm successfully.")
     return 0
+
 
 def get_latest_wala_upstream():
     """
@@ -448,6 +465,7 @@ def get_latest_wala_upstream():
         ErrorAndExit("Cannot get the latest upstream wala build")
     walabuild = re.compile('.*tag/(.*)\">').search(output).groups()[0]
     return walabuild
+
 
 def download_wala_upstream(version=None):
     """
@@ -466,54 +484,55 @@ def download_wala_upstream(version=None):
                     tag = 'v' + version
     p.walaName = "WALinuxAgent-%s-1.el%s" % (version, p.Project.split('.')[0])
     CreateDir(p.walaDir)
-    if os.path.isfile(p.walaDir+".noarch.rpm"):
+    if os.path.isfile(p.walaDir + ".noarch.rpm"):
         Log("%s.noarch.rpm already exists." % p.walaName)
         return 0
     os.chdir(p.TmpDir)
     Run("wget https://github.com/Azure/WALinuxAgent/archive/%s.zip" % tag)
     Run("unzip %s.zip" % tag)
-    os.chdir(p.TmpDir+"WALinuxAgent-"+version)
+    os.chdir(p.TmpDir + "WALinuxAgent-" + version)
     Run("curl https://bootstrap.pypa.io/ez_setup.py -o - | python")
     Run("python setup.py bdist_rpm --post-inst rpm/post-inst")
     Run("mv dist/*.noarch.rpm %s" % p.walaDir)
-    if os.path.isfile(p.walaDir+".noarch.rpm"):
-        Log("Download "+p.walaDir+p.walaName+".noarch.rpm successfully.")
+    if os.path.isfile(p.walaDir + ".noarch.rpm"):
+        Log("Download " + p.walaDir + p.walaName + ".noarch.rpm successfully.")
     else:
-        ErrorAndExit("Download "+p.walaDir+p.walaName+".noarch.rpm failed.")
+        ErrorAndExit("Download " + p.walaDir + p.walaName + ".noarch.rpm failed.")
     return 0
+
 
 ###### Install ######
 
-def mk_iso(iso_path,newiso_path):
+def mk_iso(iso_path, newiso_path):
     """
     Modify isolinux.cfg. Make new iso.
     """
-    if (iso_path == None) or (os.path.isfile(iso_path)==False):
+    if (iso_path == None) or (os.path.isfile(iso_path) == False):
         ErrorAndExit("No RHEL iso. Please download again")
-    iso_mount=p.TmpDir+'iso/'
-    newiso_mount=p.TmpDir+'newiso/'
-    isolinux=newiso_mount+'isolinux/isolinux.cfg'
+    iso_mount = p.TmpDir + 'iso/'
+    newiso_mount = p.TmpDir + 'newiso/'
+    isolinux = newiso_mount + 'isolinux/isolinux.cfg'
     CreateDir(iso_mount)
     # Mount origional iso and copy to new path.
-    retcode,out = RunGetOutput("mount -o loop " + iso_path + " " + iso_mount)
+    retcode, out = RunGetOutput("mount -o loop " + iso_path + " " + iso_mount)
     if retcode == False and out.find("mounting read-only") == -1:
-        ErrorAndExit("Cannot mount " + iso_path + " to "+iso_mount)
+        ErrorAndExit("Cannot mount " + iso_path + " to " + iso_mount)
     Log("Copying iso to newiso...")
     try:
-        shutil.copytree(iso_mount,newiso_mount)
+        shutil.copytree(iso_mount, newiso_mount)
     except Exception, e:
         ErrorAndExit("Copy iso tree fail. Exception: " + str(e))
     Log("Copy iso tree successfully.")
-    Run("umount "+iso_mount)
+    Run("umount " + iso_mount)
     # Modify isolinux.cfg. Add ks=floppy.
     CheckFileExist(isolinux)
     if float(p.Project) < 7.0:
-#        Run("sed -i '/^\ *append\ initrd/s/$/\ ks=floppy/' "+isolinux)
+        #        Run("sed -i '/^\ *append\ initrd/s/$/\ ks=floppy/' "+isolinux)
         Run("sed -i %s\
             -e 's/timeout 600/timeout 30/'\
             -e '/append initrd=/s/$/ ks=floppy/'" % isolinux)
     elif float(p.Project) >= 7.0:
-#        Run("sed -i '/^\ *append\ initrd/s/$/\ ks=cdrom\:\/dev\/sr1\:\/ks.cfg/' "+isolinux)
+        #        Run("sed -i '/^\ *append\ initrd/s/$/\ ks=cdrom\:\/dev\/sr1\:\/ks.cfg/' "+isolinux)
         Run("sed -i %s\
             -e '/menu[[:space:]][[:space:]]*default/d'\
             -e 's/timeout 600/timeout 30/'\
@@ -521,68 +540,73 @@ def mk_iso(iso_path,newiso_path):
             -e '/^label linux/{N;s/$/\\n  menu default/}'" % isolinux)
     os.chmod(isolinux, 444)
     # Make new iso
-    isoinfo = RunGetOutput("isoinfo -d -i "+iso_path)[1]
+    isoinfo = RunGetOutput("isoinfo -d -i " + iso_path)[1]
     m = re.search("Volume id:([^\n]*)", isoinfo)
     volid = m.group(1)[1:]
-#    Run("mkisofs -o "+newiso_path+" -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -R -J -v -T "+newiso_mount)
-    Run("mkisofs -J -R -v -T -V \""+volid+"\" -o "+newiso_path+" -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table "+newiso_mount)
-    Log("Make "+newiso_path+" successfully.")
+    #    Run("mkisofs -o "+newiso_path+" -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -R -J -v -T "+newiso_mount)
+    Run(
+        "mkisofs -J -R -v -T -V \"" + volid + "\" -o " + newiso_path + " -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table " + newiso_mount)
+    Log("Make " + newiso_path + " successfully.")
     return 0
 
-def mk_floppy(srcks_path,floppy_path):
+
+def mk_floppy(srcks_path, floppy_path):
     """
     Make ksfloppy.img. Put ks.cfg,wala package and tools in it.
     """
     CheckFileNotExist(floppy_path)
-    floppy_mount=p.TmpDir+"ksfloppy/"
+    floppy_mount = p.TmpDir + "ksfloppy/"
     CreateDir(floppy_mount)
-    #Create new floppy img
-    Run("dd bs=512 count=2880 if=/dev/zero of="+floppy_path)
-    Run("mkfs.msdos "+floppy_path)
-    Run("mount -o loop "+floppy_path+" "+floppy_mount)
-    #Copy ks file to floppy
-    dstks_path=floppy_mount+"ks.cfg"
+    # Create new floppy img
+    Run("dd bs=512 count=2880 if=/dev/zero of=" + floppy_path)
+    Run("mkfs.msdos " + floppy_path)
+    Run("mount -o loop " + floppy_path + " " + floppy_mount)
+    # Copy ks file to floppy
+    dstks_path = floppy_mount + "ks.cfg"
     CheckFileExist(srcks_path)
     try:
-        shutil.copy(srcks_path,dstks_path)
+        shutil.copy(srcks_path, dstks_path)
     except Exception, e:
-        ErrorAndExit("Cannot copy "+srcks_path+" to "+floppy_mount)
-    #Copy WALinuxAgent package to floppy
+        ErrorAndExit("Cannot copy " + srcks_path + " to " + floppy_mount)
+    # Copy WALinuxAgent package to floppy
     # For brewkoji-1.9-1
     # wala_fullname = p.walaName
     wala_fullname = p.walaName + ".noarch.rpm"
-    if os.path.isfile(p.walaDir+wala_fullname):
-        Log("%s already exists." % p.walaDir+wala_fullname)
+    if os.path.isfile(p.walaDir + wala_fullname):
+        Log("%s already exists." % p.walaDir + wala_fullname)
     else:
         if p.Upstream:
             download_wala_upstream(p.WalaVersion)
         else:
             download_wala(p.WalaVersion)
     try:
-        shutil.copy(p.walaDir+wala_fullname, floppy_mount+wala_fullname)
+        shutil.copy(p.walaDir + wala_fullname, floppy_mount + wala_fullname)
     except Exception, e:
-        ErrorAndExit("Cannot copy "+p.walaDir+wala_fullname+" to "+floppy_mount+". Exception: "+str(e))
-    #Copy tools(fio,iperf3) to floppy
+        ErrorAndExit("Cannot copy " + p.walaDir + wala_fullname + " to " + floppy_mount + ". Exception: " + str(e))
+    # Copy tools(fio,iperf3) to floppy
     try:
-        shutil.copytree(p.toolsDir,floppy_mount+"tools/")
+        shutil.copytree(p.toolsDir, floppy_mount + "tools/")
     except Exception, e:
-        ErrorAndExit("Cannot copy "+p.toolsDir+" to "+floppy_mount+". Exception: "+str(e))
-    Run("umount "+floppy_mount)
+        ErrorAndExit("Cannot copy " + p.toolsDir + " to " + floppy_mount + ". Exception: " + str(e))
+    Run("umount " + floppy_mount)
     Log("Create ks floppy successfully.")
     return 0
 
-def mk_qcow2(newiso_path,qcow2_path,floppy_path):
+
+def mk_qcow2(newiso_path, qcow2_path, floppy_path):
     """
     Install img through kickstart.
     """
-    #Create empty qcow2 file
+    # Create empty qcow2 file
     Log("Install qcow2...")
     Run("qemu-img create %s %dG -f qcow2" % (qcow2_path, p.ImageSize))
     CheckFileExist(qcow2_path)
-    #Install image
-    Run("virt-install --name walatestimg --ram 1024 --network bridge=virbr0 --vcpus 1 --cdrom "+newiso_path+" --disk path="+qcow2_path+",bus=virtio --disk path="+floppy_path+",device=floppy --noreboot")
+    # Install image
+    Run(
+        "virt-install --name walatestimg --ram 1024 --network bridge=virbr0 --vcpus 1 --cdrom " + newiso_path + " --disk path=" + qcow2_path + ",bus=virtio --disk path=" + floppy_path + ",device=floppy --noreboot")
     Log("Install qcow2 image successfully.")
     return 0
+
 
 def qcow2_to_vhd(qcow2_path, vhd_path):
     """
@@ -594,9 +618,10 @@ def qcow2_to_vhd(qcow2_path, vhd_path):
     vhd_size = os.path.getsize(vhd_path)
     target_size = p.ImageSize * 1024 * 1024 * 1024 + 512
     if vhd_size != target_size:
-        ErrorAndExit(vhd_path+" file size is wrong. Target: %d Real: %d" % (target_size, vhd_size))
+        ErrorAndExit(vhd_path + " file size is wrong. Target: %d Real: %d" % (target_size, vhd_size))
     Log("Make %s successfully." % vhd_path)
     return 0
+
 
 def Usage():
     """
@@ -605,37 +630,39 @@ def Usage():
     print("usage: " + sys.argv[0] + " [-check|-all|-download|-install|-convert|-help] [-verbose]")
     return 0
 
+
 def _umount(mount_path):
     """
     Force umount mount_path
     """
-    if os.path.exists(mount_path) and RunGetOutput("mount|grep "+mount_path, chk_err=False)[1] != "":
-        Run("fuser -km "+mount_path, chk_err=False)
+    if os.path.exists(mount_path) and RunGetOutput("mount|grep " + mount_path, chk_err=False)[1] != "":
+        Run("fuser -km " + mount_path, chk_err=False)
         time.sleep(0.5)
-        Run("umount "+mount_path)
+        Run("umount " + mount_path)
 
-def CheckEnvironment(dir_create_list,exist_file_list):
+
+def CheckEnvironment(dir_create_list, exist_file_list):
     """
     Prepare the environment before running.
     """
     ret = 0
     Run("virsh destroy walatestimg", chk_err=False)
     Run("virsh undefine walatestimg", chk_err=False)
-    _umount(p.TmpDir+"iso")
-    _umount(p.TmpDir+"newiso")
-    _umount(p.TmpDir+"ksfloppy")
+    _umount(p.TmpDir + "iso")
+    _umount(p.TmpDir + "newiso")
+    _umount(p.TmpDir + "ksfloppy")
     if os.path.isdir(p.TmpDir):
         try:
             shutil.rmtree(p.TmpDir)
         except Exception, e:
-            Error("Cannot remove "+p.TmpDir+". Error code: "+str(e))
+            Error("Cannot remove " + p.TmpDir + ". Error code: " + str(e))
             ret = 1
-    Run("rm -rf "+p.TmpDir)
+    Run("rm -rf " + p.TmpDir)
     for dirname in dir_create_list:
         if not CreateDir(dirname):
             ret = 1
     for filename in exist_file_list:
-        if not CheckFileExist(filename,False):
+        if not CheckFileExist(filename, False):
             ret = 1
     if ret == 0:
         Log("Environment Check result is True")
@@ -643,25 +670,29 @@ def CheckEnvironment(dir_create_list,exist_file_list):
         Log("Environment Check result is False")
     return ret
 
+
 def Download():
     return download_iso(p.Version)
 
+
 def Install():
     get_newest_local_isoname()
-    floppy_path=p.TmpDir+"ksfloppy.img"
-    qcow2_path=p.TmpDir+p.isoName+".qcow2"
-    iso_path=p.isoDir+p.isoName+".iso"
-    newiso_path=p.TmpDir+p.isoName+"-ks.iso"
-    srcks_path=p.srcksPath
-    return mk_iso(iso_path,newiso_path) or \
-           mk_floppy(srcks_path,floppy_path) or \
-           mk_qcow2(newiso_path,qcow2_path,floppy_path)
+    floppy_path = p.TmpDir + "ksfloppy.img"
+    qcow2_path = p.TmpDir + p.isoName + ".qcow2"
+    iso_path = p.isoDir + p.isoName + ".iso"
+    newiso_path = p.TmpDir + p.isoName + "-ks.iso"
+    srcks_path = p.srcksPath
+    return mk_iso(iso_path, newiso_path) or \
+           mk_floppy(srcks_path, floppy_path) or \
+           mk_qcow2(newiso_path, qcow2_path, floppy_path)
+
 
 def Convert():
     get_newest_local_isoname()
-    vhd_path=p.vhdDir+p.isoName+".vhd"
-    qcow2_path=p.TmpDir+p.isoName+".qcow2"
+    vhd_path = p.vhdDir + p.isoName + ".vhd"
+    qcow2_path = p.TmpDir + p.isoName + ".qcow2"
     return qcow2_to_vhd(qcow2_path, vhd_path)
+
 
 def Setup():
     os.chdir(os.path.split(os.path.realpath(__file__))[0])
@@ -672,12 +703,13 @@ def Setup():
     Log("Setup finished.")
     return 0
 
+
 ###### Main ######
 
 def main():
     if len(sys.argv) == 1:
         sys.exit(Usage())
-#    LoggerInit("/var/log/azure_image_prepare.log")
+    #    LoggerInit("/var/log/azure_image_prepare.log")
     LoggerInit("/tmp/azure_image_prepare.log")
 
     # Check if this script runs on RHEL-6 or RHEL-7
@@ -687,11 +719,11 @@ def main():
     realpath = os.path.split(os.path.realpath(__file__))[0]
     configfile_path = "%s/azure_image_prepare.conf" % realpath
     global p
-    p=Params(configfile_path, realpath)
+    p = Params(configfile_path, realpath)
 
     # Check file lists
-    dir_create_list=[p.TmpDir,p.MainDir,p.ksDir,p.vhdDir,p.isoDir]
-    file_exist_list=[p.srcksPath]
+    dir_create_list = [p.TmpDir, p.MainDir, p.ksDir, p.vhdDir, p.isoDir]
+    file_exist_list = [p.srcksPath]
 
     # argv
     ret = 0
@@ -703,9 +735,9 @@ def main():
         elif re.match("^([-/]*)setup", a):
             sys.exit(Setup())
         elif re.match("^([-/]*)check", a):
-            sys.exit(CheckEnvironment(dir_create_list,file_exist_list))
+            sys.exit(CheckEnvironment(dir_create_list, file_exist_list))
         elif re.match("^([-/]*)all", a):
-            if CheckEnvironment(dir_create_list,file_exist_list) == 1:
+            if CheckEnvironment(dir_create_list, file_exist_list) == 1:
                 ErrorAndExit("Environment Check is not pass")
             sys.exit(Download() or Install() or Convert())
         elif re.match("^([-/]*)download", a):
@@ -715,7 +747,7 @@ def main():
         elif re.match("^([-/]*)convert", a):
             sys.exit(Convert())
         elif re.match("^([-/]*)rhelbuild", a):
-#            get_latest_build()
+            #            get_latest_build()
             if p.Version is not None:
                 rhel_build = p.Version
             else:
@@ -731,6 +763,13 @@ def main():
                 wala_build = get_latest_wala().replace('WALinuxAgent-', '')
             Log("WALA version: %s" % wala_build)
             print wala_build
+            sys.exit(0)
+        elif re.match("^([-/]*)localbuild", a):
+            get_newest_local_isoname()
+            if p.isoName:
+                print re.findall(re.compile('RHEL-\d\.\d-\d{8}.\d'), p.isoName)[0]
+            else:
+                print ''
             sys.exit(0)
         else:
             print "Wrong parameters."
