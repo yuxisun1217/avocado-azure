@@ -339,16 +339,10 @@ def download_iso(version=None):
     iso_folder = p.MainDir+'iso/RHEL-'+p.Project+'/'
     iso_fullpath = iso_folder+iso_name
     CreateDir(iso_folder)
-#    if os.path.exists(iso_folder)==False:
-#        os.makedirs(iso_folder)
     try:
         md5url=urllib2.urlopen(md5_url)
     except urllib2.HTTPError, e:
         ErrorAndExit("Cannot open "+md5_url+". Exception: "+str(e))
-#    if float(p.Project) < 7.0:
-#        md5 = md5url.read().split(' ')[-1].strip('\n')
-#    else:
-#        md5 = md5url.read().split(' ')[0]
     md5 = re.findall(re.compile('[0-9a-z]{32}'), md5url.read())[0]
     while True:
         if os.path.isfile(iso_fullpath) is False:
@@ -376,8 +370,7 @@ def download_iso(version=None):
         LogIfVerbose("Target MD5: "+md5)
         LogIfVerbose("Real MD5:   "+realmd5)
         if realmd5 == md5:
-#        if calculate_md5("/home/images/iso/RHEL-6.8-20160413.0-Server-x86_64-dvd1.iso") == md5:
-            Log("MD5 matches. ISO is ready.")    
+            Log("MD5 matches. ISO is ready.")
             break
         Error("MD5 does not match. Download again.")
         os.remove(iso_fullpath)
@@ -392,10 +385,13 @@ def get_newest_local_isoname():
     for filename in filelist:
         version=filename.split("-")[2]
         version_dict.setdefault(version.split('.')[0],[]).append(version.split('.')[1])
+    if not version_dict:
+        p.isoName = None
+        return None
     max_date=max(list(version_dict.keys()))
     max_subversion=max(list(version_dict[max_date]))
     p.isoName="RHEL-"+p.Project+"-"+max_date+"."+max_subversion+"-Server-x86_64-dvd1"
-    return 0
+    return p.isoName
 
 def get_latest_wala():
     """
@@ -680,8 +676,11 @@ def main():
             print wala_build
             sys.exit(0)
         elif re.match("^([-/]*)localbuild", a):
-            local_build = re.findall(re.compile('RHEL-\d\.\d-\d{8}.\d'),get_newest_local_isoname())
-            print local_build
+            get_newest_local_isoname()
+            if p.isoName:
+                print re.findall(re.compile('RHEL-\d\.\d-\d{8}.\d'), p.isoName)[0]
+            else:
+                print ''
             sys.exit(0)
         else:
             print "Wrong parameters."
