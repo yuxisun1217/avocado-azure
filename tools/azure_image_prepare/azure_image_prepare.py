@@ -345,12 +345,13 @@ def download_iso(version=None):
         md5url=urllib2.urlopen(md5_url)
     except urllib2.HTTPError, e:
         ErrorAndExit("Cannot open "+md5_url+". Exception: "+str(e))
-    if float(p.Project) < 7.0:
-        md5 = md5url.read().split(' ')[-1].strip('\n')
-    else:
-        md5 = md5url.read().split(' ')[0]
+#    if float(p.Project) < 7.0:
+#        md5 = md5url.read().split(' ')[-1].strip('\n')
+#    else:
+#        md5 = md5url.read().split(' ')[0]
+    md5 = re.findall(re.compile('[0-9a-z]{32}'), md5url.read())[0]
     while True:
-        if os.path.isfile(iso_fullpath)==False:
+        if os.path.isfile(iso_fullpath) is False:
             outf=open(iso_fullpath,'wb')
             try:
                 f=urllib2.urlopen(iso_url)
@@ -677,6 +678,10 @@ def main():
                 wala_build = get_latest_wala().replace('WALinuxAgent-', '')
             Log("WALA version: %s" % wala_build)
             print wala_build
+            sys.exit(0)
+        elif re.match("^([-/]*)localbuild", a):
+            local_build = re.findall(re.compile('RHEL-\d\.\d-\d{8}.\d'),get_newest_local_isoname())
+            print local_build
             sys.exit(0)
         else:
             print "Wrong parameters."
