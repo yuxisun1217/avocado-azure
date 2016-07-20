@@ -19,6 +19,7 @@ AzureImagePrepareConf = """\
 # Project:     Specify the project. (e.g.)Project=6.8
 # Version:     Specify a RHEL version. If set, the Project will be ignored. (e.g.)Version=RHEL-6.8-20160413.0
 # WalaVersion: Specify a WALinuxAgent version. (e.g.)WalaVersion=2.0.16-1
+# Upstream:    If get WALA package from upstream(https://github.com/Azure/WALinuxAgent)
 # Baseurl:     The URL to download original iso. Must be end with "/".
 # MainDir:     The main folder to store original iso. Must be end with "/".
 # TmpDir:      Temporary folder to store the ks floppy, new iso and mount point. Must be end with "/".
@@ -29,6 +30,7 @@ AzureImagePrepareConf = """\
 Project=%s
 Version=%s
 WalaVersion=%s
+Upstream=%s
 Baseurl=%s
 MainDir=%s
 TmpDir=/home/tmp/azure/
@@ -38,6 +40,7 @@ ImageSize=8
 """ % (data.get("project"),
        data.get("rhel_version"),
        data.get("wala_version"),
+       data.get("upstream"),
        data.get("base_url"),
        data.get("store_dir"))
 

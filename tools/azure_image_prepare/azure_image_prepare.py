@@ -1,10 +1,14 @@
 #!/usr/bin/python2.7
-import os,sys,urllib2,time,re,shutil
+import os
+import sys
+import urllib2
+import time
+import re
+import shutil
 import platform
 import subprocess
 import string
 import hashlib
-import base64
 import pwd
 
 AzureImagePrepareConf = """\
@@ -71,6 +75,7 @@ class Params(object):
         if self.Version is not None:
             self.Project=self.Version.split('-')[1]
         self.WalaVersion=c.get("WalaVersion")
+        self.Upstream=bool(c.get("Upstream"))
         self.TmpDir=c.get("TmpDir")
         self.MainDir=c.get("MainDir")
         self.Baseurl=c.get("Baseurl")
@@ -433,6 +438,49 @@ def download_wala(version=None):
     Log("Download "+p.walaDir+p.walaName+".noarch.rpm successfully.")
     return 0
 
+def get_latest_wala_upstream():
+    """
+    Get the latest wala build from upstream
+    """
+    cmd = "curl https://github.com/Azure/WALinuxAgent/releases/latest"
+    rcode, output = RunGetOutput(cmd)
+    if rcode != 0:
+        ErrorAndExit("Cannot get the latest upstream wala build")
+    walabuild = re.compile('.*tag/(.*)\">').search(output).groups()[0]
+    return walabuild
+
+def download_wala_upstream(version=None):
+    """
+    Download the latest wala package from brew.
+    """
+    if version is None:
+        tag = get_latest_build()
+        version = re.compile('\d*\.\d*\.\d*').findall(tag)
+    else:
+        version = re.compile('\d*\.\d*\.\d*').findall(version)
+        tag = "WALinuxAgent-%s-1" % re.compile('\d*\.\d*\.\d*').findall(version)
+        x, y, z = version.split('.')
+        if int(x) >= 2:
+            if int(y) >= 1:
+                if int(z) >= 2:
+                    tag = 'v' + version
+    p.walaName = "WALinuxAgent-%s-1.el%s" % (version, p.Project.split('.')[0])
+    CreateDir(p.walaDir)
+    if os.path.isfile(p.walaDir+".noarch.rpm"):
+        Log("%s.noarch.rpm already exists." % p.walaName)
+        return 0
+    os.chdir(p.TmpDir)
+    Run("wget https://github.com/Azure/WALinuxAgent/archive/%s.zip" % tag)
+    Run("unzip %s.zip" % tag)
+    os.chdir(p.TmpDir+"WALinuxAgent-"+version)
+    Run("curl https://bootstrap.pypa.io/ez_setup.py -o - | python")
+    Run("python setup.py bdist_rpm --post-inst rpm/post-inst")
+    Run("mv dist/*.noarch.rpm %s" % p.walaDir)
+    if os.path.isfile(p.walaDir+".noarch.rpm"):
+        Log("Download "+p.walaDir+p.walaName+".noarch.rpm successfully.")
+    else:
+        ErrorAndExit("Download "+p.walaDir+p.walaName+".noarch.rpm failed.")
+    return 0
 
 ###### Install ######
 
@@ -500,14 +548,20 @@ def mk_floppy(srcks_path,floppy_path):
     except Exception, e:
         ErrorAndExit("Cannot copy "+srcks_path+" to "+floppy_mount)
     #Copy WALinuxAgent package to floppy
-    download_wala(p.WalaVersion)
     # For brewkoji-1.9-1
     # wala_fullname = p.walaName
     wala_fullname = p.walaName + ".noarch.rpm"
+    if os.path.isfile(p.walaDir+wala_fullname):
+        Log("%s already exists." % p.walaDir+wala_fullname)
+    else:
+        if p.Upstream:
+            download_wala_upstream(p.WalaVersion)
+        else:
+            download_wala(p.WalaVersion)
     try:
         shutil.copy(p.walaDir+wala_fullname, floppy_mount+wala_fullname)
     except Exception, e:
-        ErrorAndExit("Cannot copy "+p.walaDir+wala_fullname+" to "+floppy_mount)
+        ErrorAndExit("Cannot copy "+p.walaDir+wala_fullname+" to "+floppy_mount+". Exception: "+str(e))
     #Copy tools(fio,iperf3) to floppy
     try:
         shutil.copytree(p.toolsDir,floppy_mount+"tools/")
