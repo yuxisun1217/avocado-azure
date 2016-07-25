@@ -1,4 +1,10 @@
+##############################################
+# This script is used to detect new RHEL build
+# and run avocado-azure automatically.
+##############################################
+
 #!/usr/bin/python
+
 import commands
 import time
 import smtplib
@@ -38,11 +44,10 @@ def main():
     local_build=run("%s %s -localbuild" % (PYTHON, SCRIPT))
     if latest_build == local_build:
         log("No new build")
-        sendmail(latest_build)
     else:
         log("Have new build: $latest_build")
         os.chdir(AVOCADO_AZURE)
-#        run("%s run.py &" % PYTHON)
+        run("%s run.py &" % PYTHON)
         sendmail(latest_build)
 
 if __name__ == "__main__":
