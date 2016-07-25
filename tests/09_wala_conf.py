@@ -241,27 +241,24 @@ class WALAConfTest(Test):
         self.log.info("ResourceDisk.Filesystem=ext3")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Filesystem", "ext3", self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Format", "y", self.conf_file))
-        self.vm_test01.session_close()
-#        self.assertEqual(self.vm_test01.restart(), 0,
-#                         "Fail to restart the VM")
-#        vm_image_name = self.vm_test01.name + "-filetype" + self.vm_test01.postfix()
-#        self.vm_test01.waagent_deprovision(user=False)
-#        self.assertEqual(self.vm_test01.shutdown(), 0)
-#        self.assertTrue(self.vm_test01.wait_for_deallocated())
-#        cmd_params = dict()
-#        cmd_params["os_state"] = "Generalized"
-#        self.assertEqual(self.vm_test01.capture(vm_image_name, cmd_params), 0,
-#                         "Fails to capture the vm: azure cli fail")
-#        self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
-#        self.vm_params["Image"] = vm_image_name
-#        self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
-#                         "Fail to create new VM base on capture image")
-#        self.assertTrue(self.vm_test01.wait_for_running())
-#        self.assertTrue(self.vm_test01.verify_alive())
-        self.assertEqual(self.vm_test01.restart(), 0,
-                         "Fail to restart the VM")
+        self.vm_test01.waagent_deprovision(user=False)
+        self.assertEqual(self.vm_test01.shutdown(), 0)
+        self.assertTrue(self.vm_test01.wait_for_deallocated())
+        vm_image_name = self.vm_test01.name + "-filetype" + self.vm_test01.postfix()
+        cmd_params = dict()
+        cmd_params["os_state"] = "Generalized"
+        self.assertEqual(self.vm_test01.capture(vm_image_name, cmd_params), 0,
+                         "Fails to capture the vm: azure cli fail")
+        self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
+        self.vm_params["Image"] = vm_image_name
+        self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
+                         "Fail to create new VM base on capture image")
         self.assertTrue(self.vm_test01.wait_for_running())
         self.assertTrue(self.vm_test01.verify_alive())
+#        self.assertEqual(self.vm_test01.restart(), 0,
+#                         "Fail to restart the VM")
+#        self.assertTrue(self.vm_test01.wait_for_running())
+#        self.assertTrue(self.vm_test01.verify_alive())
         time.sleep(30)
         self.assertIn("ext3", self.vm_test01.get_output("mount|grep /mnt/resource"),
                       "Fail to change resource disk file system")
