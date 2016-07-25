@@ -16,13 +16,15 @@ AzureImagePrepareConf = """\
 # Azure Image Prepare Script Configuration
 #
 
-Project=6.8                                 # Specify the project.
+Project=7.3                                 # Specify the project.
 Version=None                                # Specify a RHEL version you need. If set, the Project will be ignored. (e.g.)Version=RHEL-6.8-20160413.0
-WalaVersion=None                            # Specify a WALinuxAgent rpm name. (e.g.)WalaVersion=WALinuxAgent-2.0.16-1.el6.noarch.rpm
+WalaVersion=None                            # Specify a WALinuxAgent rpm version. (e.g.)WalaVersion=2.0.16-1. If None, download the latest version.
+                                            # If Upstream=True, use release version. (e.g.)WalaVersion=2.1.5. If None, download the latest version.
+Upstream=False                              # If get WALinuxAgent from upstream(github), set it to True; else, set it to False
 Baseurl=http://download.eng.pek2.redhat.com/rel-eng/  # The URL to download original iso. Must be end with "/".
 MainDir=/home/autotest/                     # The main folder to store original iso. Must be end with "/".
 TmpDir=/home/tmp/azure/                     # Temporary folder to store the ks floppy, new iso and mount point. Must be end with "/".
-Logfile=/var/log/azure_image_prepare.log    # Logfile
+Logfile=/tmp/azure_image_prepare.log        # Logfile
 Verbose=n                                   # Enable verbose logs
 ImageSize=8                                 # The VM image disk size in GB
 """
@@ -78,7 +80,9 @@ class Params(object):
         if self.Version is not None:
             self.Project = self.Version.split('-')[1]
         self.WalaVersion = c.get("WalaVersion")
-        self.Upstream = bool(c.get("Upstream"))
+        # Cannot use bool(xxx) to convert string to bool type!
+        self.Upstream = c.get("Upstream") == str(True)
+        Log("Upstream=%s" % self.Upstream)
         self.TmpDir = c.get("TmpDir")
         self.MainDir = c.get("MainDir")
         self.Baseurl = c.get("Baseurl")
@@ -416,7 +420,7 @@ def get_newest_local_isoname():
     return p.isoName
 
 
-def get_latest_wala():
+def get_latest_wala_downstream():
     """
     Get the latest wala build
     """
@@ -432,16 +436,18 @@ def get_latest_wala():
     return walabuild.strip('\n')
 
 
-def download_wala(version=None):
+def download_wala_downstream(version=None):
     """
     Download the latest wala package from brew.
     """
+    print version
     if version != None:
         #        For brewkoji-19-1
         #        p.walaName = "WALinuxAgent-%s.el%s.noarch.rpm" % (version, str(p.Project).split('.')[0])
+        print '111'
         p.walaName = "WALinuxAgent-%s.el%s" % (version, str(p.Project).split('.')[0])
     else:
-        p.walaName = get_latest_wala()
+        p.walaName = get_latest_wala_downstream()
     CreateDir(p.walaDir)
     for walafile in os.listdir(p.walaDir):
         if walafile.find(p.walaName + ".noarch.rpm") != -1:
@@ -450,7 +456,8 @@ def download_wala(version=None):
     os.chdir(p.walaDir)
     #    For brewkoji-19-1
     #    Run("brew download-build --rpm "+p.walaName)
-    Run("brew download-build --arch=noarch %s" % p.walaName)
+    if Run("brew download-build --arch=noarch %s" % p.walaName) != 0:
+        ErrorAndExit("No such WALA build: %s" % p.walaName)
     Log("Download " + p.walaDir + p.walaName + ".noarch.rpm successfully.")
     return 0
 
@@ -472,33 +479,52 @@ def download_wala_upstream(version=None):
     Download the latest wala package from brew.
     """
     if version is None:
-        tag = get_latest_build()
-        version = re.compile('\d*\.\d*\.\d*').findall(tag)
+        tag = get_latest_wala_upstream()
+        version = re.compile('\d*\.\d*\.\d*').findall(tag)[0]
     else:
-        version = re.compile('\d*\.\d*\.\d*').findall(version)
-        tag = "WALinuxAgent-%s-1" % re.compile('\d*\.\d*\.\d*').findall(version)
+        version = re.compile('\d*\.\d*\.\d*').findall(version)[0]
+        tag = "WALinuxAgent-%s-1" % version
         x, y, z = version.split('.')
         if int(x) >= 2:
             if int(y) >= 1:
                 if int(z) >= 2:
                     tag = 'v' + version
     p.walaName = "WALinuxAgent-%s-1.el%s" % (version, p.Project.split('.')[0])
+    wala_fullpath = "%s.noarch.rpm" % (p.walaDir+p.walaName)
     CreateDir(p.walaDir)
-    if os.path.isfile(p.walaDir + ".noarch.rpm"):
-        Log("%s.noarch.rpm already exists." % p.walaName)
+    if os.path.isfile(wala_fullpath):
+        Log("%s already exists." % wala_fullpath)
         return 0
     os.chdir(p.TmpDir)
-    Run("wget https://github.com/Azure/WALinuxAgent/archive/%s.zip" % tag)
-    Run("unzip %s.zip" % tag)
+    Log("Change current path to %s" % p.TmpDir)
+    if Run("wget https://github.com/Azure/WALinuxAgent/archive/%s.zip" % tag) != 0:
+        ErrorAndExit("No such WALA build %s" % tag)
+    Run("unzip -o %s.zip" % tag)
     os.chdir(p.TmpDir + "WALinuxAgent-" + version)
+    Log("Change current path to %s" % (p.TmpDir + "WALinuxAgent-" + version))
     Run("curl https://bootstrap.pypa.io/ez_setup.py -o - | python")
     Run("python setup.py bdist_rpm --post-inst rpm/post-inst")
-    Run("mv dist/*.noarch.rpm %s" % p.walaDir)
-    if os.path.isfile(p.walaDir + ".noarch.rpm"):
-        Log("Download " + p.walaDir + p.walaName + ".noarch.rpm successfully.")
+    Run("mv dist/*.noarch.rpm %s" % wala_fullpath)
+    time.sleep(0.5)
+    if os.path.isfile(wala_fullpath):
+        Log("Download %s successfully." % wala_fullpath)
     else:
-        ErrorAndExit("Download " + p.walaDir + p.walaName + ".noarch.rpm failed.")
+        ErrorAndExit("Download %s failed." % wala_fullpath)
     return 0
+
+# Alias get_latest_wala and download_wala to support both upstream and downstream
+def get_latest_wala():
+    if p.Upstream:
+        return get_latest_wala_upstream()
+    else:
+        return get_latest_wala_downstream()
+
+def download_wala(version=None):
+    print p.Upstream
+    if p.Upstream:
+        return download_wala_upstream(version)
+    else:
+        return download_wala_downstream(version)
 
 
 ###### Install ######
@@ -575,10 +601,7 @@ def mk_floppy(srcks_path, floppy_path):
     if os.path.isfile(p.walaDir + wala_fullname):
         Log("%s already exists." % p.walaDir + wala_fullname)
     else:
-        if p.Upstream:
-            download_wala_upstream(p.WalaVersion)
-        else:
-            download_wala(p.WalaVersion)
+        download_wala(p.WalaVersion)
     try:
         shutil.copy(p.walaDir + wala_fullname, floppy_mount + wala_fullname)
     except Exception, e:
@@ -627,7 +650,7 @@ def Usage():
     """
     Print the usage.
     """
-    print("usage: " + sys.argv[0] + " [-check|-all|-download|-install|-convert|-help] [-verbose]")
+    print("usage: " + sys.argv[0] + " [-check|-all|-downloadwala|-download|-install|-convert|-walabuild|-rhelbuild|-help]")
     return 0
 
 
@@ -713,7 +736,7 @@ def main():
     LoggerInit("/tmp/azure_image_prepare.log")
 
     # Check if this script runs on RHEL-6 or RHEL-7
-    CheckPlatform()
+#    CheckPlatform()
 
     # Set global parameters
     realpath = os.path.split(os.path.realpath(__file__))[0]
@@ -726,12 +749,9 @@ def main():
     file_exist_list = [p.srcksPath]
 
     # argv
-    ret = 0
     for a in sys.argv[1:]:
         if re.match("^([-/]*)(help|usage|\?)", a):
             sys.exit(Usage())
-        elif re.match("^([-/]*)verbose", a):
-            myLogger.verbose = True
         elif re.match("^([-/]*)setup", a):
             sys.exit(Setup())
         elif re.match("^([-/]*)check", a):
@@ -740,6 +760,8 @@ def main():
             if CheckEnvironment(dir_create_list, file_exist_list) == 1:
                 ErrorAndExit("Environment Check is not pass")
             sys.exit(Download() or Install() or Convert())
+        elif re.match("^([-/]*)downloadwala", a):
+            sys.exit(download_wala(p.WalaVersion))
         elif re.match("^([-/]*)download", a):
             sys.exit(Download())
         elif re.match("^([-/]*)install", a):

@@ -8,7 +8,7 @@ from azuretest.utils_misc import *
 
 LOGFILE = "/tmp/run-avocado-azure.log"
 POSTFIX = time.strftime("%Y%m%d%H%M")
-AVOCADO_PATH = "/home/avocado/avocado-azure"
+AVOCADO_PATH = os.path.split(os.path.realpath(__file__))[0]
 IGNORE_LIST = ["FuncTest.test_waagent_deprovision",
                "FuncTest.test_waagent_serialconsole",
                "SettingsTest.test_reset_access_successively",
@@ -81,9 +81,6 @@ azure_mode: !mux
         log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" %
                     (self.avocado_path, self.avocado_path, self.azure_mode),
                     timeout=None, ignore_status=True, debug=True).stdout)
-#        log(command("avocado run %s/ttt.py --multiplex %s/cfg/test_%s.yaml" %
-#                    (self.avocado_path, self.avocado_path, self.azure_mode),
-#                    ignore_status=True, debug=True).stdout)
         log("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)
         # Rerun failed cases
@@ -92,9 +89,6 @@ azure_mode: !mux
         log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
                     (self.avocado_path, self.avocado_path),
                     timeout=None, ignore_status=True, debug=True).stdout)
-#        log(command("avocado run %s/ttt.py --multiplex %s/cfg/test_rerun.yaml" %
-#                    (self.avocado_path, self.avocado_path),
-#                    ignore_status=True, debug=True).stdout)
         shutil.copytree(self.job_path, "%s/rerun_result" % self.mode_path)
         log("=============== Test run end:   %s mode ===============" % self.azure_mode)
 
