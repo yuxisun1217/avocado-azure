@@ -8,9 +8,7 @@ from azuretest.utils_misc import *
 
 LOGFILE = "/tmp/run-avocado-azure.log"
 POSTFIX = time.strftime("%Y%m%d%H%M")
-AVOCADO_PATH = "/home/avocado/avocado-azure"
 AVOCADO_PATH = os.path.split(os.path.realpath(__file__))[0]
-print AVOCADO_PATH
 IGNORE_LIST = ["FuncTest.test_waagent_deprovision",
                "FuncTest.test_waagent_serialconsole",
                "SettingsTest.test_reset_access_successively",
