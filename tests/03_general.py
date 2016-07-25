@@ -122,9 +122,9 @@ class GeneralTest(Test):
                        "kdump.service failed.",
                        "kdumpctl: Starting kdump: [FAILED]"
                        "acpi PNP0A03:00: _OSC failed (AE_NOT_FOUND); disabling ASPM",
-                       "acpi PNP0A03:00: fail to add MMCONFIG information, can't access extended PCI configuration space under this bridge.",
+                       "acpi PNP0A03:00: fail to add MMCONFIG information, can.t access extended PCI configuration space under this bridge.",
                        "Dependency failed for Network Manager Wait Online.",
-                       "Job NetworkManager-wait-online.service/start failed with result 'dependency'",
+                       "Job NetworkManager-wait-online.service/start failed with result .dependency.",
                        "rngd.service: main process exited, code=exited, status=1/FAILURE",
                        "Unit rngd.service entered failed state",
                        "rngd.service failed"]
@@ -170,10 +170,12 @@ class GeneralTest(Test):
             self.vm_test01.get_output("service waagent start")
         # The ignore_list must not be empty.
         ignore_list = ["install-rhui-rpm.sh does not exist",
-                       "Error Code is 255",
-                       "Command string was swapon /mnt/resource/swapfile",
-                       "Command result was swapon: /mnt/resource/swapfile: swapon failed: Device or resource busy",
-                       "Failed to activate swap at /mnt/resource/swapfile"]
+                       "ERROR:CalledProcessError. Error Code is 255",
+                       "ERROR:CalledProcessError. Command result was swapon: /mnt/resource/swapfile: swapon failed: Device or resource busy",
+                       "ERROR:CalledProcessError. Failed to activate swap at /mnt/resource/swapfile",
+                       "ERROR:CalledProcessError. Error Code is 1$",
+                       "ERROR:CalledProcessError. Command string was pidof dhclient",
+                       "ERROR:CalledProcessError. Command result was $"]
         ignore_msg = '|'.join(ignore_list)
         cmd = "cat /var/log/waagent.log | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
         error_log = self.vm_test01.get_output(cmd)

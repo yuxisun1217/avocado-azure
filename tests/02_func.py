@@ -113,7 +113,7 @@ class FuncTest(Test):
         delete_list = ["/var/log/waagent.log", "/etc/waagent.conf", "/etc/init.d/waagent", "/etc/logrotate.d/waagent"]
         for delete_file in delete_list:
             self.vm_test01.get_output("rm -rf %s" % delete_file)
-        self.vm_test01.get_output("touch /etc/waagent.conf")
+        self.vm_test01.get_output("echo 'test' > /etc/waagent.conf")
         self.vm_test01.get_output("touch /etc/udev/rules.d/70-persistent-net.rules")
         self.vm_test01.get_output("touch /lib/udev/rules.d/75-persistent-net-generator.rules")
         self.vm_test01.get_output("mv /tmp/waagent /usr/sbin")
@@ -124,10 +124,10 @@ class FuncTest(Test):
         for exist_file in exist_list:
             self.assertNotIn("No such file", self.vm_test01.get_output("ls %s" % exist_file),
                              "%s should exist" % exist_file)
-        self.assertNotEqual(0, self.vm_test01.get_output("du -b /etc/waagent.conf").strip(' ')[0],
-                            "Should create a non-empty waagent.conf during install")
-        self.assertEqual(0, self.vm_test01.get_output("du -b /etc/waagent.conf.old").strip(' ')[0],
-                         "Old waagent.conf should be rename as waagent.conf.old. The size is not match.")
+        self.assertNotEqual("test", self.vm_test01.get_output("cat /etc/waagent.conf"),
+                            "Should create a new waagent.conf during install")
+        self.assertEqual("test", self.vm_test01.get_output("cat /etc/waagent.conf.old"),
+                         "Old waagent.conf should be rename as waagent.conf.old.")
         not_exist_list = ["/etc/udev/rules.d/70-persistent-net.rules",
                           "/lib/udev/rules.d/75-persistent-net-generator.rules"]
         for not_exist_file in not_exist_list:
@@ -289,8 +289,9 @@ class FuncTest(Test):
                         "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
                         "WARNING! root password will be disabled. You will not be able to login as root",
                         "WARNING! azureuser account and entire home directory will be deleted"]
-        # Make a file under /var/lib/dhclient for checking
+        # Make files for checking
         self.vm_test01.get_output("touch /var/lib/dhclient/walatest")
+        self.vm_test01.get_output("/root/.bash_history")
         # 1.1. waagent -deprovision+user [n]
         deprovision_output = self.vm_test01.get_output("echo `echo 'n' |sudo waagent -deprovision+user`", sudo=False)
         for msg in message_list:
@@ -415,7 +416,10 @@ class FuncTest(Test):
                        "ERROR:CalledProcessError.  Command string was swapon /mnt/resource/swapfile",
                        "ERROR:CalledProcessError.  Command result was swapon: /mnt/resource/swapfile: swapon failed: Device or resource busy",
 #                       "ERROR:CalledProcessError.  Command result was swapon: /mnt/resource/swapfile: read swap header failed: Invalid argument",
-                       "ERROR:ActivateResourceDisk: Failed to activate swap at /mnt/resource/swapfile"]
+                       "ERROR:ActivateResourceDisk: Failed to activate swap at /mnt/resource/swapfile",
+                       "ERROR:CalledProcessError. Error Code is 1$",
+                       "ERROR:CalledProcessError. Command string was pidof dhclient",
+                       "ERROR:CalledProcessError. Command result was $"]
         ignore_msg = '|'.join(ignore_list)
         cmd = "cat /var/log/waagent.log | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
         error_log = self.vm_test01.get_output(cmd)
