@@ -782,7 +782,8 @@ def main():
             if p.WalaVersion is not None:
                 wala_build = p.WalaVersion
             else:
-                wala_build = get_latest_wala().replace('WALinuxAgent-', '')
+#                wala_build = get_latest_wala().replace('WALinuxAgent-', '')
+                wala_build = re.compile('\d*\.\d*\.\d*-?\d?').findall(get_latest_wala())[0]
             Log("WALA version: %s" % wala_build)
             print wala_build
             sys.exit(0)
