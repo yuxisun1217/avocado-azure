@@ -1,9 +1,9 @@
 import pdb
 import os
 import time
-import subprocess
 import shutil
 import json
+import yaml
 from azuretest.utils_misc import *
 
 LOGFILE = "/tmp/run-avocado-azure.log"
@@ -14,6 +14,7 @@ IGNORE_LIST = ["FuncTest.test_waagent_deprovision",
                "SettingsTest.test_reset_access_successively",
                "SettingsTest.test_reset_pw_after_capture",
                "SettingsTest.test_reset_pw_diff_auth"]
+UPSTREAM = yaml.load(file('%s/config.yaml' % AVOCADO_PATH))["upstream"]
 
 
 def log(msg):
@@ -32,6 +33,9 @@ class Run(object):
         if not os.path.exists(self.result_path):
             os.makedirs(self.result_path)
         self.mode_path = "%s/%s" % (self.result_path, self.azure_mode.upper())
+        self.upstream = ""
+        if UPSTREAM:
+            self.upstream = "_upstream"
 
     def _get_rerun_list(self):
         log("Rerun case list:")
@@ -78,8 +82,8 @@ azure_mode: !mux
 
     def run(self):
         log("=============== Test run begin: %s mode ===============" % self.azure_mode)
-        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" %
-                    (self.avocado_path, self.avocado_path, self.azure_mode),
+        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s%s.yaml" %
+                    (self.avocado_path, self.avocado_path, self.azure_mode, self.upstream),
                     timeout=None, ignore_status=True, debug=True).stdout)
         log("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)

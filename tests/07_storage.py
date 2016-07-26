@@ -308,6 +308,8 @@ class StorageTest(Test):
         self.log.info("tearDown")
         self.vm_test01.delete()
         self.vm_test01.wait_for_delete()
+        # Clean ssh sessions
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
 #        output = ""
 #        while output.strip('\n') == "":
 #            output = self.vm_test01.get_output("umount /mnt/newdisk*")

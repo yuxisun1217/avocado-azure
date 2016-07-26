@@ -563,8 +563,11 @@ class FuncTest(Test):
                 self.vm_test01.delete()
                 self.vm_test01.wait_for_delete()
         elif "waagent_start" in self.name.name:
+            self.vm_test01.verify_alive()
             self.vm_test01.waagent_service_stop(project=self.project)
             self.vm_test01.waagent_service_start(project=self.project)
+        # Clean ssh sessions
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
 
 if __name__ == "__main__":
     main()

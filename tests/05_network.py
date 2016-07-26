@@ -136,6 +136,8 @@ lo eth0\
 
     def tearDown(self):
         self.log.debug("Teardown.")
+        # Clean ssh sessions
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
 
 if __name__ == "__main__":
     main()

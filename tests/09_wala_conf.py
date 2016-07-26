@@ -510,6 +510,8 @@ class WALAConfTest(Test):
                     self.vm_test01.get_output("hostnamectl set-hostname %s" % self.vm_test01.name)
             else:
                 self.vm_test01.get_output("echo \'%s\' > /etc/waagent.conf" % self.waagent_conf)
+        # Clean ssh sessions
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
 
 
 

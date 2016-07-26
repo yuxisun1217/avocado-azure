@@ -293,6 +293,8 @@ class GeneralTest(Test):
             if not self.vm_test01.waagent_service_start():
                 self.vm_test01.delete()
                 self.vm_test01.wait_for_delete()
+        # Clean ssh sessions
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
 
 
 if __name__ == "__main__":
