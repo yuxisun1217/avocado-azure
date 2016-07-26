@@ -189,31 +189,40 @@ EOF
             cmd += " -force"
         return self.get_output("echo `sudo %s`" % cmd, sudo=False)
 
-    def waagent_service_restart(self):
-        cmd = "service waagent restart"
+    def waagent_service_restart(self, project=6.0):
+        if float(project) < 7.0:
+            cmd = "service waagent restart"
+        else:
+            cmd = "systemctl restart waagent"
         self.get_output(cmd)
         time.sleep(1)
-        if "python /usr/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
+        if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
             return True
         else:
             return False
 
-    def waagent_service_start(self):
-        cmd = "service waagent start"
+    def waagent_service_start(self, project=6.0):
+        if float(project) < 7.0:
+            cmd = "service waagent start"
+        else:
+            cmd = "systemctl start waagent"
         self.get_output(cmd)
         time.sleep(1)
-        if "python /usr/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
+        if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
             return True
         else:
             return False
 
-    def waagent_service_stop(self):
-        service_stop_cmd = "service waagent stop"
+    def waagent_service_stop(self, project=6.0):
+        if float(project) < 7.0:
+            service_stop_cmd = "service waagent stop"
+        else:
+            service_stop_cmd = "systemctl stop waagent"
         kill_process_cmd = "ps aux|grep [w]aagent|awk '{print \$2}'|xargs kill -9"
         self.get_output(service_stop_cmd)
         self.get_output(kill_process_cmd)
         time.sleep(1)
-        if "python /usr/sbin/waagent -daemon" not in self.get_output("ps aux|grep [w]aagent"):
+        if self.get_output("ps aux|grep [w]aagent") == "":
             return True
         else:
             return False

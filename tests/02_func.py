@@ -94,7 +94,7 @@ class FuncTest(Test):
         Check waagent -verbose
         """
         self.log.info("waagent -verbose")
-        self.assertTrue(self.vm_test01.waagent_service_stop())
+        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project))
         self.vm_test01.get_output("rm -f /var/log/waagent.log")
         self.vm_test01.get_output("waagent -verbose -daemon &")
         time.sleep(5)
@@ -107,7 +107,7 @@ class FuncTest(Test):
         """
         self.log.info("waagent -verbose")
         # prepare environment
-        self.vm_test01.waagent_service_stop()
+        self.vm_test01.waagent_service_stop(project=self.project)
         self.vm_test01.get_output("cp /usr/sbin/waagent /tmp")
         self.vm_test01.get_output("rpm -e WALinuxAgent")
         delete_list = ["/var/log/waagent.log", "/etc/waagent.conf", "/etc/init.d/waagent", "/etc/logrotate.d/waagent"]
@@ -406,7 +406,8 @@ class FuncTest(Test):
         Check waagent -daemon
         """
         # prepare environment
-        self.assertTrue(self.vm_test01.waagent_service_stop())
+        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
+                        "Fail to stop waagent service before the test")
         self.vm_test01.get_output("echo > /var/log/waagent.log")
         # waagent -daemon &
         self.vm_test01.get_output("waagent -daemon &")
@@ -445,28 +446,125 @@ class FuncTest(Test):
         new_conf_file = "/tmp/waagent.conf"
         self.vm_test01.get_output("cp %s %s" % (self.conf_file, new_conf_file))
         self.vm_test01.modify_value("Logs\.File", "\/var\/log\/waagent_new.log", new_conf_file)
-        self.vm_test01.waagent_service_stop()
+        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
+                        "Fail to stop waagent service before the test")
         self.vm_test01.get_output("waagent -daemon -conf=%s &" % new_conf_file)
         self.assertNotIn("No such file", self.vm_test01.get_output("ls /var/log/waagent_new.log"),
                          "waagent -conf does not work: no waagent_new.log")
         self.assertNotEqual("", self.vm_test01.get_output("cat /var/log/waagent_new.log"),
                             "waagent -conf does not work: no logs in waagent_new.log")
 
+    def test_setup_install(self):
+        """
+        python setup.py install
+        """
+        # Remove old package
+        self.vm_test01.get_output("rpm -e WALinuxAgent")
+        # Download source code
+        wala_version = self.params.get("WALA_Version", "*/Common/*").split('-')[0]
+        self.vm_test01.get_output("wget https://github.com/Azure/WALinuxAgent/archive/v%s.zip -O v%s.zip" %
+                                  (wala_version, wala_version))
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls v%s.zip" % wala_version),
+                         "Fail to download v%s.zip" % wala_version)
+        self.vm_test01.get_output("unzip -o v%s.zip" % wala_version)
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls WALinuxAgent-%s/setup.py" % wala_version),
+                         "Fail to unzip v%s.zip" % wala_version)
+        # Install
+        self.vm_test01.get_output("python WALinuxAgent-%s/setup.py install" % wala_version)
+        # Check files exist
+        exist_list = ["/usr/sbin/waagent", "/usr/sbin/waagent2.0",
+                      "/etc/waagent.conf", "/etc/logrotate.d/waagent.logrotate",
+                      "/etc/udev/rules.d/66-azure-storage.rules",
+                      "/etc/udev/rules.d/99-azure-product-uuid.rules"]
+        if float(self.project) < 7.0:
+            exist_list.append("/etc/rc.d/init.d/waagent")
+        else:
+            exist_list.append("/lib/systemd/system/waagent.service")
+        for filename in exist_list:
+            self.assertNotIn("No such file", "ls %s" % filename,
+                             "No file %s" % filename)
+        # Check service status
+        if float(self.project) < 7.0:
+            self.assertEqual("service waagent supports chkconfig, but is not referenced in any runlevel "
+                             "(run 'chkconfig --add waagent')",
+                             ' '.join(self.vm_test01.get_output("chkconfig --list waagent").split()),
+                             "Fail to register waagent service")
+        else:
+            self.assertEqual("Loaded: loaded (/usr/lib/systemd/system/waagent.service; disabled; vendor preset: disabled)",
+                             self.vm_test01.get_output("systemctl status waagent | grep Loaded").lstrip(),
+                             "Fail to register waagent service")
+
+    def test_register_service(self):
+        """
+        python setup.py install --register-service
+        """
+        # Remove old package
+        self.vm_test01.get_output("rpm -e WALinuxAgent")
+        # Download source code
+        wala_version = self.params.get("WALA_Version", "*/Common/*").split('-')[0]
+        self.vm_test01.get_output("wget https://github.com/Azure/WALinuxAgent/archive/v%s.zip -O v%s.zip" %
+                                  (wala_version, wala_version))
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls v%s.zip" % wala_version),
+                         "Fail to download v%s.zip" % wala_version)
+        self.vm_test01.get_output("unzip -o v%s.zip" % wala_version)
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls WALinuxAgent-%s/setup.py" % wala_version),
+                         "Fail to unzip v%s.zip" % wala_version)
+        # Install
+        self.vm_test01.get_output("python WALinuxAgent-%s/setup.py install --register-service" % wala_version)
+        # Check files exist
+        exist_list = ["/usr/sbin/waagent", "/usr/sbin/waagent2.0",
+                      "/etc/waagent.conf", "/etc/logrotate.d/waagent.logrotate",
+                      "/etc/udev/rules.d/66-azure-storage.rules",
+                      "/etc/udev/rules.d/99-azure-product-uuid.rules"]
+        if float(self.project) < 7.0:
+            exist_list.append("/etc/rc.d/init.d/waagent")
+        else:
+            exist_list.append("/lib/systemd/system/waagent.service")
+        for filename in exist_list:
+            self.assertNotIn("No such file", "ls %s" % filename,
+                             "No file %s" % filename)
+        # Check service status
+        if float(self.project) < 7.0:
+            self.assertEqual("waagent 0:off 1:off 2:on 3:on 4:on 5:on 6:off",
+                             ' '.join(self.vm_test01.get_output("chkconfig --list waagent").split()),
+                             "Fail to register waagent service")
+        else:
+            self.assertEqual("Loaded: loaded (/usr/lib/systemd/system/waagent.service; enabled; vendor preset: disabled)",
+                             self.vm_test01.get_output("systemctl status waagent | grep Loaded").lstrip(),
+                             "Fail to register waagent service")
+
+    def test_waagent_start(self):
+        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
+                        "Fail to stop waagent service before the test")
+        self.vm_test01.get_output("waagent -start")
+        time.sleep(1)
+        processes = self.vm_test01.get_output("ps aux|grep [w]aagent")
+        self.assertIn("/sbin/waagent -daemon", processes,
+                      "Fail to start daemon process through waagent -start")
+        self.assertIn("/sbin/waagent -run-exthandlers", processes,
+                      "Fail to start exthandlers through waagent -start")
+
+
     def tearDown(self):
         self.log.debug("tearDown")
         if "depro" in self.name.name or \
            "uninstall" in self.name.name or \
+           "setup_install" in self.name.name or \
+           "register_service" in self.name.name or\
            "serialconsole" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
         elif "verbose" in self.name.name or \
              "conf" in self.name.name or \
              "daemon" in self.name.name:
-            self.vm_test01.waagent_service_stop()
+            self.vm_test01.waagent_service_stop(project=self.project)
             self.vm_test01.get_output("rm -f /var/log/waagent*.log")
-            if not self.vm_test01.waagent_service_start():
+            if not self.vm_test01.waagent_service_start(project=self.project):
                 self.vm_test01.delete()
                 self.vm_test01.wait_for_delete()
+        elif "waagent_start" in self.name.name:
+            self.vm_test01.waagent_service_stop(project=self.project)
+            self.vm_test01.waagent_service_start(project=self.project)
 
 if __name__ == "__main__":
     main()
