@@ -442,8 +442,9 @@ class WALAConfTest(Test):
         new_vm_params["Image"] = vm_image_name
         new_vm_params["username"] = "azureusertest1"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
-                         "Fail to create new VM base on capture image")
-        self.assertTrue(self.vm_test01.wait_for_running(self.vm_test01.name))
+                         "Fail to create new VM base on the capture image: azure cli fail")
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "Fail to create new VM base on the capture image: cannot start")
         # Check if old username can login
         self.assertTrue(self.vm_test01.verify_alive(), "Old username doesn't work.")
         # Check if new username is written in /etc/sudoers.d/waagent
