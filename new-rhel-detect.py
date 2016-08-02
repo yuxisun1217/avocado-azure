@@ -3,8 +3,6 @@
 # and run avocado-azure automatically.
 ##############################################
 
-#!/usr/bin/python
-
 import os
 import re
 import commands
@@ -27,25 +25,6 @@ def run(cmd):
     status, output = commands.getstatusoutput(cmd)
     return output
 
-def config():
-    avocado_conf = '/etc/avocado/avocado.conf'
-    comp_test = re.compile('^test_dir = .*$')
-    comp_data = re.compile('^data_dir = .*$')
-    comp_logs = re.compile('^logs_dir = .*$')
-    with open(avocado_conf, 'r') as f:
-        data = f.readlines()
-    new_data = ""
-    for line in data:
-        if re.findall(comp_test, line):
-            line = "test_dir = %s/tests\n" % AVOCADO_AZURE
-        elif re.findall(comp_data, line):
-            line = "data_dir = %s/data\n" % AVOCADO_AZURE
-        elif re.findall(comp_logs, line):
-            line = "logs_dir = %s/job-results\n" % AVOCADO_AZURE
-        new_data += line
-    with open(avocado_conf, 'w') as f:
-        f.write(new_data)
-
 def sendmail(build):
     sender = 'xintest@redhat.com'
     receivers = ['yuxisun@redhat.com']  
@@ -66,10 +45,9 @@ def main():
     if latest_build == local_build:
         log("No new build")
     else:
-        log("Have new build: $latest_build")
-        config()
+        log("Have new build: %s" % latest_build)
         os.chdir(AVOCADO_AZURE)
-        run("%s run.py &" % PYTHON)
+        run("%s run.py" % PYTHON)
         sendmail(latest_build)
 
 if __name__ == "__main__":

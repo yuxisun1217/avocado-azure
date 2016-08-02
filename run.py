@@ -1,4 +1,5 @@
 import pdb
+import re
 import os
 import time
 import subprocess
@@ -21,6 +22,26 @@ def log(msg):
     msg = prefix + msg + '\n'
     with open(LOGFILE, 'a') as f:
         f.write(msg)
+
+
+def config():
+    avocado_conf = '/etc/avocado/avocado.conf'
+    comp_test = re.compile('^test_dir = .*$')
+    comp_data = re.compile('^data_dir = .*$')
+    comp_logs = re.compile('^logs_dir = .*$')
+    with open(avocado_conf, 'r') as f:
+        data = f.readlines()
+    new_data = ""
+    for line in data:
+        if re.findall(comp_test, line):
+            line = "test_dir = %s/tests\n" % AVOCADO_AZURE
+        elif re.findall(comp_data, line):
+            line = "data_dir = %s/data\n" % AVOCADO_AZURE
+        elif re.findall(comp_logs, line):
+            line = "logs_dir = %s/job-results\n" % AVOCADO_AZURE
+        new_data += line
+    with open(avocado_conf, 'w') as f:
+        f.write(new_data)
 
 
 class Run(object):
@@ -100,6 +121,8 @@ azure_mode: !mux
 
 
 def main():
+    # Modify /etc/avocado/avocado.conf
+    config()
     # Create configuration files
     log("Creating common.yaml...")
     command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
