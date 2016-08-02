@@ -23,15 +23,11 @@ iperf3
 
     1). vi /etc/yum.repos.d/rhel7.repo
 
-[rhel7]
-
-name=rhel7
-
-baseurl=[RHEL-7 repo]
-
-enabled=1
-
-gpgcheck=0
+        [rhel7]
+        name=rhel7
+        baseurl=[RHEL-7 repo]
+        enabled=1
+        gpgcheck=0
 
     2). yum -y install git wget nmap tcpdump
 
@@ -61,11 +57,12 @@ gpgcheck=0
 
     1). vi /etc/yum.repos.d/rhpkg.repo
 
-[rhpkg]
-name=rhpkg for Red Hat Enterprise Linux $releasever
-baseurl=[brewkoji repo]
-enabled=1
-gpgcheck=0
+        [rhpkg]
+        name=rhpkg for Red Hat Enterprise Linux $releasever
+        baseurl=[brewkoji repo]
+        enabled=1
+        gpgcheck=0
+
     2). yum -y install brewkoji
 
 
@@ -106,7 +103,7 @@ gpgcheck=0
 
         yum install -y git gcc python-devel python-pip libvirt-devel libyaml-devel redhat-rpm-config xz-devel
 
-    * For RHEL7 there's no python-pip and libyaml-devel packages in repo:
+        * For RHEL7 there's no python-pip and libyaml-devel packages in repo:
 
         wget https://bootstrap.pypa.io/get-pip.py
 
