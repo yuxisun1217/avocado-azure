@@ -26,7 +26,7 @@ def run(cmd):
     return output
 
 def sendmail(build):
-    sender = 'xintest@redhat.com'
+    sender = 'avocado-azure@redhat.com'
     receivers = ['yuxisun@redhat.com']  
     message = MIMEText('There\'s a new RHEL build %s. Run avocado-azure.' % build, 'plain')
     message['From'] = Header(sender)
