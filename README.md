@@ -1,6 +1,6 @@
 # avocado-azure
-Avocado Azure is an avocado plugin that lets you run avocado tests on Amazon Azure instances.
-v1.0: for WALinuxAgent-2.0.16-1
+Avocado Azure is an avocado plugin that lets you run avocado tests on Microsoft Azure Virtual Machine instances.
+v1.1: for WALinuxAgent-2.0.16-1
 
 Must tools on host:
 python2.6+
@@ -12,6 +12,7 @@ nodejs0.10+
 wget
 virtualization packages(python-virtinst libvirt bridge-utils virt-manager qemu-kvm-tools virt-viewer virt-v2v virt-install qemu-img)
 tcping
+rpm-build
 
 Must tools on guest:
 nmap
@@ -178,3 +179,5 @@ iperf3
 2. Edit the cases list in cfg/cases.yaml.
 
 3. Run "python run.py"
+
+4. "new_rhel_detect.py" is used to detect the latest RHEL build and run avocado-azure automatically. You can add this script into crontab.
