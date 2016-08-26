@@ -535,8 +535,13 @@ class FuncTest(Test):
                              "Fail to register waagent service")
 
     def test_waagent_start(self):
+        """
+        waagent start
+        """
+        # Stop waagent service
         self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
                         "Fail to stop waagent service before the test")
+        # waagent start
         self.vm_test01.get_output("waagent -start")
         time.sleep(1)
         processes = self.vm_test01.get_output("ps aux|grep [w]aagent")
@@ -550,21 +555,17 @@ class FuncTest(Test):
         waagent register-service
         """
         # Stop service and unregister
-        self.log.debug("Stop service and unregister")
+        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
+                        "Fail to stop waagent service berfore the test")
         if float(self.project) < 7.0:
-            self.vm_test01.get_output("service waagent stop")
             self.vm_test01.get_output("chkconfig --del waagent")
             self.assertIn("not referenced in any runlevel", self.vm_test01.get_output("chkconfig --list waagent"),
                           "Fail to unregister waagent service during preparation")
         else:
-            self.vm_test01.get_output("systemctl stop waagent")
             self.vm_test01.get_output("systemctl disable waagent")
             self.assertIn("disabled; vendor", self.vm_test01.get_output("systemctl status waagent"),
                           "Fail to unregister waagent service during preparation")
-        self.assertNotIn("waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
-                         "Fail to stop waagent service during preparation")
         # register service
-        self.log.debug("Register service")
         output = self.vm_test01.get_output("waagent register-service")
         msg_list = ["Register WALinuxAgent service", "Start WALinuxAgent service"]
         for msg in msg_list:
@@ -579,6 +580,25 @@ class FuncTest(Test):
         self.assertIn("waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
                       "Fail to start waagent service")
 
+    def test_waagent_run_exthandlers(self):
+        """
+        waagent -run-exthandlers
+        """
+        # Stop service, remove waagent.log
+        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
+                        "Fail to stop waagent service berfore the test")
+        self.vm_test01.get_output("rm -f /var/log/waagent.log")
+        self.assertTrue(self.vm_test01.modify_value("AutoUpdate.Enabled", "n"),
+                        "Fail to disable AutoUpdate")
+        # waagent -run-exthandlers
+
+        output = self.vm_test01.get_output("timeout 3 waagent -run-exthandlers")
+        self.assertIn("is running as the goal state agent", output,
+                      "Fail to run exthandlers")
+        output = self.vm_test01.get_output("grep -r ERROR /var/log/waagent.log")
+        self.assertEqual("", output,
+                         "There's error logs in waagent.log: \n%s" % output)
+
 
     def tearDown(self):
         self.log.debug("tearDown")
@@ -591,7 +611,8 @@ class FuncTest(Test):
             self.vm_test01.wait_for_delete()
         elif "verbose" in self.name.name or \
              "conf" in self.name.name or \
-             "daemon" in self.name.name:
+             "daemon" in self.name.name or \
+             "waagent_run_exthandlers" in self.name.name:
             self.vm_test01.waagent_service_stop(project=self.project)
             self.vm_test01.get_output("rm -f /var/log/waagent*.log")
             if not self.vm_test01.waagent_service_start(project=self.project):
@@ -601,6 +622,7 @@ class FuncTest(Test):
             self.vm_test01.verify_alive()
             self.vm_test01.waagent_service_stop(project=self.project)
             self.vm_test01.waagent_service_start(project=self.project)
+
         # Clean ssh sessions
         azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 

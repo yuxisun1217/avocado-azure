@@ -24,6 +24,7 @@ azure_mode: !mux
             FuncTest.test_setup_install
             FuncTest.test_setup_register_service
             FuncTest.test_waagent_register_service
+            FuncTest.test_waagent_run_exthandlers
             FuncTest.test_waagent_verbose
             FuncTest.test_waagent_deprovision
             FuncTest.test_waagent_depro_user
