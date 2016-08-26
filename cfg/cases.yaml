@@ -21,15 +21,15 @@ azure_mode: !mux
             SettingsTest.test_reset_access_successively
             SettingsTest.test_reset_pw_after_capture
             SettingsTest.test_reset_pw_diff_auth
+            FuncTest.test_setup_install
+            FuncTest.test_setup_register_service
+            FuncTest.test_waagent_register_service
             FuncTest.test_waagent_verbose
-            FuncTest.test_waagent_install
-            FuncTest.test_waagent_uninstall
             FuncTest.test_waagent_deprovision
             FuncTest.test_waagent_depro_user
             FuncTest.test_waagent_version
             FuncTest.test_waagent_daemon
             FuncTest.test_waagent_help
-            FuncTest.test_waagent_conf
             WALAConfTest.test_delete_root_passwd
             WALAConfTest.test_enable_verbose_logging
             WALAConfTest.test_regenerate_ssh_host_key

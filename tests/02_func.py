@@ -550,28 +550,34 @@ class FuncTest(Test):
         waagent register-service
         """
         # Stop service and unregister
+        self.log.debug("Stop service and unregister")
         if float(self.project) < 7.0:
-            self.vm_test01.get_output("systemctl stop waagent")
-            self.vm_test01.get_output("systemctl disable waagent")
-            self.assertIn("disabled; vendor", self.vm_test01.get_output("systemctl status waagent"),
-                          "Fail to unregister waagent service during preparation")
-        else:
             self.vm_test01.get_output("service waagent stop")
             self.vm_test01.get_output("chkconfig --del waagent")
             self.assertIn("not referenced in any runlevel", self.vm_test01.get_output("chkconfig --list waagent"),
                           "Fail to unregister waagent service during preparation")
+        else:
+            self.vm_test01.get_output("systemctl stop waagent")
+            self.vm_test01.get_output("systemctl disable waagent")
+            self.assertIn("disabled; vendor", self.vm_test01.get_output("systemctl status waagent"),
+                          "Fail to unregister waagent service during preparation")
         self.assertNotIn("waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
                          "Fail to stop waagent service during preparation")
         # register service
+        self.log.debug("Register service")
         output = self.vm_test01.get_output("waagent register-service")
         msg_list = ["Register WALinuxAgent service", "Start WALinuxAgent service"]
         for msg in msg_list:
             self.assertIn(msg, output, "No message: %s" % msg)
         if float(self.project) < 7.0:
+            output = ' '.join(self.vm_test01.get_output("chkconfig --list waagent").split())
+            self.assertEqual("waagent 0:off 1:off 2:on 3:on 4:on 5:on 6:off", output,
+                             "Fail to register waagent service")
+        else:
             self.assertIn("enabled; vendor", self.vm_test01.get_output("systemctl status waagent"),
                           "Fail to register waagent service")
-            self.assertIn("waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
-                          "Fail to start waagent service")
+        self.assertIn("waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
+                      "Fail to start waagent service")
 
 
     def tearDown(self):
@@ -579,7 +585,7 @@ class FuncTest(Test):
         if "depro" in self.name.name or \
            "uninstall" in self.name.name or \
            "setup_install" in self.name.name or \
-           "register_service" in self.name.name or\
+           "setup_register_service" in self.name.name or\
            "serialconsole" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
