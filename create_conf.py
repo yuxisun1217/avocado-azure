@@ -36,7 +36,7 @@ MainDir=%s
 TmpDir=/home/tmp/azure/
 Logfile=/var/log/azure_image_prepare.log
 Verbose=y
-ImageSize=8
+ImageSize=10
 """ % (data.get("project"),
        data.get("rhel_version"),
        data.get("wala_version"),
@@ -54,7 +54,7 @@ with open(azure_image_prepare_conf, 'w') as f:
 rhel_version = subprocess.check_output("%s/azure_image_prepare.py -rhelbuild" % azure_image_prepare_dir,
                                        stderr=subprocess.STDOUT, shell=True).strip('\n')
 wala_version = subprocess.check_output("%s/azure_image_prepare.py -walabuild" % azure_image_prepare_dir,
-                                       stderr=subprocess.STDOUT, shell=True).split('.el')[0]
+                                       stderr=subprocess.STDOUT, shell=True).split('.el')[0].strip('\n')
 
 CommonYaml = """\
 Common:
@@ -149,7 +149,8 @@ DataDisk:
        data.get("RedhatSub").get("username"),
        data.get("RedhatSub").get("password"),
        data.get("store_dir")+"vhd/",
-       rhel_version+"-Server-x86_64-dvd1.vhd",
+#       rhel_version+"-Server-x86_64-dvd1.vhd",
+       rhel_version+"-wala-"+wala_version+".vhd",
        str(data.get("project")).replace('.', ''),
        "walaauto-"+rhel_version+"-wala-"+wala_version,
        data.get("VMUser").get("password"),

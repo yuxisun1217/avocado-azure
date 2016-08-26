@@ -99,8 +99,8 @@ class Params(object):
         self.isoDir = self.MainDir + "iso/RHEL-" + self.Project + "/"
         self.newisoDir = self.TmpDir + "newiso/"
         self.srcksPath = self.ksDir + "RHEL-" + self.Project.split('.')[0] + ".cfg"
-        self.isoName = ""
-        self.walaName = ""
+        self.isoName = ""  # ISO file name without postfix(.iso)
+        self.walaName = ""  # WALA package name
 
 
 class Logger(object):
@@ -440,11 +440,9 @@ def download_wala_downstream(version=None):
     """
     Download the latest wala package from brew.
     """
-    print version
     if version != None:
         #        For brewkoji-19-1
         #        p.walaName = "WALinuxAgent-%s.el%s.noarch.rpm" % (version, str(p.Project).split('.')[0])
-        print '111'
         p.walaName = "WALinuxAgent-%s.el%s" % (version, str(p.Project).split('.')[0])
     else:
         p.walaName = get_latest_wala_downstream()
@@ -520,12 +518,27 @@ def get_latest_wala():
         return get_latest_wala_downstream()
 
 def download_wala(version=None):
-    print p.Upstream
     if p.Upstream:
         return download_wala_upstream(version)
     else:
         return download_wala_downstream(version)
 
+def rhel_build():
+    if p.Version is not None:
+        rhel_build = p.Version
+    else:
+        rhel_build = get_latest_build()[p.Project][0]
+    Log("RHEL build: %s" % rhel_build)
+    return rhel_build
+
+def wala_build():
+    if p.WalaVersion is not None:
+        wala_build = p.WalaVersion
+    else:
+        #                wala_build = get_latest_wala().replace('WALinuxAgent-', '')
+        wala_build = re.compile('\d*\.\d*\.\d*-?\d?').findall(get_latest_wala())[0]
+    Log("WALA version: %s" % wala_build)
+    return wala_build
 
 ###### Install ######
 
@@ -570,8 +583,7 @@ def mk_iso(iso_path, newiso_path):
     m = re.search("Volume id:([^\n]*)", isoinfo)
     volid = m.group(1)[1:]
     #    Run("mkisofs -o "+newiso_path+" -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -R -J -v -T "+newiso_mount)
-    Run(
-        "mkisofs -J -R -v -T -V \"" + volid + "\" -o " + newiso_path + " -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table " + newiso_mount)
+    Run("mkisofs -J -R -v -T -V \"" + volid + "\" -o " + newiso_path + " -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table " + newiso_mount)
     Log("Make " + newiso_path + " successfully.")
     return 0
 
@@ -593,15 +605,16 @@ def mk_floppy(srcks_path, floppy_path):
     try:
         shutil.copy(srcks_path, dstks_path)
     except Exception, e:
-        ErrorAndExit("Cannot copy " + srcks_path + " to " + floppy_mount)
+        ErrorAndExit("Cannot copy " + srcks_path + " to " + floppy_mount + ". Exception: " + str(e))
     # Copy WALinuxAgent package to floppy
     # For brewkoji-1.9-1
     # wala_fullname = p.walaName
+#    if os.path.isfile(p.walaDir + wala_fullname):
+#        Log("%s already exists." % p.walaDir + wala_fullname)
+#    else:
+#        download_wala(p.WalaVersion)
+    download_wala(p.WalaVersion)
     wala_fullname = p.walaName + ".noarch.rpm"
-    if os.path.isfile(p.walaDir + wala_fullname):
-        Log("%s already exists." % p.walaDir + wala_fullname)
-    else:
-        download_wala(p.WalaVersion)
     try:
         shutil.copy(p.walaDir + wala_fullname, floppy_mount + wala_fullname)
     except Exception, e:
@@ -625,8 +638,7 @@ def mk_qcow2(newiso_path, qcow2_path, floppy_path):
     Run("qemu-img create %s %dG -f qcow2" % (qcow2_path, p.ImageSize))
     CheckFileExist(qcow2_path)
     # Install image
-    Run(
-        "virt-install --name walatestimg --ram 1024 --network bridge=virbr0 --vcpus 1 --cdrom " + newiso_path + " --disk path=" + qcow2_path + ",bus=virtio --disk path=" + floppy_path + ",device=floppy --noreboot")
+    Run("virt-install --name walatestimg --ram 1024 --network bridge=virbr0 --vcpus 1 --cdrom " + newiso_path + " --disk path=" + qcow2_path + ",bus=virtio --disk path=" + floppy_path + ",device=floppy --noreboot")
     Log("Install qcow2 image successfully.")
     return 0
 
@@ -701,7 +713,7 @@ def Download():
 def Install():
     get_newest_local_isoname()
     floppy_path = p.TmpDir + "ksfloppy.img"
-    qcow2_path = p.TmpDir + p.isoName + ".qcow2"
+    qcow2_path = p.TmpDir + rhel_build() + "-wala-" + wala_build() + ".qcow2"
     iso_path = p.isoDir + p.isoName + ".iso"
     newiso_path = p.TmpDir + p.isoName + "-ks.iso"
     srcks_path = p.srcksPath
@@ -712,8 +724,11 @@ def Install():
 
 def Convert():
     get_newest_local_isoname()
-    vhd_path = p.vhdDir + p.isoName + ".vhd"
-    qcow2_path = p.TmpDir + p.isoName + ".qcow2"
+#    vhd_path = p.vhdDir + p.isoName + ".vhd"
+#    qcow2_path = p.TmpDir + p.isoName + ".qcow2"
+    image_path = rhel_build() + "-wala-" + wala_build()
+    qcow2_path = p.TmpDir + image_path + ".qcow2"
+    vhd_path = p.vhdDir + image_path + ".vhd"
     return qcow2_to_vhd(qcow2_path, vhd_path)
 
 
@@ -769,23 +784,10 @@ def main():
         elif re.match("^([-/]*)convert", a):
             sys.exit(Convert())
         elif re.match("^([-/]*)rhelbuild", a):
-            #            get_latest_build()
-            if p.Version is not None:
-                rhel_build = p.Version
-            else:
-                rhel_build = get_latest_build()[p.Project][0]
-            print rhel_build
+            print rhel_build()
             sys.exit(0)
         elif re.match("^([-/]*)walabuild", a):
-            # For brewkoji-1.9-1
-            # wala_build = get_latest_wala().split('.el')[0].lstrip('WALinuxAgent-')
-            if p.WalaVersion is not None:
-                wala_build = p.WalaVersion
-            else:
-#                wala_build = get_latest_wala().replace('WALinuxAgent-', '')
-                wala_build = re.compile('\d*\.\d*\.\d*-?\d?').findall(get_latest_wala())[0]
-            Log("WALA version: %s" % wala_build)
-            print wala_build
+            print wala_build()
             sys.exit(0)
         elif re.match("^([-/]*)localbuild", a):
             get_newest_local_isoname()

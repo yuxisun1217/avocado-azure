@@ -159,7 +159,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.modify_value("Logs\.File", "\/var\/log\/waagent-verbose\.log", self.conf_file))
         self.vm_test01.waagent_service_restart()
         time.sleep(3)
-        self.assertNotEqual(self.vm_test01.get_output("cat /var/log/waagent-verbose.log|grep DHCP\ request:"), "",
+        self.assertNotEqual(self.vm_test01.get_output("cat /var/log/waagent-verbose.log|grep HTTP\ Req"), "",
                             "Fail to enable Verbose log")
         # 2. Logs.Verbose=n
         self.log.info("Logs.Verbose=n")
@@ -167,7 +167,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.modify_value("Logs\.File", "\/var\/log\/waagent-new\.log", self.conf_file))
         self.vm_test01.waagent_service_restart()
         time.sleep(3)
-        self.assertEqual(self.vm_test01.get_output("cat /var/log/waagent-new.log|grep DHCP\ request:"), "",
+        self.assertEqual(self.vm_test01.get_output("cat /var/log/waagent-new.log|grep HTTP\ Req"), "",
                          "Fail to disable Verbose log")
 
     def test_regenerate_ssh_host_key(self):
@@ -442,8 +442,9 @@ class WALAConfTest(Test):
         new_vm_params["Image"] = vm_image_name
         new_vm_params["username"] = "azureusertest1"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
-                         "Fail to create new VM base on capture image")
-        self.assertTrue(self.vm_test01.wait_for_running(self.vm_test01.name))
+                         "Fail to create new VM base on the capture image: azure cli fail")
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "Fail to create new VM base on the capture image: cannot start")
         # Check if old username can login
         self.assertTrue(self.vm_test01.verify_alive(), "Old username doesn't work.")
         # Check if new username is written in /etc/sudoers.d/waagent
@@ -511,7 +512,7 @@ class WALAConfTest(Test):
             else:
                 self.vm_test01.get_output("echo \'%s\' > /etc/waagent.conf" % self.waagent_conf)
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 
 

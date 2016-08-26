@@ -1,5 +1,7 @@
 import pdb
+import re
 import os
+import sys
 import time
 import shutil
 import json
@@ -23,6 +25,24 @@ def log(msg):
     with open(LOGFILE, 'a') as f:
         f.write(msg)
 
+def config():
+    avocado_conf = '/etc/avocado/avocado.conf'
+    comp_test = re.compile('^test_dir = .*$')
+    comp_data = re.compile('^data_dir = .*$')
+    comp_logs = re.compile('^logs_dir = .*$')
+    with open(avocado_conf, 'r') as f:
+        data = f.readlines()
+    new_data = ""
+    for line in data:
+        if re.findall(comp_test, line):
+            line = "test_dir = %s/tests\n" % AVOCADO_PATH
+        elif re.findall(comp_data, line):
+            line = "data_dir = %s/data\n" % AVOCADO_PATH
+        elif re.findall(comp_logs, line):
+            line = "logs_dir = %s/job-results\n" % AVOCADO_PATH
+        new_data += line
+    with open(avocado_conf, 'w') as f:
+        f.write(new_data)
 
 class Run(object):
     def __init__(self, azure_mode='asm'):
@@ -32,6 +52,10 @@ class Run(object):
         self.result_path = "%s/run-results/%s" % (self.avocado_path, POSTFIX)
         if not os.path.exists(self.result_path):
             os.makedirs(self.result_path)
+        latest_path = "%s/run-results/latest" % self.avocado_path
+        if os.path.exists(latest_path):
+            os.remove(latest_path)
+        command("ln -s %s %s" % (POSTFIX, latest_path))
         self.mode_path = "%s/%s" % (self.result_path, self.azure_mode.upper())
         self.upstream = ""
         if UPSTREAM:
@@ -98,18 +122,33 @@ azure_mode: !mux
 
 
 def main():
+    # modify /etc/avocado/avocado.conf
+    config()
     # Create configuration files
     log("Creating common.yaml...")
     command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
     # Run test cases
-    asm_run = Run("asm")
-    asm_run.run()
-    arm_run = Run("arm")
-    arm_run.run()
-    latest_path = "%s/run-results/latest" % AVOCADO_PATH
-    if os.path.exists(latest_path):
-        os.remove(latest_path)
-    command("ln -s %s %s" % (POSTFIX, latest_path))
+    asm_flag = False
+    arm_flag = False
+    if len(sys.argv) > 1:
+        if "asm" in sys.argv[1:]:
+            asm_flag = True
+        if "arm" in sys.argv[1:]:
+            arm_flag = True
+    else:
+        asm_flag = True
+        arm_flag = True
+    log("ASM mode: %s;  ARM mode: %s" % (asm_flag, arm_flag))
+    if asm_flag:
+        asm_run = Run("asm")
+        asm_run.run()
+    if arm_flag:
+        arm_run = Run("arm")
+        arm_run.run()
+#    latest_path = "%s/run-results/latest" % AVOCADO_PATH
+#    if os.path.exists(latest_path):
+#        os.remove(latest_path)
+#    command("ln -s %s %s" % (POSTFIX, latest_path))
 
 
 if __name__ == "__main__":

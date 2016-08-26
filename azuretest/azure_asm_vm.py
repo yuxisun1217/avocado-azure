@@ -245,7 +245,7 @@ class VMASM(azure_vm.BaseVM):
         return azure_cli_asm.vm_capture(self.name, vm_image_name, cmd_params,
                                         timeout=timeout).exit_status
 
-    def wait_for_running(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT):
+    def wait_for_running(self, timeout=azure_vm.BaseVM.WAIT_FOR_START_TIMEOUT):
         """
 
         :param timeout:

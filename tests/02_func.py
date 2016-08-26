@@ -94,11 +94,12 @@ class FuncTest(Test):
         Check waagent -verbose
         """
         self.log.info("waagent -verbose")
-        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project))
+        self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
+                        "Fail to stop waagent service before the test")
         self.vm_test01.get_output("rm -f /var/log/waagent.log")
-        self.vm_test01.get_output("waagent -verbose -daemon &")
+        self.vm_test01.get_output("timeout 5 waagent -verbose -daemon")
         time.sleep(5)
-        self.assertNotEqual(self.vm_test01.get_output("cat /var/log/waagent.log|grep DHCP\ request:"), "",
+        self.assertNotEqual(self.vm_test01.get_output("grep -RE 'HTTP\ Req|VERBOSE' /var/log/waagent.log"), "",
                             "Fail to enable verbose log")
 
     def test_waagent_install(self):
@@ -494,7 +495,7 @@ class FuncTest(Test):
                              self.vm_test01.get_output("systemctl status waagent | grep Loaded").lstrip(),
                              "Fail to register waagent service")
 
-    def test_register_service(self):
+    def test_setup_register_service(self):
         """
         python setup.py install --register-service
         """
@@ -544,6 +545,34 @@ class FuncTest(Test):
         self.assertIn("/sbin/waagent -run-exthandlers", processes,
                       "Fail to start exthandlers through waagent -start")
 
+    def test_waagent_register_service(self):
+        """
+        waagent register-service
+        """
+        # Stop service and unregister
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("systemctl stop waagent")
+            self.vm_test01.get_output("systemctl disable waagent")
+            self.assertIn("disabled; vendor", self.vm_test01.get_output("systemctl status waagent"),
+                          "Fail to unregister waagent service during preparation")
+        else:
+            self.vm_test01.get_output("service waagent stop")
+            self.vm_test01.get_output("chkconfig --del waagent")
+            self.assertIn("not referenced in any runlevel", self.vm_test01.get_output("chkconfig --list waagent"),
+                          "Fail to unregister waagent service during preparation")
+        self.assertNotIn("waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
+                         "Fail to stop waagent service during preparation")
+        # register service
+        output = self.vm_test01.get_output("waagent register-service")
+        msg_list = ["Register WALinuxAgent service", "Start WALinuxAgent service"]
+        for msg in msg_list:
+            self.assertIn(msg, output, "No message: %s" % msg)
+        if float(self.project) < 7.0:
+            self.assertIn("enabled; vendor", self.vm_test01.get_output("systemctl status waagent"),
+                          "Fail to register waagent service")
+            self.assertIn("waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
+                          "Fail to start waagent service")
+
 
     def tearDown(self):
         self.log.debug("tearDown")
@@ -567,7 +596,7 @@ class FuncTest(Test):
             self.vm_test01.waagent_service_stop(project=self.project)
             self.vm_test01.waagent_service_start(project=self.project)
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 if __name__ == "__main__":
     main()

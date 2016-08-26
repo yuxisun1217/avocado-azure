@@ -21,13 +21,14 @@ azure_mode: !mux
             SettingsTest.test_reset_pw_after_capture
             SettingsTest.test_reset_pw_diff_auth
             FuncTest.test_setup_install
-            FuncTest.test_register_service
+            FuncTest.test_setup_register_service
+            FuncTest.test_waagent_register_service
             FuncTest.test_waagent_start
+            FuncTest.test_waagent_daemon
             FuncTest.test_waagent_verbose
             FuncTest.test_waagent_deprovision
             FuncTest.test_waagent_depro_user
             FuncTest.test_waagent_version
-            FuncTest.test_waagent_serialconsole
             FuncTest.test_waagent_help
             FuncTest.test_waagent_conf
             WALAConfTest.test_delete_root_passwd
@@ -47,7 +48,6 @@ azure_mode: !mux
             GeneralTest.test_check_account
             GeneralTest.test_check_sshkey
             GeneralTest.test_check_waagent_log
-            GeneralTest.test_verify_package_signed
             GeneralTest.test_check_waagent_service
             GeneralTest.test_start_waagent_repeatedly
             GeneralTest.test_check_hyperv_modules

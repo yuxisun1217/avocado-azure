@@ -225,11 +225,17 @@ class GeneralTest(Test):
         else:
             self.assertIn("code=killed, signal=KILL", self.vm_test01.get_output("service waagent status"),
                           "waagent service status is wrong after killing process")
-        self.assertNotIn("FAILED", self.vm_test01.get_output("service waagent start"),
+        if float(self.project < 7.0):
+            start_cmd = "service waagent start"
+            status_cmd = "service waagent status"
+        else:
+            start_cmd = "systemctl start waagent"
+            status_cmd = "systemctl status waagent"
+        self.assertNotIn("FAILED", self.vm_test01.get_output(start_cmd),
                          "Fail to start waagent after killing process: command fail")
-        self.assertIn("running", self.vm_test01.get_output("service waagent status"),
+        self.assertIn("running", self.vm_test01.get_output(status_cmd),
                       "waagent service status is not running.")
-        self.assertIn("python /usr/sbin/waagent -daemon", self.vm_test01.get_output("ps aux|grep waagent"),
+        self.assertIn("/usr/sbin/waagent -daemon", self.vm_test01.get_output("ps aux|grep [w]aagent"),
                       "Fail to start waagent after killing process: result fail")
 
     def test_start_waagent_repeatedly(self):
@@ -294,7 +300,7 @@ class GeneralTest(Test):
                 self.vm_test01.delete()
                 self.vm_test01.wait_for_delete()
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9")
+        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 
 if __name__ == "__main__":
