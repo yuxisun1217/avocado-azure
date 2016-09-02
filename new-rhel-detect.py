@@ -8,10 +8,12 @@
 import os
 import re
 import commands
+import subprocess
 import time
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
+import pdb
 
 PYTHON = "/usr/bin/python"
 AVOCADO_AZURE = os.path.split(os.path.realpath(__file__))[0]
@@ -24,7 +26,8 @@ def log(msg):
         f.write("%s %s\n" % (PREFIX, msg))
 
 def run(cmd):
-    status, output = commands.getstatusoutput(cmd)
+#    status, output = commands.getstatusoutput(cmd)
+    output = subprocess.check_output(cmd, shell=True)
     return output
 
 def config():
@@ -66,10 +69,11 @@ def main():
     if latest_build == local_build:
         log("No new build")
     else:
-        log("Have new build: $latest_build")
+        log("Have new build: %s" % latest_build)
         config()
         os.chdir(AVOCADO_AZURE)
-        run("%s run.py &" % PYTHON)
+        cmd = "%s run.py &" % PYTHON
+        subprocess.call(cmd, shell=True)
         sendmail(latest_build)
 
 if __name__ == "__main__":
