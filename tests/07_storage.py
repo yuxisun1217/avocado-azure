@@ -12,6 +12,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -77,6 +78,10 @@ class StorageTest(Test):
                                                 self.vm_params["username"],
                                                 self.vm_params["password"],
                                                 self.vm_params)
+        self.project = self.params.get("Project", "*/Common/*")
+        self.conf_file = "/etc/waagent.conf"
+        if "64_disks" in self.name.name:
+            return
         # If vm doesn't exist, create it. If it exists, start it.
         self.log.debug("Create the vm %s", self.vm_params["VMName"])
         self.vm_test01.vm_update()
@@ -93,8 +98,6 @@ class StorageTest(Test):
                 self.vm_test01.wait_for_running()
         if not self.vm_test01.verify_alive():
             self.error("VM %s is not available. Exit." % self.vm_params["VMName"])
-        self.project = self.params.get("Project", "*/Common/*")
-        self.conf_file = "/etc/waagent.conf"
         # Increase sudo password timeout
         self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
 
@@ -193,9 +196,12 @@ class StorageTest(Test):
         time.sleep(5)
         self.vm_test01.wait_for_running()
         self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
-        self.assertEqual("fdisk: cannot open %s: No such file or directory" % disk,
-                         self.vm_test01.get_output("fdisk -l %s" % disk),
-                         "After detach, disk still exists")
+#        self.assertEqual("fdisk: cannot open %s: No such file or directory" % disk,
+#                         self.vm_test01.get_output("fdisk -l %s" % disk),
+#                         "After detach, disk still exists")
+        self.assertIn("No such file",
+                      self.vm_test01.get_output("ls %s" % disk),
+                      "After detach, disk still exists")
 
     def test_disk_attach_exist(self):
         """
@@ -259,6 +265,169 @@ class StorageTest(Test):
         self.assertTrue(self.vm_test01.vm_disk_check(mount_point), 
                         "The disk cannot work well.")
 
+    def test_attach_detach_64_disks(self):
+        """
+        Attach and Detach 64 disks
+        """
+        self.log.info("Attach and Detach 64 disks")
+        # 1. Check storage account for G5 VM
+        # Destination storage account instance
+        sto_dst_params = dict()
+        sto_dst_params["name"] = self.params.get('storage_account', '*/vm_sizes/Standard_G5/*')
+        sto_dst_params["location"] = self.params.get('location', '*/vm_sizes/Standard_G5/*')
+        sto_dst_params["type"] = "RAGRS"
+        sto_dst_test01 = azure_asm_vm.StorageAccount(name=sto_dst_params["name"],
+                                                     params=sto_dst_params)
+        # Check and create storage account
+        if not sto_dst_test01.check_exist():
+            sto_dst_test01.create(sto_dst_params)
+        # Prepare the container instance
+        container_dst_params = dict()
+        container_dst_params["name"] = self.params.get('container', '*/Prepare/*')
+        container_dst_params["storage_account"] = sto_dst_params["name"]
+        container_dst_test01 = azure_asm_vm.Container(name=container_dst_params["name"],
+                                                      storage_account=container_dst_params["storage_account"],
+                                                      params=container_dst_params)
+        # Check and create container
+        if not container_dst_test01.check_exist():
+            container_dst_test01.create(container_dst_params)
+        # 2. Copy the vhd to the specific storage account
+        # Prepare the blob instance
+        blob_params = dict()
+        blob_params["name"] = self.params.get('name', '*/DiskBlob/*')
+        blob_params["container"] = self.params.get('container', '*/Prepare/*')
+        blob_params["storage_account"] = self.params.get('name', '*/Prepare/storage_account/*')
+        blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
+                                        container=blob_params["container"],
+                                        storage_account=blob_params["storage_account"],
+                                        params=blob_params)
+        self.assertTrue(blob_test01.copy(sto_dst_test01.conn_show()),
+                        "Fail to copy the VHD file %s to storage account %s container %s" %
+                        (blob_params["name"], sto_dst_params["name"], blob_params["container"]))
+        # 3. Create an image base on the vhd (only for asm mode)
+        # Image instance
+        # Prepare the Image instance (Only for asm mode)
+        if self.azure_mode == "asm":
+            image_params = dict()
+            image_params["name"] = self.params.get('name', '*/Image/*') + "-G5"
+            image_params["blob_url"] = "https://%s.blob.core.windows.net/%s/%s" % \
+                                       (sto_dst_params["name"],
+                                        container_dst_params["name"],
+                                        blob_params["name"])
+            image_params["location"] = sto_dst_params["location"]
+            image_test01 = azure_asm_vm.Image(name=image_params["name"],
+                                              params=image_params)
+            if image_test01.check_exist():
+                image_test01.delete()
+            self.assertEqual(image_test01.create(image_params), 0,
+                             "Fail to create vm image %s" % image_params["name"])
+        # 4. Create VM
+        vm_params = copy.deepcopy(self.vm_params)
+        vm_params["Location"] = sto_dst_params["location"]
+        vm_params["region"] = vm_params["Location"].lower().strip(' ')
+        vm_params["StorageAccountName"] = sto_dst_params["name"]
+        vm_params["Container"] = container_dst_params["name"]
+        vm_params["DiskBlobName"] = blob_params["name"]
+        if self.azure_mode == "asm":
+            vm_params["VMSize"] = "Standard_G5"
+            vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
+            vm_params["Image"] = image_params["name"]
+            vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
+            self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
+                                                vm_params["VMSize"],
+                                                vm_params["username"],
+                                                vm_params["password"],
+                                                vm_params)
+        else:
+            vm_params["VMSize"] = "Standard_G5"
+            vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
+            vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
+            vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
+            vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
+                                                                                vm_params["Container"],
+                                                                                vm_params["DiskBlobName"])
+            vm_params["NicName"] = vm_params["VMName"]
+            vm_params["PublicIpName"] = vm_params["VMName"]
+            vm_params["PublicIpDomainName"] = vm_params["VMName"]
+            vm_params["VnetName"] = vm_params["VMName"]
+            vm_params["VnetSubnetName"] = vm_params["VMName"]
+            vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
+            vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+            self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
+                                                vm_params["VMSize"],
+                                                vm_params["username"],
+                                                vm_params["password"],
+                                                vm_params)
+        self.assertEqual(0, self.vm_test01.vm_create(vm_params),
+                         "Fail to create VM %s" % self.vm_test01.name)
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "VM cannot become running")
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Cannot login the VM")
+        # Login with root account
+        self.vm_test01.get_output("echo %s | passwd --stdin root" % vm_params["password"])
+        self.vm_test01.session_close()
+        self.vm_test01.username = "root"
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Cannot login with root account")
+        # Attach 64 disks
+        disk_blob_size = 1
+        disk_blob_params = dict()
+        disk_blob_params["host_caching"] = "None"
+        for bn in range(1, 65):
+            self.assertEqual(self.vm_test01.disk_attach_new(disk_blob_size, disk_blob_params), 0,
+                             "Fail to attach new disk %s" % bn)
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "After attaching 64 disks, VM cannot become running")
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "After attaching 64 disks, cannot login VM")
+        # Put 64 dev names into dev_list
+        import string
+        count = 0
+        dev_list = []
+        for letter1 in [''] + list(string.lowercase[:26]):
+            for letter2 in list(string.lowercase[:26]):
+                dev_list.append("/dev/sd%s" % (letter1 + letter2))
+                count += 1
+                if count == 66:
+                    break
+            if count == 66:
+                break
+        # remove /dev/sda and /dev/sdb
+        dev_list.pop(0)
+        dev_list.pop(0)
+        self.log.debug(dev_list)
+        # Check the devices
+        fdisk_list = self.vm_test01.get_output("ls /dev/sd*").split()
+        self.assertTrue(set(dev_list).issubset(fdisk_list),
+                        "Wrong devices. Devices in VM: %s" % fdisk_list)
+        # Check the first disk
+        first_mountpoint = "/mnt/firstdisk"
+        self.vm_test01.get_output("mkdir -p %s" % first_mountpoint)
+        self.vm_test01.vm_disk_mount(disk=dev_list[0], mount_point=first_mountpoint, project=self.project, sudo=False)
+        self.assertTrue(self.vm_test01.vm_disk_check(first_mountpoint),
+                        "Check disk /dev/sdc result fail")
+        self.vm_test01.get_output("umount %s" % first_mountpoint)
+        # Check the last disk
+        last_mountpoint = "/mnt/lastdisk"
+        self.vm_test01.get_output("mkdir -p %s" % last_mountpoint)
+        self.vm_test01.vm_disk_mount(disk=dev_list[-1], mount_point=last_mountpoint, project=self.project, sudo=False)
+        self.assertTrue(self.vm_test01.vm_disk_check(last_mountpoint),
+                        "Check disk /dev/sdbn result fail")
+        self.vm_test01.get_output("umount %s" % last_mountpoint)
+        # Detach 64 disks
+        for bn in range(0, 64):
+            self.assertEqual(self.vm_test01.disk_detach(disk_lun=bn), 0,
+                             "Fail to detach disk lun=%s: azure cli fail" % bn)
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "After detaching 64 disks, VM cannot become running")
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "After detaching 64 disks, cannot login VM")
+        # Check the devices
+        fdisk_list = self.vm_test01.get_output("ls /dev/sd*").split()
+        self.assertEqual(0, len(set(fdisk_list).intersection(set(dev_list))),
+                         "There's some disks left. Current disks: %s" % fdisk_list)
+
     def test_change_os_disk_size(self):
         """
         Change OS disk size
@@ -309,7 +478,7 @@ class StorageTest(Test):
         self.vm_test01.delete()
         self.vm_test01.wait_for_delete()
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 #        output = ""
 #        while output.strip('\n') == "":
 #            output = self.vm_test01.get_output("umount /mnt/newdisk*")

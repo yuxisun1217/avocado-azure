@@ -69,7 +69,10 @@ class BaseVM(object):
     START_TIMEOUT = 1200
     RESTART_TIMEOUT = 1200
     DELETE_TIMEOUT = 1200
-    WAIT_FOR_START_TIMEOUT = 1200
+# It's hard to control the timeout because it takes several seconds to update VM status.
+# So use WAIT_FOR_START_RETRY_TIMES instead of WAIT_FOR_START_TIMEOUT
+#    WAIT_FOR_START_TIMEOUT = 1200
+    WAIT_FOR_START_RETRY_TIMES = 30
     WAIT_FOR_RETRY_TIMEOUT = 600
     VM_UPDATE_RETRY_TIMES = 3
 
@@ -128,7 +131,7 @@ class BaseVM(object):
             raise
         return value
 
-    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end=''):
+    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end='', reboot=False, sudo=True):
         logging.debug("DISK: %s", disk)
         if isinstance(project, float) and float(project) >= 7.0:
             u = 'u\n'
@@ -149,7 +152,7 @@ p
 w
 EOF
 """ % (self.password, disk, d, u, partition, str(start), str(end))
-        output = self.get_output(cmd)
+        output = self.get_output(cmd, sudo=sudo)
 #        if del_part:
 #            self.get_output("parted %s rm %d" % (dict, partition))
 #        start, end = self.get_output("parted %s unit s p free|grep Free|tail -1" % disk).split()[0:2]
@@ -158,11 +161,17 @@ EOF
         if disk+str(partition) not in output:
             logging.error("Fail to part disk %s" % disk)
             raise Exception
-        self.get_output("partprobe")
-        self.get_output("mkfs.ext4 %s" % disk+str(partition), timeout=600)
-        self.get_output("mkdir %s" % mount_point)
-        self.get_output("mount %s %s" % (disk+str(partition), mount_point))
-        if self.get_output("mount | grep %s" % mount_point) == "":
+        if reboot:
+            self.get_output("reboot", sudo=sudo)
+            time.sleep(60)
+            self.verify_alive()
+        else:
+            self.get_output("partprobe", sudo=sudo)
+        self.get_output("fdisk -l %s" % disk, sudo=sudo)
+        self.get_output("mkfs.ext4 %s" % disk+str(partition), timeout=300, sudo=sudo)
+        self.get_output("mkdir %s" % mount_point, sudo=sudo)
+        self.get_output("mount %s %s" % (disk+str(partition), mount_point), sudo=sudo)
+        if self.get_output("mount | grep %s" % mount_point, sudo=sudo) == "":
             logging.error("Fail to mount %s to %s" % (disk+str(partition), mount_point))
             raise Exception
         return True
@@ -242,9 +251,11 @@ EOF
         :return: A ShellSession object.
         """
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
+            password = self.password
+#            password = self.params.get("password", "")
         prompt = self.params.get("shell_prompt", "[\#\$]")
 #        linesep = eval("'%s'" % self.params.get("shell_linesep", r"\n"))
         client = self.params.get("shell_client", "ssh")
@@ -338,9 +349,11 @@ EOF
         :return: False if timeout
         """
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
+            password = self.password
+#            password = self.params.get("password", "")
 #        logging.debug(self.params)
         host = self.get_public_address()
         port = self.get_ssh_port()
@@ -372,9 +385,11 @@ EOF
         """
         logging.info("sending file(s) to '%s'", self.name)
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
+            password = self.password
+#            password = self.params.get("password", "")
         client = self.params.get("file_transfer_client", "ssh")
         address = self.get_public_address()
         port = self.get_ssh_port()
@@ -402,9 +417,11 @@ EOF
         """
         logging.info("receiving file(s) to '%s'", self.name)
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
+            password = self.password
+#            password = self.params.get("password", "")
         client = self.params.get("file_transfer_client")
         address = self.get_public_address()
         port = self.get_ssh_port()
@@ -450,23 +467,23 @@ EOF
         except:
             pass
 
-    def wait_for_dns(self, dns, timeout=WAIT_FOR_START_TIMEOUT):
+    def wait_for_dns(self, dns, times=WAIT_FOR_START_RETRY_TIMES):
         """
 
         :param dns: VM Domain Name
-        :param timeout: Retry timeout
-        :return: False if timeout
+        :param times: Retry times of checking dns connection.
+        :return: False if ti
         """
         r = 0
         interval = 10
-        while (r * interval) < timeout:
+        while r < times:
 #            logging.debug(dns)
-            if azure_cli_common.check_dns(dns):
-                return
+            if utils_misc.check_dns(dns):
+                return True
             time.sleep(interval)
             r += 1
             logging.debug("Retry %d times.", r)
-        logging.debug("After %ds seconds, the DNS is not available.", timeout)
+        logging.debug("After retry %d times, the DNS is not available.", times)
         return False
 
     def get_device_name(self, timeout=WAIT_FOR_RETRY_TIMEOUT):
@@ -488,7 +505,3 @@ EOF
     def postfix(self):
         return utils_misc.postfix()
 
-#    def get_sshkey_file(self):
-#        azure_cli_common.host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
-#        myname = azure_cli_common.host_command("whoami").strip('\n')
-#        return "/home/%s/.ssh/id_rsa.pub" % myname

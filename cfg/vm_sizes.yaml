@@ -2,24 +2,42 @@ azure_mode: !mux
     asm:
         vm_sizes:
           Small:
-              region:
+              storage_account:
+              location:
               cpu:
               memory:
               disk_size:
           Medium:
-              region:
+              storage_ccount:
+              location:
               cpu:
               memory:
               disk_size:
           Large:
-              region:
+              storage_account:
+              location:
               cpu:
               memory:
               disk_size:
+          Standard_G5:
+              storage_account: walaautoasmsea
+              location: "Southeast Asia"
+              cpu: 32
+              memory: 448
+              disk_size: 6144
+
+
     arm:
         vm_sizes:
           Standard_A3:
-              region:
+              storage_account:
+              location:
               cpu: 4
               memory: 7
               disk_size: 285
+          Standard_G5:
+              storage_account: walaautoarmwesteurope
+              location: "West Europe"
+              cpu: 32
+              memory: 448
+              disk_size: 6144

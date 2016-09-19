@@ -13,6 +13,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -49,7 +50,11 @@ class GeneralTest(Test):
         if "check_sshkey" in self.name.name:
             self.vm_params["VMName"] += "key"
             self.vm_params["password"] = None
-            self.host_pubkey_file = azure_cli_common.get_sshkey_file()
+            self.host_pubkey_file = utils_misc.get_sshkey_file()
+            self.vm_params["ssh_key"] = self.host_pubkey_file
+        elif "password_sshkey" in self.name.name:
+            self.vm_params["VMName"] += "pwkey"
+            self.host_pubkey_file = utils_misc.get_sshkey_file()
             self.vm_params["ssh_key"] = self.host_pubkey_file
         if self.azure_mode == "asm":
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
@@ -88,14 +93,16 @@ class GeneralTest(Test):
             if not self.vm_test01.is_running():
                 self.vm_test01.start()
                 self.vm_test01.wait_for_running()
-        if "check_sshkey" in self.name.name:
-            self.log.debug("Case name is check_sshkey. Don't verify alive during setUp.")
+        self.project = self.params.get('Project', '*/Common/*')
+        self.conf_file = "/etc/waagent.conf"
+        if "check_account" in self.name.name or \
+           "check_sshkey" in self.name.name or \
+           "check_password_sshkey" in self.name.name:
+            self.log.debug("Case name is %s. Don't verify alive during setUp." % self.name.name)
             return
         if not self.vm_test01.verify_alive():
             self.error("VM %s is not available. Exit." % self.vm_params["VMName"])
         #        self.project = float(self.vm_test01.get_output("cat /etc/redhat-release|awk '{print $7}'", sudo=False))
-        self.project = self.params.get('Project', '*/Common/*')
-        self.conf_file = "/etc/waagent.conf"
         # Increase sudo password timeout
         self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
 
@@ -146,8 +153,11 @@ class GeneralTest(Test):
         Check if the new account created during provisioning works well
         """
         self.log.info("Check the new account created by WALinuxAgent")
-        self.assertIn(self.vm_test01.username, self.vm_test01.get_output("cat /etc/sudoers.d/waagent"),
-                      "The new account is not in the sudo list.")
+        self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="password"),
+                        "Fail to login with password.")
+        self.assertEqual("%s ALL=(ALL) ALL" % self.vm_params["username"],
+                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent" % self.vm_params["username"]),
+                         "The new account sudo permission is wrong")
 
     def test_check_sshkey(self):
         """
@@ -160,6 +170,21 @@ class GeneralTest(Test):
                       "It should be NOPASSWD in /etc/sudoers.d/waagent")
         self.assertTrue(self.vm_test01.verify_value("PasswordAuthentication", "no", "/etc/ssh/sshd_config", ' '),
                         "PasswordAuthentication should be no in sshd_config")
+
+    def test_check_password_sshkey(self):
+        """
+        Check if can access to the VM with both password and ssh key
+        """
+        self.log.info("Access the VM with both ssh key and password")
+        # Check ssh key
+        self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="publickey"),
+                        "Fail to login with ssh_key.")
+        # Check password
+        self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="password"),
+                        "Fail to login with password.")
+        self.assertEqual("%s ALL=(ALL) ALL" % self.vm_params["username"],
+                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent"),
+                         "The new account sudo permission is wrong")
 
     def test_check_waagent_log(self):
         """
@@ -206,13 +231,16 @@ class GeneralTest(Test):
         self.assertNotIn("FAILED", self.vm_test01.get_output("service waagent start"),
                          "Fail to start waagent: command fail")
         time.sleep(3)
-        self.assertIn("python /usr/sbin/waagent -daemon", self.vm_test01.get_output("ps aux|grep waagent"),
-                      "Fail to start waagent: result fail")
+        output = self.vm_test01.get_output("ps aux|grep waagent")
+        self.assertIn("/usr/sbin/waagent -daemon", output,
+                      "Fail to start waagent: no -daemon process")
+        self.assertIn("/usr/sbin/waagent -run-exthandlers", output,
+                      "Fail to start waagent: no -run-exthandlers process")
         # 2. service waagent restart
-        old_pid = self.vm_test01.get_output("ps aux|grep [w]aagent|awk '{print \$2}'")
+        old_pid = self.vm_test01.get_output("ps aux|grep [w]aagent\ -daemon|awk '{print \$2}'")
         self.assertNotIn("FAILED", self.vm_test01.get_output("service waagent restart"),
                          "Fail to restart waagent: command fail")
-        self.assertIn("python /usr/sbin/waagent -daemon", self.vm_test01.get_output("ps aux|grep waagent"),
+        self.assertIn("/usr/sbin/waagent -daemon", self.vm_test01.get_output("ps aux|grep waagent"),
                       "Fail to restart waagent: cannot start waagent service")
         new_pid = self.vm_test01.get_output("ps aux|grep [w]aagent|awk '{print \$2}'")
         self.assertNotEqual(old_pid, new_pid,
@@ -245,7 +273,7 @@ class GeneralTest(Test):
         self.log.info("Start waagent service repeatedly")
         self.vm_test01.get_output("service waagent start")
         self.vm_test01.get_output("service waagent start")
-        waagent_count = self.vm_test01.get_output("ps aux|grep [w]aagent|wc -l")
+        waagent_count = self.vm_test01.get_output("ps aux|grep [w]aagent\ -daemon|wc -l")
         self.assertEqual(waagent_count, "1",
                          "There's more than 1 waagent process. Actually: %s" % waagent_count)
 
@@ -286,6 +314,33 @@ class GeneralTest(Test):
         self.assertIn("No such file", self.vm_test01.get_output("ls /usr/sbin/waagent"),
                       "Fail to remove WALinuxAgent through yum")
 
+    def test_upgrade_downgrade_wala(self):
+        """
+        Check if can upgrade and downgrade wala package through rpm
+        """
+        self.log.info("Upgrading and Downgrading the WALinuxAgent package")
+
+    def test_logrotate(self):
+        """
+        Check if wala logrotate works well
+        """
+        self.log.info("logrotate")
+        # Preparation
+        test_str = "teststring"
+        self.vm_test01.get_output("rm -f /var/log/waagent.log-*")
+        self.vm_test01.get_output("echo '%s' >> /var/log/waagent.log" % test_str)
+        # Rotate log
+        self.vm_test01.get_output("logrotate -vf /etc/logrotate.conf")
+        # Check rotated log
+        rotate_log = "/var/log/waagent.log%s.gz" % self.vm_test01.postfix()[:9]
+        self.assertEqual(rotate_log, self.vm_test01.get_output("ls %s" % rotate_log),
+                         "Fail to rotate waagent log")
+        self.assertEqual("", self.vm_test01.get_output("grep -R %s /var/log/waagent.log" % test_str),
+                         "The waagent.log is not cleared")
+        self.vm_test01.get_output("gunzip %s" % rotate_log)
+        self.assertEqual(test_str, self.vm_test01.get_output("grep -R %s %s" % (test_str, rotate_log[:-3])),
+                         "The rotated log doesn't contain the old logs")
+
     def tearDown(self):
         self.log.debug("tearDown")
         if ("check_sshkey" in self.name.name) or \
@@ -300,7 +355,7 @@ class GeneralTest(Test):
                 self.vm_test01.delete()
                 self.vm_test01.wait_for_delete()
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 
 if __name__ == "__main__":

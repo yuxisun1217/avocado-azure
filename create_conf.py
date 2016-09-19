@@ -6,9 +6,9 @@ realpath = os.path.split(os.path.realpath(__file__))[0]
 config_yaml = "%s/config.yaml" % realpath
 common_yaml = "%s/cfg/common.yaml" % realpath
 azure_image_prepare_dir = "%s/tools/azure_image_prepare" % realpath
-azure_image_prepare_conf = "%s/azure_image_prepare.conf" % azure_image_prepare_dir
+azure_image_prepare_conf = "%s/azure_image_prepare.yaml" % azure_image_prepare_dir
 
-# Create azure_image_prepare.conf
+# Create azure_image_prepare.yaml
 with open(config_yaml, 'r') as f:
     data = yaml.load(f)
 
@@ -27,22 +27,24 @@ AzureImagePrepareConf = """\
 # Verbose:     Enable verbose logs
 # ImageSize:   The VM image disk size in GB
 
-Project=%s
-Version=%s
-WalaVersion=%s
-Upstream=%s
-Baseurl=%s
-MainDir=%s
-TmpDir=/home/tmp/azure/
-Logfile=/var/log/azure_image_prepare.log
-Verbose=y
-ImageSize=10
+Project: %s
+Version: %s
+WalaVersion: %s
+Upstream: %s
+Baseurl: %s
+MainDir: %s
+TmpDir: /home/tmp/azure/
+Logfile: /var/log/azure_image_prepare.log
+Verbose: y
+ImageSize: 10
+Tag: %s
 """ % (data.get("project"),
        data.get("rhel_version"),
        data.get("wala_version"),
        data.get("upstream"),
        data.get("base_url"),
-       data.get("store_dir"))
+       data.get("store_dir"),
+       data.get("tag"))
 
 with open(azure_image_prepare_conf, 'w') as f:
     f.write(AzureImagePrepareConf)
@@ -55,6 +57,7 @@ rhel_version = subprocess.check_output("%s/azure_image_prepare.py -rhelbuild" % 
                                        stderr=subprocess.STDOUT, shell=True).strip('\n')
 wala_version = subprocess.check_output("%s/azure_image_prepare.py -walabuild" % azure_image_prepare_dir,
                                        stderr=subprocess.STDOUT, shell=True).split('.el')[0].strip('\n')
+tagstr = "-"+data.get("tag") if data.get("tag") else ""
 
 CommonYaml = """\
 Common:
@@ -150,9 +153,9 @@ DataDisk:
        data.get("RedhatSub").get("password"),
        data.get("store_dir")+"vhd/",
 #       rhel_version+"-Server-x86_64-dvd1.vhd",
-       rhel_version+"-wala-"+wala_version+".vhd",
+       rhel_version+"-wala-"+wala_version+tagstr+".vhd",
        str(data.get("project")).replace('.', ''),
-       "walaauto-"+rhel_version+"-wala-"+wala_version,
+       "walaauto-"+rhel_version+"-wala-"+wala_version+tagstr,
        data.get("VMUser").get("password"),
        str(data.get("project")).replace('.', ''),
        data.get("VMUser").get("password"),
@@ -163,3 +166,25 @@ DataDisk:
 
 with open(common_yaml, 'w') as f:
     f.write(CommonYaml)
+
+
+# Create test_asm.yaml and test_arm.yaml
+def write_test_yaml(azure_mode):
+    test_yaml = "%s/cfg/test_%s.yaml" % (realpath, azure_mode)
+    if azure_mode == "asm":
+        remove_mode = "arm"
+    else:
+        remove_mode = "asm"
+    TestYaml = """\
+test:
+    !include : common.yaml
+    !include : vm_sizes.yaml
+    !include : cases_%s.yaml
+    azure_mode: !mux
+        !remove_node : %s
+""" % (data.get("type", "upstream"), remove_mode)
+    with open(test_yaml, 'w') as f:
+        f.write(TestYaml)
+
+write_test_yaml("asm")
+write_test_yaml("arm")

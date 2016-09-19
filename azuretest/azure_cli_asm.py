@@ -60,7 +60,7 @@ def vm_create(params, options='', **kwargs):
         cmd += add_option("--location", params.get("Location", None))
         cmd += add_option("--ssh", params.get("PublicPort", None))
         cmd += add_option("--ssh-cert", params.get("ssh_key", None))
-        if params.get("ssh_key", None):
+        if params.get("ssh_key", None) and not params.get("password", None):
             cmd += " --no-ssh-password"
     cmd += " " + options
     return command(cmd, **kwargs)

@@ -12,7 +12,7 @@ LOGFILE = "/tmp/run-avocado-azure.log"
 POSTFIX = time.strftime("%Y%m%d%H%M")
 AVOCADO_PATH = os.path.split(os.path.realpath(__file__))[0]
 IGNORE_LIST = ["FuncTest.test_waagent_deprovision",
-               "FuncTest.test_waagent_serialconsole",
+               "FuncTest.test_waagent_depro_user",
                "SettingsTest.test_reset_access_successively",
                "SettingsTest.test_reset_pw_after_capture",
                "SettingsTest.test_reset_pw_diff_auth"]
@@ -44,6 +44,7 @@ def config():
     with open(avocado_conf, 'w') as f:
         f.write(new_data)
 
+
 class Run(object):
     def __init__(self, azure_mode='asm'):
         self.azure_mode = azure_mode
@@ -57,9 +58,6 @@ class Run(object):
             os.remove(latest_path)
         command("ln -s %s %s" % (POSTFIX, latest_path))
         self.mode_path = "%s/%s" % (self.result_path, self.azure_mode.upper())
-        self.upstream = ""
-        if UPSTREAM:
-            self.upstream = "_upstream"
 
     def _get_rerun_list(self):
         log("Rerun case list:")
@@ -106,8 +104,11 @@ azure_mode: !mux
 
     def run(self):
         log("=============== Test run begin: %s mode ===============" % self.azure_mode)
-        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s%s.yaml" %
-                    (self.avocado_path, self.avocado_path, self.azure_mode, self.upstream),
+#        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s%s.yaml" %
+#                    (self.avocado_path, self.avocado_path, self.azure_mode, self.upstream),
+#                    timeout=None, ignore_status=True, debug=True).stdout)
+        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" %
+                    (self.avocado_path, self.avocado_path, self.azure_mode),
                     timeout=None, ignore_status=True, debug=True).stdout)
         log("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)
@@ -125,8 +126,9 @@ def main():
     # modify /etc/avocado/avocado.conf
     config()
     # Create configuration files
-    log("Creating common.yaml...")
+    log("Creating common.yaml and azure_image_prepare.yaml...")
     command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
+    log("common.yaml and azure_image_prepare.yaml are created.")
     # Run test cases
     asm_flag = False
     arm_flag = False

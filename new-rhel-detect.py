@@ -26,8 +26,7 @@ def log(msg):
         f.write("%s %s\n" % (PREFIX, msg))
 
 def run(cmd):
-#    status, output = commands.getstatusoutput(cmd)
-    output = subprocess.check_output(cmd, shell=True)
+    status, output = commands.getstatusoutput(cmd)
     return output
 
 def config():

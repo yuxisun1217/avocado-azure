@@ -123,6 +123,16 @@ class VMASM(azure_vm.BaseVM):
         """
         return azure_cli_asm.vm_create(params, options, timeout=timeout).exit_status
 
+    def vm_list(self, params=None, options='', timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT, **kwargs):
+        """
+        This show the vm list
+        :param params:
+        :param options:
+        :param timeout:
+        :return:
+        """
+        return azure_cli_asm.vm_list(params, options, timeout=timeout, **kwargs).stdout
+
     def vm_update(self, params=None, timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT):
         """
         This helps to update VM info. And update VM status.
@@ -134,8 +144,9 @@ class VMASM(azure_vm.BaseVM):
             for retry in range(1, self.VM_UPDATE_RETRY_TIMES+1):
                 try:
                     self.params = azure_cli_asm.vm_show(self.name, timeout=timeout).stdout
-                except ValueError, e:
-                    logging.debug("VM update failed. Exception: %s Retry times: %d/%d" %
+#                except ValueError, e:
+                except Exception, e:
+                    logging.debug("azure vm show failed. Exception: %s Retry times: %d/%d" %
                                   (str(e), retry, self.VM_UPDATE_RETRY_TIMES))
                     continue
                 break
@@ -245,16 +256,16 @@ class VMASM(azure_vm.BaseVM):
         return azure_cli_asm.vm_capture(self.name, vm_image_name, cmd_params,
                                         timeout=timeout).exit_status
 
-    def wait_for_running(self, timeout=azure_vm.BaseVM.WAIT_FOR_START_TIMEOUT):
+    def wait_for_running(self, times=azure_vm.BaseVM.WAIT_FOR_START_RETRY_TIMES):
         """
 
-        :param timeout:
-        :return:
+        :param times: Retry times of vm_update()
+        :return: True if running.
         """
         logging.debug("Wait for running")
         r = 0
         interval = 10
-        while (r * interval) < timeout:
+        while r < times:
             self.vm_update()
             if self.is_running():
                 return True
@@ -539,7 +550,7 @@ class Blob(object):
     This class handles all basic storage blob operations for ASM.
     """
     DEFAULT_TIMEOUT = 240
-    COPY_TIMEOUT = 240
+    COPY_TIMEOUT = 600
     DELETE_TIMEOUT = 240
     BLOB_UPLOAD_TIMEOUT = 10800
 

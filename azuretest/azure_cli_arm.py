@@ -490,6 +490,48 @@ def vm_disk_upload(source_path, blob_url, storage_account_key,
     return command(cmd, **kwargs)
 
 
+# Extensions
+def vm_set_extension(vm_name, rg_name, extension, publisher, version,
+                     params=None, options='', **kwargs):
+    """
+    Enable/disable resource extensions for VMs
+
+    :param rg_name: The name of the Resource Group
+    :param vm_name: The name of the virtual machine
+    :param extension: The Extension name
+    :param publisher: The publisher name
+    :param version: The version of the extension
+    :param params: Command properties
+    :param options: extra options
+    :param kwargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure vm extension set %s %s %s %s %s %s" % (options, rg_name, vm_name, extension,
+                                                        publisher, version)
+    if params:
+        cmd += add_option("--private-config-path", params.get("private_config_path", None))
+        cmd += add_option("--public-config-path", params.get("public_config_path", None))
+    return command(cmd, **kwargs)
+
+
+def vm_get_extension(vm_name, rg_name, params=None, options='', **kwargs):
+    """
+    Gets resource extensions applied to a VM
+
+    :param rg_name: The name of the Resource Group
+    :param vm_name: The name of the virtual machine
+    :param params: Command properties
+    :param options: extra options
+    :param kwargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure vm extension get %s %s %s " % (options, rg_name, vm_name)
+    if params:
+        cmd += add_option("--extension-name", params.get("extension_name", None))
+        cmd += add_option("--publisher-name", params.get("publisher_name", None))
+    return command(cmd, **kwargs)
+
+
 # Storage Account
 def sto_acct_check(sto_name, params=None, options='', **kwargs):
     """

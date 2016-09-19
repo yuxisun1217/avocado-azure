@@ -12,6 +12,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -198,12 +199,15 @@ class FuncTest(Test):
         message_list = ["WARNING! The waagent service will be stopped",
                         "WARNING! All SSH host key pairs will be deleted",
                         "WARNING! Cached DHCP leases will be deleted",
-                        "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
+# For 2.0.16
+#                         "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
+                        "WARNING! /etc/resolv.conf will be deleted",
                         "WARNING! root password will be disabled. You will not be able to login as root"]
         # 1.1. waagent -deprovision [n]
         deprovision_output = self.vm_test01.get_output("echo `echo 'n' |sudo waagent -deprovision`", sudo=False)
         for msg in message_list:
             self.assertIn(msg, deprovision_output,
+                          "Bug 1364883. "
                           "%s message is not shown" % msg)
         self.assertIn("Do you want to proceed (y/n)", deprovision_output,
                       "Do you want to proceed (y/n) message is not shown")
@@ -287,9 +291,11 @@ class FuncTest(Test):
         message_list = ["WARNING! The waagent service will be stopped",
                         "WARNING! All SSH host key pairs will be deleted",
                         "WARNING! Cached DHCP leases will be deleted",
-                        "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
+# For 2.0.16
+#                        "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
+                        "WARNING! /etc/resolv.conf will be deleted",
                         "WARNING! root password will be disabled. You will not be able to login as root",
-                        "WARNING! azureuser account and entire home directory will be deleted"]
+                        "WARNING! %s account and entire home directory will be deleted" % self.vm_test01.username]
         # Make files for checking
         self.vm_test01.get_output("touch /var/lib/dhclient/walatest")
         self.vm_test01.get_output("/root/.bash_history")
@@ -297,6 +303,7 @@ class FuncTest(Test):
         deprovision_output = self.vm_test01.get_output("echo `echo 'n' |sudo waagent -deprovision+user`", sudo=False)
         for msg in message_list:
             self.assertIn(msg, deprovision_output,
+                          "Bug 1364883. "
                           "'%s' message is not shown" % msg)
         self.assertIn("Do you want to proceed (y/n)", deprovision_output,
                       "Do you want to proceed (y/n) message is not shown")
@@ -432,11 +439,10 @@ class FuncTest(Test):
         Check waagent -help
         """
         # waagent -help
-        if float(self.project) < 7.0:
-            help_msg = "usage: /usr/sbin/waagent [-verbose] [-force] [-help|-install|-uninstall|-deprovision[+user]|-version|-serialconsole|-daemon]"
-        else:
-            help_msg = "usage: /sbin/waagent [-verbose] [-force] [-help|-install|-uninstall|-deprovision[+user]|-version|-serialconsole|-daemon]"
-        self.assertEqual(help_msg, self.vm_test01.get_output("waagent -help"),
+        help_msg = "usage: /usr/sbin/waagent [-verbose] [-force] [-help] " \
+                   "-deprovision[+user]|-register-service|-version|-daemon|-start|-run-exthandlers]"
+        self.log.debug("help_msg: \n" + help_msg)
+        self.assertEqual(help_msg, self.vm_test01.get_output("waagent -help", sudo=False).strip('\n'),
                          "waagent help message is wrong")
 
     def test_waagent_conf(self):
@@ -460,6 +466,7 @@ class FuncTest(Test):
         python setup.py install
         """
         # Remove old package
+        self.vm_test01.get_output("systemctl disable waagent")
         self.vm_test01.get_output("rpm -e WALinuxAgent")
         # Download source code
         wala_version = self.params.get("WALA_Version", "*/Common/*").split('-')[0]
@@ -489,17 +496,18 @@ class FuncTest(Test):
             self.assertEqual("service waagent supports chkconfig, but is not referenced in any runlevel "
                              "(run 'chkconfig --add waagent')",
                              ' '.join(self.vm_test01.get_output("chkconfig --list waagent").split()),
-                             "Fail to register waagent service")
+                             "Shouldn't register waagent service")
         else:
             self.assertEqual("Loaded: loaded (/usr/lib/systemd/system/waagent.service; disabled; vendor preset: disabled)",
                              self.vm_test01.get_output("systemctl status waagent | grep Loaded").lstrip(),
-                             "Fail to register waagent service")
+                             "Shouldn't register waagent service")
 
     def test_setup_register_service(self):
         """
         python setup.py install --register-service
         """
         # Remove old package
+        self.vm_test01.get_output("systemctl disable waagent")
         self.vm_test01.get_output("rpm -e WALinuxAgent")
         # Download source code
         wala_version = self.params.get("WALA_Version", "*/Common/*").split('-')[0]
@@ -588,10 +596,10 @@ class FuncTest(Test):
         self.assertTrue(self.vm_test01.waagent_service_stop(project=self.project),
                         "Fail to stop waagent service berfore the test")
         self.vm_test01.get_output("rm -f /var/log/waagent.log")
-        self.assertTrue(self.vm_test01.modify_value("AutoUpdate.Enabled", "n"),
+        self.assertTrue(self.vm_test01.modify_value("AutoUpdate.Enabled", "n", self.conf_file),
                         "Fail to disable AutoUpdate")
         # waagent -run-exthandlers
-
+        # It doesn't check the process, but only check the log.
         output = self.vm_test01.get_output("timeout 3 waagent -run-exthandlers")
         self.assertIn("is running as the goal state agent", output,
                       "Fail to run exthandlers")
@@ -624,7 +632,7 @@ class FuncTest(Test):
             self.vm_test01.waagent_service_start(project=self.project)
 
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 if __name__ == "__main__":
     main()

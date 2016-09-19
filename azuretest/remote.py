@@ -297,8 +297,8 @@ def wait_for_login(client, host, port, username, password, prompt,
     :raise: Whatever remote_login() raises
     :return: A ShellSession object.
     """
-    logging.debug("Attempting to login to %s:%s using %s (timeout %ds)",
-                  host, port, client, timeout)
+    logging.debug("Attempting to login to %s@%s:%s using %s (timeout %ds)",
+                  username, host, port, client, timeout)
     end_time = time.time() + timeout
     verbose = False
     while time.time() < end_time:

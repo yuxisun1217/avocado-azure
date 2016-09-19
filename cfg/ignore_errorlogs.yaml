@@ -1,0 +1,8 @@
+waagent.log:
+    "install-rhui-rpm.sh does not exist"
+    "ERROR:CalledProcessError. Error Code is 255"
+    "ERROR:CalledProcessError. Command result was swapon: /mnt/resource/swapfile: swapon failed: Device or resource busy"
+    "ERROR:CalledProcessError. Failed to activate swap at /mnt/resource/swapfile"
+    "ERROR:CalledProcessError. Error Code is 1$"
+    "ERROR:CalledProcessError. Command string was pidof dhclient"
+    "ERROR:CalledProcessError. Command result was $"

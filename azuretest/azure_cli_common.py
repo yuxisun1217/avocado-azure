@@ -20,18 +20,20 @@ def login_azure(username, password):
     :param password: Azure subscription password
     :return: True if operate successfully
     """
-    cmd = "azure login -u %s" % username
-    logging.debug("Login Azure with: %s", username)
-    login_handle = pexpect.spawn(cmd)
-    index = login_handle.expect(["[pP]assword:", pexpect.EOF, pexpect.TIMEOUT])
-    if index == 0:
-        logging.debug("Enter the password")
-        login_handle.sendline(password)
-        login_handle.sendline("\r")
-        login_handle.expect(["[$#>]", pexpect.EOF, pexpect.TIMEOUT])
-    else:
-        return False
-    if command("azure account show"):
+#    cmd = "azure login -u %s" % username
+#    logging.debug("Login Azure with: %s", username)
+#    login_handle = pexpect.spawn(cmd)
+#    index = login_handle.expect(["[pP]assword:", pexpect.EOF, pexpect.TIMEOUT])
+#    if index == 0:
+#        logging.debug("Enter the password")
+#        login_handle.sendline(password)
+#        login_handle.sendline("\r")
+#        login_handle.expect(["[$#>]", pexpect.EOF, pexpect.TIMEOUT])
+#    else:
+#        return False
+    command("azure login -u %s -p %s" % (username, password))
+    login_ret = command("azure account show --json")
+    if login_ret.exit_status == 0:
         logging.debug("Login successfully with: %s", username)
     return True
 
@@ -92,47 +94,47 @@ def set_config_mode(mode="asm"):
         return True
 
 
-def check_dns(dns):
-    """
-    Check if the domain name can be visited.
-
-    :return:
-    -1: Wrong domain name
-    0: Running/Stopped/Starting
-    1: Stopped(deallocated)
-    """
-    try:
-        ip = socket.getaddrinfo(dns, None)[0][4][0]
-    except:
-        logging.debug("Wrong Domain Name: %s", dns)
-        raise
-    if ip == '0.0.0.0':
-        logging.debug("Cloud Service is Stopped(deallocated).")
-        return False
-    else:
-        logging.debug("Cloud Service is Running.")
-        return True
-
-
-def host_command(cmd="", ret='stdout', **kwargs):
-    """
-
-    :param ret: stdout: return stdout; exit_status: return exit_status
-    :param cmd:
-    :return:
-    """
-    if ret == 'exit_status':
-        return command(cmd, **kwargs).exit_status
-    elif ret == 'stdout':
-        return command(cmd, **kwargs).stdout
-    else:
-        return command(cmd, **kwargs)
+#def check_dns(dns):
+#    """
+#    Check if the domain name can be visited.
+#
+#    :return:
+#    -1: Wrong domain name
+#    0: Running/Stopped/Starting
+#    1: Stopped(deallocated)
+#    """
+#    try:
+#        ip = socket.getaddrinfo(dns, None)[0][4][0]
+#    except:
+#        logging.debug("Wrong Domain Name: %s", dns)
+#        raise
+#    if ip == '0.0.0.0':
+#        logging.debug("Cloud Service is Stopped(deallocated).")
+#        return False
+#    else:
+#        logging.debug("Cloud Service is Running.")
+#        return True
 
 
-def get_sshkey_file():
-    host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
-    myname = host_command("whoami").strip('\n')
-    if myname == 'root':
-        return "/%s/.ssh/id_rsa.pub" % myname
-    else:
-        return "/home/%s/.ssh/id_rsa.pub" % myname
+#def host_command(cmd="", ret='stdout', **kwargs):
+#    """
+#
+#    :param ret: stdout: return stdout; exit_status: return exit_status
+#    :param cmd:
+#    :return:
+#    """
+#    if ret == 'exit_status':
+#        return command(cmd, **kwargs).exit_status
+#    elif ret == 'stdout':
+#        return command(cmd, **kwargs).stdout
+#    else:
+#        return command(cmd, **kwargs)
+
+
+#def get_sshkey_file():
+#    host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
+#    myname = host_command("whoami").strip('\n')
+#    if myname == 'root':
+#        return "/%s/.ssh/id_rsa.pub" % myname
+#    else:
+#        return "/home/%s/.ssh/id_rsa.pub" % myname

@@ -12,6 +12,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -150,10 +151,32 @@ class SubscriptionTest(Test):
                       self.vm_test01.get_output("openssl x509 -in /etc/pki/product*/69.pem -noout -text"),
                       "Fail to read product certificate: /etc/pki/product*/69.pem")
 
+    def test_rhui(self):
+        """
+        Check if can install package from RHUI through yum
+        """
+        self.log.info("Get content from RHUI")
+        # Preparation
+        self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
+        # Check rhui files
+        rhui_file_list = ["/etc/yum.repos.d/rh-cloud.repo",
+                          "/etc/yum.repos.d/rhui-load-balancers",
+                          "/etc/pki/rhui/product/content.crt"]
+        for rhui_file in rhui_file_list:
+            self.assertNotIn("No such file", self.vm_test01.get_output("ls %s" % rhui_file),
+                             "No file %s" % rhui_file)
+        # Test yum install/remove
+        self.vm_test01.get_output("yum install -y zip")
+        self.assertEqual("/usr/bin/zip", self.vm_test01.get_output("ls /usr/bin/zip"),
+                         "yum install zip fail")
+        self.vm_test01.get_output("yum remove -y zip")
+        self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/zip"),
+                      "yum remove zip fail")
+
     def tearDown(self):
         self.log.debug("tearDown")
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 if __name__ == "__main__":
     main()

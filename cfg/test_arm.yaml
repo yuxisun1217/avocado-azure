@@ -1,12 +1,6 @@
 test:
     !include : common.yaml
     !include : vm_sizes.yaml
-    !include : cases.yaml
+    !include : cases_upstream.yaml
     azure_mode: !mux
         !remove_node : asm
-#        asm:
-#            vm_name: walaautos1
-#    vm_series: !mux
-#        vm_size: "Small"
-#    vm_name: !mux
-#        vm_name: "walaautolc03"

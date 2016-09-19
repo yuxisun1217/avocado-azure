@@ -199,8 +199,8 @@ def command(cmd, timeout=1200, **kwargs):
 #    timeout = kwargs.get('timeout', None)
     if azure_json:
         cmd += " --json"
-#    if debug:
-    logging.debug("command: %s", cmd)
+    if debug:
+        logging.debug("command: %s", cmd)
     if timeout:
         try:
             timeout = int(timeout)
@@ -257,3 +257,50 @@ def get_path(base_path, user_path):
         return user_path
     else:
         return os.path.join(base_path, user_path)
+
+
+def check_dns(dns):
+    """
+    Check if the domain name can be visited.
+
+    :return:
+    -1: Wrong domain name
+    0: Running/Stopped/Starting
+    1: Stopped(deallocated)
+    """
+    try:
+        ip = socket.getaddrinfo(dns, None)[0][4][0]
+    except:
+        logging.debug("Wrong Domain Name: %s", dns)
+        raise
+    if ip == '0.0.0.0':
+        logging.debug("Cloud Service is Stopped(deallocated).")
+        return False
+    else:
+        logging.debug("Cloud Service is Running.")
+        return True
+
+
+def host_command(cmd="", ret='stdout', **kwargs):
+    """
+
+    :param ret: stdout: return stdout; exit_status: return exit_status
+    :param cmd:
+    :return:
+    """
+    if ret == 'exit_status':
+        return command(cmd, **kwargs).exit_status
+    elif ret == 'stdout':
+        return command(cmd, **kwargs).stdout
+    else:
+        return command(cmd, **kwargs)
+
+
+def get_sshkey_file():
+    host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
+    myname = host_command("whoami").strip('\n')
+    if myname == 'root':
+        return "/%s/.ssh/id_rsa.pub" % myname
+    else:
+        return "/home/%s/.ssh/id_rsa.pub" % myname
+

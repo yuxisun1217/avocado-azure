@@ -147,19 +147,32 @@ class VMARM(azure_vm.BaseVM):
         super(VMARM, self).__init__(name, size, username, password, params)
         logging.info("Azure VM '%s'", self.name)
 
-    def vm_create(self, params, options=''):
+    def vm_create(self, params, options='', timeout=azure_vm.BaseVM.CREATE_TIMEOUT, dianostic=False):
         """
         This helps to create a VM
 
         :param params: A param dict includes all the information for create VM
         :param options: extra options for azure vm create
+        :param dianostic: Boot diagnostic
         :return: Zero if success to create VM
         """
 #        ret_create = azure_cli_arm.vm_create(params, options).exit_status
 #        ret_nicset = azure_cli_arm.network_nic_ipconfig_set(params.get("NicName"), self.rg_name,
 #                                                   params, ignore_status=True).exit_status
 #        return ret_create and ret_nicset
-        return azure_cli_arm.vm_create(params, options).exit_status
+        if not dianostic:
+            options += "--disable-boot-diagnostics"
+        return azure_cli_arm.vm_create(params, options, timeout=timeout).exit_status
+
+    def vm_list(self, params=None, options='', timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT, **kwargs):
+        """
+        This helps to show the vm list
+        :param params:
+        :param options:
+        :param timeout:
+        :return:
+        """
+        return azure_cli_arm.vm_list(self.rg_name, params, options, timeout=timeout, **kwargs).stdout
 
     def vm_resize(self, new_size, params=None, options=''):
         """
@@ -225,7 +238,8 @@ class VMARM(azure_vm.BaseVM):
             for retry in range(1, self.VM_UPDATE_RETRY_TIMES+1):
                 try:
                     self.params = azure_cli_arm.vm_show(self.name, self.rg_name, timeout=timeout, ignore_status=True).stdout
-                except ValueError, e:
+#                except ValueError, e:
+                except Exception, e:
                     logging.debug("VM update failed. Exception: %s Retry times: %d/%d" %
                                   (str(e), retry, self.VM_UPDATE_RETRY_TIMES))
                     continue
@@ -326,17 +340,17 @@ class VMARM(azure_vm.BaseVM):
         """
         return azure_cli_arm.vm_start(self.name, self.rg_name, timeout=timeout).exit_status
 
-    def shutdown(self):
+    def shutdown(self, timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT):
         """
         Shutdown and deallocate this VM.
         """
-        return azure_cli_arm.vm_shutdown(self.name, self.rg_name).exit_status
+        return azure_cli_arm.vm_shutdown(self.name, self.rg_name, timeout=timeout).exit_status
 
-    def stop(self):
+    def stop(self, timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT):
         """
         Shutdown this VM. Don't deallocate.
         """
-        return azure_cli_arm.vm_stop(self.name, self.rg_name).exit_status
+        return azure_cli_arm.vm_stop(self.name, self.rg_name, timeout=timeout).exit_status
 
     def delete(self, timeout=azure_vm.BaseVM.DELETE_TIMEOUT):
         """
@@ -403,19 +417,60 @@ class VMARM(azure_vm.BaseVM):
         logging.debug("After retry %d times, VM is not deleted.", r)
         return False
 
-    def reset_password(self):
+    def reset_password(self, username, password, method="password", private_config_path="/tmp/resetpassword.json",
+                       version='1.4', params=None, options=''):
         """
+        Help to reset password
+        :param username: New username to reset
+        :param password: New password to reset
+        :param method: reset method: password or ssh_key
+        :param private_config_path: The private config file full path
+        :param version: Extension version
+        :param params:
+        :param options:
+        :return: exit status
+        """
+        if params is None:
+            params = dict()
+        config_text = """\
+{
+"username":"%s",
+"%s":"%s",
+"expiration":"2116-01-01"
+}""" % (username, method, password)
+        logging.debug(config_text)
+        with open(private_config_path, 'w') as config_f:
+            config_f.write(config_text)
+        params.setdefault("private_config_path", private_config_path)
+        ret = azure_cli_arm.vm_set_extension(self.name, self.rg_name, extension="VMAccessForLinux",
+                                             publisher="Microsoft.OSTCExtensions", version=version,
+                                             params=params, options=options).exit_status
+        return ret
 
-        :return:
+    def reset_remote_access(self, private_config_path="/tmp/resetremoteaccess.json",
+                            version='1.4', params=None, options=''):
         """
-        raise NotImplementedError
-
-    def reset_remote_access(self):
+        Help to reset remote access
+        :param private_config_path: The private config file full path
+        :param version: Extension version
+        :param params:
+        :param options:
+        :return: exit status
         """
-
-        :return:
-        """
-        raise NotImplementedError
+        if params is None:
+            params = dict()
+        config_text = """\
+{
+"reset_ssh":"True"
+}"""
+        logging.debug(config_text)
+        with open(private_config_path, 'w') as config_f:
+            config_f.write(config_text)
+        params.setdefault("private_config_path", private_config_path)
+        ret = azure_cli_arm.vm_set_extension(self.name, self.rg_name, extension="VMAccessForLinux",
+                                             publisher="Microsoft.OSTCExtensions", version=version,
+                                             params=params, options=options).exit_status
+        return ret
 
     def get_public_address(self):
         """
@@ -515,7 +570,7 @@ class Blob(object):
     This class handles all basic storage blob operations for ASM.
     """
     DEFAULT_TIMEOUT = 240
-    COPY_TIMEOUT = 240
+    COPY_TIMEOUT = 600
     DELETE_TIMEOUT = 240
 
     def __init__(self, name, container, storage_account, connection_string=None, params=None):

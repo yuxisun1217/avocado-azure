@@ -10,47 +10,50 @@ import subprocess
 import string
 import hashlib
 import pwd
+import yaml
 
 AzureImagePrepareConf = """\
 #
 # Azure Image Prepare Script Configuration
 #
 
-Project=7.3                                 # Specify the project.
-Version=None                                # Specify a RHEL version you need. If set, the Project will be ignored. (e.g.)Version=RHEL-6.8-20160413.0
-WalaVersion=None                            # Specify a WALinuxAgent rpm version. (e.g.)WalaVersion=2.0.16-1. If None, download the latest version.
-                                            # If Upstream=True, use release version. (e.g.)WalaVersion=2.1.5. If None, download the latest version.
-Upstream=False                              # If get WALinuxAgent from upstream(github), set it to True; else, set it to False
-Baseurl=http://download.eng.pek2.redhat.com/rel-eng/  # The URL to download original iso. Must be end with "/".
-MainDir=/home/autotest/                     # The main folder to store original iso. Must be end with "/".
-TmpDir=/home/tmp/azure/                     # Temporary folder to store the ks floppy, new iso and mount point. Must be end with "/".
-Logfile=/tmp/azure_image_prepare.log        # Logfile
-Verbose=n                                   # Enable verbose logs
-ImageSize=8                                 # The VM image disk size in GB
+Project: 7.3                                # Specify the project.
+Version:                                    # Specify a RHEL version you need. If set, the Project will be ignored. (e.g.)Version: RHEL-6.8-20160413.0
+WalaVersion:                                # Specify a WALinuxAgent rpm version. (e.g.)WalaVersion: 2.0.16-1. If empty, download the latest version.
+Upstream: False                             # If get WALinuxAgent from upstream(github), set it to True; else, set it to False
+Baseurl: http://download.eng.pek2.redhat.com/rel-eng/  # The URL to download original iso. Must be end with "/".
+MainDir: /home/autotest/                    # The main folder to store original iso. Must be end with "/".
+TmpDir: /home/tmp/azure/                    # Temporary folder to store the ks floppy, new iso and mount point. Must be end with "/".
+Logfile: /tmp/azure_image_prepare.log       # Logfile
+Verbose: n                                  # Enable verbose logs
+ImageSize: 10                               # The VM image disk size in GB
+Tag:                                        # The extra tag string for the vhd file name
 """
 
 
 class ConfigurationProvider(object):
     """
-    Parse and store key:values in azure_image_prepare.conf
+    Parse and store key:values in azure_image_prepare.yaml
     """
 
     def __init__(self, configfile_path):
         self.values = dict()
         if configfile_path is None:
-            configfile_path = "%s/azure_image_prepare.conf" % p.realpath
+            configfile_path = "%s/azure_image_prepare.yaml" % p.realpath
         if not os.path.isfile(configfile_path):
             Warn("Missing configuration in {0}".format(configfile_path))
             self.setconf(configfile_path)
         try:
-            for line in GetFileContents(configfile_path).split('\n'):
-                if not line.startswith("#") and "=" in line:
-                    parts = line.split()[0].split('=')
-                    value = parts[1].strip("\" ")
-                    if value != "None":
-                        self.values[parts[0]] = value
-                    else:
-                        self.values[parts[0]] = None
+#            for line in GetFileContents(configfile_path).split('\n'):
+#                if not line.startswith("#") and "=" in line:
+#                    parts = line.split()[0].split('=')
+#                    value = parts[1].strip("\" ")
+#                    if value != "None":
+#                        self.values[parts[0]] = value
+#                    else:
+#                        self.values[parts[0]] = None
+            with open(configfile_path) as f:
+                self.values = yaml.load(f)
         except:
             Error("Unable to parse {0}".format(configfile_path))
             raise
@@ -64,7 +67,7 @@ class ConfigurationProvider(object):
         return SetFileContents(configfile_path, AzureImagePrepareConf)
 
     def get(self, key):
-        return self.values.get(key)
+        return self.values.get(key) if self.values.get(key) != "None" else None
 
 
 class Params(object):
@@ -75,13 +78,13 @@ class Params(object):
     def __init__(self, configfile_path, realpath):
         self.realpath = realpath
         c = ConfigurationProvider(configfile_path)
-        self.Project = c.get("Project")
+        self.Project = str(c.get("Project"))
         self.Version = c.get("Version")
         if self.Version is not None:
             self.Project = self.Version.split('-')[1]
         self.WalaVersion = c.get("WalaVersion")
         # Cannot use bool(xxx) to convert string to bool type!
-        self.Upstream = c.get("Upstream") == str(True)
+        self.Upstream = c.get("Upstream")
         Log("Upstream=%s" % self.Upstream)
         self.TmpDir = c.get("TmpDir")
         self.MainDir = c.get("MainDir")
@@ -89,6 +92,7 @@ class Params(object):
         get_verbose = c.get("Verbose")
         self.Logfile = c.get("Logfile")
         self.ImageSize = int(c.get("ImageSize"))
+        self.Tag = c.get("Tag")
         if get_verbose is not None and get_verbose.lower().startswith("y"):
             myLogger.verbose = True
             # self.ConfigDir=os.path.dirname(configfile_path)+"/"
@@ -357,7 +361,7 @@ def download_iso(version=None):
     elif p.Project != "":
         latest_build = get_latest_build()[p.Project][0]
     else:
-        ErrorAndExit("There must be Version or Project parameter in the azure_image_prepare.conf")
+        ErrorAndExit("There must be Version or Project parameter in the azure_image_prepare.yaml")
     iso_name = latest_build + '-Server-x86_64-dvd1.iso'
     iso_url = p.Baseurl + latest_build + '/compose/Server/x86_64/iso/' + iso_name
     md5_url = iso_url + '.MD5SUM'
@@ -709,11 +713,16 @@ def CheckEnvironment(dir_create_list, exist_file_list):
 def Download():
     return download_iso(p.Version)
 
+def _get_imagename():
+    tagstr = "-%s" % p.Tag if p.Tag else ""
+    return rhel_build() + "-wala-" + wala_build() + tagstr
+
 
 def Install():
     get_newest_local_isoname()
     floppy_path = p.TmpDir + "ksfloppy.img"
-    qcow2_path = p.TmpDir + rhel_build() + "-wala-" + wala_build() + ".qcow2"
+#    qcow2_path = p.TmpDir + rhel_build() + "-wala-" + wala_build() + ".qcow2"
+    qcow2_path = p.TmpDir + _get_imagename() + ".qcow2"
     iso_path = p.isoDir + p.isoName + ".iso"
     newiso_path = p.TmpDir + p.isoName + "-ks.iso"
     srcks_path = p.srcksPath
@@ -724,11 +733,12 @@ def Install():
 
 def Convert():
     get_newest_local_isoname()
-#    vhd_path = p.vhdDir + p.isoName + ".vhd"
-#    qcow2_path = p.TmpDir + p.isoName + ".qcow2"
-    image_path = rhel_build() + "-wala-" + wala_build()
-    qcow2_path = p.TmpDir + image_path + ".qcow2"
-    vhd_path = p.vhdDir + image_path + ".vhd"
+#    image_path = rhel_build() + "-wala-" + wala_build()
+#    qcow2_path = p.TmpDir + image_path + ".qcow2"
+#    vhd_path = p.vhdDir + image_path + ".vhd"
+    image_name = _get_imagename()
+    qcow2_path = p.TmpDir + image_name + ".qcow2"
+    vhd_path = p.vhdDir + image_name + ".vhd"
     return qcow2_to_vhd(qcow2_path, vhd_path)
 
 
@@ -755,7 +765,7 @@ def main():
 
     # Set global parameters
     realpath = os.path.split(os.path.realpath(__file__))[0]
-    configfile_path = "%s/azure_image_prepare.conf" % realpath
+    configfile_path = "%s/azure_image_prepare.yaml" % realpath
     global p
     p = Params(configfile_path, realpath)
 

@@ -12,6 +12,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -76,10 +77,10 @@ class SettingsTest(Test):
                                                 self.vm_params["username"],
                                                 self.vm_params["password"],
                                                 self.vm_params)
-#        azure_cli_common.host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
-#        myname = azure_cli_common.host_command("whoami").strip('\n')
+#        utils_misc.host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
+#        myname = utils_misc.host_command("whoami").strip('\n')
 #        self.host_pubkey_file = "/home/%s/.ssh/id_rsa.pub" % myname
-        self.host_pubkey_file = azure_cli_common.get_sshkey_file()
+        self.host_pubkey_file = utils_misc.get_sshkey_file()
         with open(self.host_pubkey_file, 'r') as hf:
             self.ssh_key_string = hf.read().strip('\n')
         self.log.debug(self.ssh_key_string)
@@ -105,7 +106,7 @@ class SettingsTest(Test):
         Reset an existing user's password
         """
         self.log.info("Reset an existing user's password")
-        # 1. Reset password
+        # Reset password
         self.log.info("Reset to password")
         self.assertEqual(self.vm_test01.reset_password(self.vm_params["username"],
                                                        self.vm_params["new_password"], "password"), 0,
@@ -114,14 +115,14 @@ class SettingsTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(timeout=100),
                         "Fail to reset password: cannot login with new password")
         self.log.info("Reset password successfully")
-        # 2. Reset ssh key
-        self.log.info("Reset to ssh_key")
-        self.assertEqual(self.vm_test01.reset_password(self.vm_params["username"],
-                                                       self.ssh_key_string, "ssh_key"), 0,
-                         "Fail to reset ssh key: azure cli fail")
-        self.assertTrue(self.vm_test01.verify_alive(timeout=100, authentication="publickey"),
-                        "Fail to reset ssh key: cannot login with ssh key")
-        self.log.info("Reset ssh key successfully")
+#        # 2. Reset ssh key
+#        self.log.info("Reset to ssh_key")
+#        self.assertEqual(self.vm_test01.reset_password(self.vm_params["username"],
+#                                                       self.ssh_key_string, "ssh_key"), 0,
+#                         "Fail to reset ssh key: azure cli fail")
+#        self.assertTrue(self.vm_test01.verify_alive(timeout=100, authentication="publickey"),
+#                        "Fail to reset ssh key: cannot login with ssh key")
+#        self.log.info("Reset ssh key successfully")
 
     def test_add_new_user(self):
         """
@@ -130,7 +131,8 @@ class SettingsTest(Test):
         self.log.info("Add a new user")
         self.assertEqual(self.vm_test01.reset_password(self.vm_params["new_username"],
                                                        self.vm_params["new_password"],
-                                                       "password"), 0,
+                                                       method="password",
+                                                       version="1.4"), 0,
                          "Fail to add new user: azure cli fail")
         self.assertTrue(self.vm_test01.verify_alive(username=self.vm_params["new_username"],
                                                     password=self.vm_params["new_password"],
@@ -150,7 +152,7 @@ class SettingsTest(Test):
                          "Prepare environment failed")
         self.vm_test01.get_output("rm -f /etc/ssh/sshd_config_*")
         # Reset remote access
-        self.assertEqual(self.vm_test01.reset_remote_access(), 0,
+        self.assertEqual(self.vm_test01.reset_remote_access(version="1.4"), 0,
                          "Fail to reset remote access: azure cli fail")
         self.assertTrue(self.vm_test01.verify_alive(timeout=50),
                         "Fail to reset remote access: cannot login to the vm")
@@ -176,7 +178,7 @@ class SettingsTest(Test):
                          "Prepare environment failed")
         self.vm_test01.get_output("rm -f /etc/ssh/sshd_config_*")
         # Reset remote access
-        self.assertEqual(self.vm_test01.reset_remote_access(), 0,
+        self.assertEqual(self.vm_test01.reset_remote_access(version="1.4"), 0,
                          "Fail to reset remote access: azure cli fail")
         self.assertTrue(self.vm_test01.verify_alive(timeout=50),
                         "Fail to reset remote access: cannot login to the vm: First time")
@@ -195,7 +197,7 @@ class SettingsTest(Test):
         self.assertFalse(self.vm_test01.verify_alive(timeout=5),
                          "Prepare environment failed")
         # Reset remote access
-        self.assertEqual(self.vm_test01.reset_remote_access(), 0,
+        self.assertEqual(self.vm_test01.reset_remote_access(version="1.4"), 0,
                          "Fail to reset remote access: azure cli fail")
         self.assertTrue(self.vm_test01.verify_alive(timeout=50),
                         "Bug 1324307. "
@@ -218,7 +220,10 @@ class SettingsTest(Test):
         new_username = self.vm_params["new_username"]
         new_password = self.vm_params["new_password"]
         # reset password
-        self.assertEqual(self.vm_test01.reset_password(old_username, old_password, "password"), 0)
+        self.assertEqual(self.vm_test01.reset_password(old_username, old_password,
+                                                       method="password",
+                                                       version="1.4"), 0,
+                         "Fail to reset password before capture")
         self.assertTrue(self.vm_test01.verify_alive(username=old_username, password=old_password, timeout=50))
         # capture and create VM
         vm_image_name = self.vm_test01.name + "-rstpwac" + self.vm_test01.postfix()
@@ -232,11 +237,15 @@ class SettingsTest(Test):
         self.vm_params["Image"] = vm_image_name
         self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
                          "Fail to create new VM base on capture image")
-        self.assertTrue(self.vm_test01.wait_for_running())
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "Bug 1374156. "
+                        "VM status cannot become running")
         self.assertTrue(self.vm_test01.verify_alive(username=old_username, password=old_password))
         time.sleep(25)
         # 2. Reset password again
-        self.assertEqual(self.vm_test01.reset_password(new_username, new_password, "password"), 0,
+        self.assertEqual(self.vm_test01.reset_password(new_username, new_password,
+                                                       method="password",
+                                                       version="1.4"), 0,
                          "Fail to reset password after capture: azure cli fail")
         self.assertTrue(self.vm_test01.verify_alive(username=new_username, password=new_password, timeout=50),
                         "Bug 1323905. "
@@ -251,7 +260,9 @@ class SettingsTest(Test):
         password_1 = self.vm_params["password"]
         # 1. Reset password to ssh key
         self.assertEqual(self.vm_test01.reset_password(self.vm_params["username"],
-                                                       self.ssh_key_string, "ssh_key"), 0,
+                                                       self.ssh_key_string,
+                                                       method="ssh_key",
+                                                       version="1.4"), 0,
                          "Fail to reset ssh key: azure cli fail")
         self.assertTrue(self.vm_test01.verify_alive(timeout=50, authentication="publickey"),
                         "Fail to reset ssh key: cannot login with ssh key")
@@ -271,7 +282,9 @@ class SettingsTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(authentication="publickey"),
                         "Fail to create new VM auth with ssh key: cannot login")
         # reset to password
-        self.assertEqual(self.vm_test01.reset_password(username_1, password_1, "password"), 0,
+        self.assertEqual(self.vm_test01.reset_password(username_1, password_1,
+                                                       method="password",
+                                                       version="1.4"), 0,
                          "Fail to reset from ssh key to password: azure cli fail")
         self.assertTrue(self.vm_test01.verify_alive(username=username_1, password=password_1, timeout=50),
                         "Bug 1323152. "
@@ -331,9 +344,9 @@ class SettingsTest(Test):
             else:
                 self.vm_test01.get_output("rm -f /home/%s/.ssh/authorized_keys" % self.vm_params["username"])
                 ### Workaround of extension sequence number issue
-                mrseq_path = self.vm_test01.get_output("ls /var/lib/waagent/*/mrseq")
+#                mrseq_path = self.vm_test01.get_output("ls /var/lib/waagent/*/mrseq")
     #            self.vm_test01.get_output("echo '0' > %s" % mrseq_path)
-                self.vm_test01.get_output("rm -f %s" % mrseq_path)
+#                self.vm_test01.get_output("rm -f %s" % mrseq_path)
                 ### Recover password
                 self.vm_test01.get_output("echo %s | passwd --stdin %s" % (self.vm_params["password"],
                                                                            self.vm_params["username"]))
@@ -341,7 +354,7 @@ class SettingsTest(Test):
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
         # Clean ssh sessions
-        azure_cli_common.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 
 if __name__ == "__main__":
