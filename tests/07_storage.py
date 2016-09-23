@@ -275,9 +275,14 @@ class StorageTest(Test):
         sto_dst_params = dict()
         sto_dst_params["name"] = self.params.get('storage_account', '*/vm_sizes/Standard_G5/*')
         sto_dst_params["location"] = self.params.get('location', '*/vm_sizes/Standard_G5/*')
-        sto_dst_params["type"] = "RAGRS"
-        sto_dst_test01 = azure_asm_vm.StorageAccount(name=sto_dst_params["name"],
-                                                     params=sto_dst_params)
+        sto_dst_params["type"] = 'LRS'
+        if self.azure_mode == "asm":
+            sto_dst_test01 = azure_asm_vm.StorageAccount(name=sto_dst_params["name"],
+                                                         params=sto_dst_params)
+        else:
+            sto_dst_params["ResourceGroupName"] = sto_dst_params["name"]
+            sto_dst_test01 = azure_arm_vm.StorageAccount(name=sto_dst_params["name"],
+                                                         params=sto_dst_params)
         # Check and create storage account
         if not sto_dst_test01.check_exist():
             sto_dst_test01.create(sto_dst_params)
@@ -285,9 +290,15 @@ class StorageTest(Test):
         container_dst_params = dict()
         container_dst_params["name"] = self.params.get('container', '*/Prepare/*')
         container_dst_params["storage_account"] = sto_dst_params["name"]
-        container_dst_test01 = azure_asm_vm.Container(name=container_dst_params["name"],
-                                                      storage_account=container_dst_params["storage_account"],
-                                                      params=container_dst_params)
+        if self.azure_mode == "asm":
+            container_dst_test01 = azure_asm_vm.Container(name=container_dst_params["name"],
+                                                          storage_account=container_dst_params["storage_account"],
+                                                          params=container_dst_params)
+        else:
+            container_dst_params["ResourceGroupName"] = sto_dst_params["name"]
+            container_dst_test01 = azure_asm_vm.Container(name=container_dst_params["name"],
+                                                          storage_account=container_dst_params["storage_account"],
+                                                          params=container_dst_params)
         # Check and create container
         if not container_dst_test01.check_exist():
             container_dst_test01.create(container_dst_params)
@@ -309,7 +320,7 @@ class StorageTest(Test):
         # Prepare the Image instance (Only for asm mode)
         if self.azure_mode == "asm":
             image_params = dict()
-            image_params["name"] = self.params.get('name', '*/Image/*') + "-G5"
+            image_params["name"] = self.params.get('name', '*/Image/*') + '-' + sto_dst_params["name"]
             image_params["blob_url"] = "https://%s.blob.core.windows.net/%s/%s" % \
                                        (sto_dst_params["name"],
                                         container_dst_params["name"],

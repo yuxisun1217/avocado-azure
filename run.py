@@ -107,9 +107,12 @@ azure_mode: !mux
 #        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s%s.yaml" %
 #                    (self.avocado_path, self.avocado_path, self.azure_mode, self.upstream),
 #                    timeout=None, ignore_status=True, debug=True).stdout)
-        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" %
-                    (self.avocado_path, self.avocado_path, self.azure_mode),
-                    timeout=None, ignore_status=True, debug=True).stdout)
+        cmd1 = "avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" % (self.avocado_path, self.avocado_path, self.azure_mode)
+#        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" %
+#                    (self.avocado_path, self.avocado_path, self.azure_mode),
+#                    timeout=None, ignore_status=True, debug=True).stdout)
+        log(cmd1)
+        log(command(cmd1, timeout=None, ignore_status=True, debug=True).stdout)
         log("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)
         # Rerun failed cases
@@ -126,9 +129,9 @@ def main():
     # modify /etc/avocado/avocado.conf
     config()
     # Create configuration files
-    log("Creating common.yaml and azure_image_prepare.yaml...")
-    command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
-    log("common.yaml and azure_image_prepare.yaml are created.")
+#    log("Creating common.yaml and azure_image_prepare.yaml...")
+#    command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
+#    log("common.yaml and azure_image_prepare.yaml are created.")
     # Run test cases
     asm_flag = False
     arm_flag = False

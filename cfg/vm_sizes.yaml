@@ -1,43 +1,161 @@
 azure_mode: !mux
     asm:
         vm_sizes:
-          Small:
-              storage_account:
-              location:
-              cpu:
-              memory:
-              disk_size:
-          Medium:
-              storage_ccount:
-              location:
-              cpu:
-              memory:
-              disk_size:
-          Large:
-              storage_account:
-              location:
-              cpu:
-              memory:
-              disk_size:
-          Standard_G5:
-              storage_account: walaautoasmsea
-              location: "Southeast Asia"
-              cpu: 32
-              memory: 448
-              disk_size: 6144
-
-
+            ExtraSmall:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 1
+                memory: 0.75
+                disk_size: 20
+            Small:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 1
+                memory: 1.75
+                disk_size: 70
+            Medium:
+                storage_ccount:
+                location:
+                cpu:
+                memory:
+                disk_size:
+            Large:
+                storage_account:
+                location:
+                cpu:
+                memory:
+                disk_size:
+            A11:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 16
+                memory: 112
+                disk_size: 382
+            Standard_D1:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 50
+            Standard_D15_v2:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 20
+                memory: 140
+                disk_size: 1024
+            Standard_DS1:
+                storage_account: walaautoasmeastuspremium
+                location: "East US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 7
+            Standard_DS15_v2:
+                storage_account: walaautoasmeastuspremium
+                location: "East US"
+                cpu: 20
+                memory: 140
+                disk_size: 280
+            Standard_G1:
+                storage_account: walaautoasmsea
+                location: "Southeast Asia"
+                cpu: 2
+                memory: 28
+                disk_size: 384
+            Standard_G5:
+                storage_account: walaautoasmsea
+                location: "Southeast Asia"
+                cpu: 32
+                memory: 448
+                disk_size: 6144
+            Standard_GS5:
+                storage_account: walaautoasmsea
+                location: "Southeast Asia"
+                cpu: 32
+                memory: 448
+                disk_size: 896
+            Standard_F1:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 1
+                memory: 2
+                disk_size: 16
+            Standard_F16s:
+                storage_account: walaautoasmeastuspremium
+                location: "East US"
+                cpu: 16
+                memory: 32
+                disk_size: 64
     arm:
         vm_sizes:
-          Standard_A3:
-              storage_account:
-              location:
-              cpu: 4
-              memory: 7
-              disk_size: 285
-          Standard_G5:
-              storage_account: walaautoarmwesteurope
-              location: "West Europe"
-              cpu: 32
-              memory: 448
-              disk_size: 6144
+            Standard_A1:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 1
+                memory: 1.75
+                disk_size: 70
+            Standard_A3:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 4
+                memory: 7
+                disk_size: 285
+            Standard_A11:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 16
+                memory: 112
+                disk_size: 382
+            Standard_D1:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 50
+            Standard_D15_v2:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 20
+                memory: 140
+                disk_size: 1024
+            Standard_DS1:
+                storage_account: walaautoarmwestuspremium
+                location: "West US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 7
+            Standard_DS15_v2:
+                storage_account: walaautoarmwestuspremium
+                location: "West US"
+                cpu: 20
+                memory: 140
+                disk_size: 280
+            Standard_G1:
+                storage_account: walaautoasmsea
+                location: "Southeast Asia"
+                cpu: 2
+                memory: 28
+                disk_size: 384
+            Standard_G5:
+                storage_account: walaautoarmwesteurope
+                location: "West Europe"
+                cpu: 32
+                memory: 448
+                disk_size: 6144
+            Standard_GS5:
+                storage_account: walaautoasmsea
+                location: "Southeast Asia"
+                cpu: 32
+                memory: 448
+                disk_size: 896
+            Standard_F1:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 1
+                memory: 2
+                disk_size: 16
+            Standard_F16s:
+                storage_account: walaautoarmwestuspremium
+                location: "West US"
+                cpu: 16
+                memory: 32
+                disk_size: 64

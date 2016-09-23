@@ -72,7 +72,7 @@ RedhatSub:
 Prepare:
     storage_account:
         name: walaautoimages
-        type: RAGRS
+        type: LRS
         location: "East US"
     container: vhds
     vhd_file_path: %s
@@ -87,7 +87,7 @@ azure_mode: !mux
 #            rg_name: walaautoasmeastus
             region: eastus
             storage_account: walaautoasmeastus
-            storage_account_type: RAGRS
+            storage_account_type: LRS
             container: vhds
             location: "East US"
         Image:
@@ -112,7 +112,7 @@ azure_mode: !mux
             rg_name: walaautoarmwestus
             region: westus
             storage_account: walaautoarmwestus
-            storage_account_type: RAGRS
+            storage_account_type: LRS
             container: vhds
             location: "West US"
         network:

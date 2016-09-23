@@ -532,7 +532,7 @@ class FuncTest(Test):
         for filename in exist_list:
             self.assertNotIn("No such file", "ls %s" % filename,
                              "No file %s" % filename)
-        # Check service status
+        # Check service enable
         if float(self.project) < 7.0:
             self.assertEqual("waagent 0:off 1:off 2:on 3:on 4:on 5:on 6:off",
                              ' '.join(self.vm_test01.get_output("chkconfig --list waagent").split()),
@@ -541,6 +541,14 @@ class FuncTest(Test):
             self.assertEqual("Loaded: loaded (/usr/lib/systemd/system/waagent.service; enabled; vendor preset: disabled)",
                              self.vm_test01.get_output("systemctl status waagent | grep Loaded").lstrip(),
                              "Fail to register waagent service")
+        # Check service start
+        output = self.vm_test01.get_output("ps aux|grep [w]aagent")
+        self.assertIn("/usr/sbin/waagent -daemon", output,
+                      "Bug 1372573. "
+                      "Doesn't start waagent daemon process")
+        self.assertIn("-run-exthandlers", output,
+                      "Doesn't start waagent run-exthandlers process")
+
 
     def test_waagent_start(self):
         """

@@ -83,6 +83,14 @@ class GeneralTest(Test):
                                                 self.vm_params["username"],
                                                 self.vm_params["password"],
                                                 self.vm_params)
+        self.project = self.params.get('Project', '*/Common/*')
+        self.conf_file = "/etc/waagent.conf"
+        if "check_cpu_mem_disk" in self.name.name:
+            self.vm_test01.vm_update()
+            if self.vm_test01.exists():
+                self.vm_test01.delete()
+                self.vm_test01.wait_for_delete()
+            return
         self.log.debug("Create the vm %s", self.vm_params["VMName"])
         # If vm doesn't exist, create it. If it exists, start it.
         self.vm_test01.vm_update()
@@ -93,8 +101,6 @@ class GeneralTest(Test):
             if not self.vm_test01.is_running():
                 self.vm_test01.start()
                 self.vm_test01.wait_for_running()
-        self.project = self.params.get('Project', '*/Common/*')
-        self.conf_file = "/etc/waagent.conf"
         if "check_account" in self.name.name or \
            "check_sshkey" in self.name.name or \
            "check_password_sshkey" in self.name.name:
@@ -138,7 +144,9 @@ class GeneralTest(Test):
         ignore_msg = '|'.join(ignore_list)
         cmd = "cat /var/log/messages | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
         error_log = self.vm_test01.get_output(cmd)
-        self.assertEqual(error_log, "", "There's error in the /var/log/messages: \n%s" % error_log)
+        self.assertEqual(error_log, "",
+                         "Bug 1365727. "
+                         "There's error in the /var/log/messages: \n%s" % error_log)
 
     def test_check_hostname(self):
         """
@@ -183,7 +191,7 @@ class GeneralTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="password"),
                         "Fail to login with password.")
         self.assertEqual("%s ALL=(ALL) ALL" % self.vm_params["username"],
-                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent"),
+                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent" % self.vm_params["username"]),
                          "The new account sudo permission is wrong")
 
     def test_check_waagent_log(self):
@@ -340,6 +348,185 @@ class GeneralTest(Test):
         self.vm_test01.get_output("gunzip %s" % rotate_log)
         self.assertEqual(test_str, self.vm_test01.get_output("grep -R %s %s" % (test_str, rotate_log[:-3])),
                          "The rotated log doesn't contain the old logs")
+
+    def test_check_cpu_mem_disk(self):
+        """
+        Check the resource disk size, cpu number and memory
+        """
+        self.log.info("Check the resource disk size, cpu number and memory")
+        result_flag = True
+        error_log = ""
+        if self.azure_mode == "asm":
+            vm_size_list = ["Small", "A11", "Standard_D1", "Standard_D15_v2",
+                            "Standard_DS1", "Standard_DS15_v2", "Standard_G1", "Standard_GS5",
+                            "Standard_F1", "Standard_F16s"]
+#            vm_size_list = ["Standard_F1", "Standard_G1"]
+        else:
+            vm_size_list = ["Standard_A1", "Standard_A11", "Standard_D1", "Standard_D15_v2",
+                            "Standard_DS1", "Standard_DS15_v2", "Standard_G1", "Standard_GS5",
+                            "Standard_F1", "Standard_F16s"]
+        for vm_size in vm_size_list:
+            # 1. Check storage account for VM
+            # Destination storage account instance
+            sto_dst_params = dict()
+            sto_dst_params["name"] = self.params.get('storage_account', '*/vm_sizes/%s/*' % vm_size)
+            sto_dst_params["location"] = self.params.get('location', '*/vm_sizes/%s/*' % vm_size)
+            if "premium" in sto_dst_params["name"]:
+                sto_dst_params["type"] = "PLRS"
+            else:
+                sto_dst_params["type"] = "LRS"
+            if self.azure_mode == "asm":
+                sto_dst_test01 = azure_asm_vm.StorageAccount(name=sto_dst_params["name"],
+                                                             params=sto_dst_params)
+            else:
+                sto_dst_params["ResourceGroupName"] = sto_dst_params["name"]
+                sto_dst_test01 = azure_arm_vm.StorageAccount(name=sto_dst_params["name"],
+                                                             params=sto_dst_params)
+            # Check and create storage account
+            if not sto_dst_test01.check_exist():
+                sto_dst_test01.create(sto_dst_params)
+            # Prepare the container instance
+            container_dst_params = dict()
+            container_dst_params["name"] = self.params.get('container', '*/Prepare/*')
+            container_dst_params["storage_account"] = sto_dst_params["name"]
+            if self.azure_mode == "asm":
+                container_dst_test01 = azure_asm_vm.Container(name=container_dst_params["name"],
+                                                              storage_account=container_dst_params["storage_account"],
+                                                              params=container_dst_params)
+            else:
+                container_dst_params["ResourceGroupName"] = sto_dst_params["name"]
+                container_dst_test01 = azure_arm_vm.Container(name=container_dst_params["name"],
+                                                              storage_account=container_dst_params["storage_account"],
+                                                              params=container_dst_params)
+            # Check and create container
+            if not container_dst_test01.check_exist():
+                container_dst_test01.create(container_dst_params)
+            # 2. Copy the vhd to the specific storage account
+            # Prepare the blob instance
+            blob_dst_params = dict()
+            blob_dst_params["name"] = self.params.get('name', '*/DiskBlob/*')
+            blob_dst_params["container"] = self.params.get('container', '*/Prepare/*')
+            blob_dst_params["storage_account"] = self.params.get('name', '*/Prepare/storage_account/*')
+            if self.azure_mode == "asm":
+                blob_dst_test01 = azure_asm_vm.Blob(name=blob_dst_params["name"],
+                                                container=blob_dst_params["container"],
+                                                storage_account=blob_dst_params["storage_account"],
+                                                params=blob_dst_params)
+            else:
+                blob_dst_params["ResourceGroupName"] = sto_dst_params["name"]
+                blob_dst_test01 = azure_arm_vm.Blob(name=blob_dst_params["name"],
+                                                    container=blob_dst_params["container"],
+                                                    storage_account=blob_dst_params["storage_account"],
+                                                    params=blob_dst_params)
+
+            # Set mode to ASM
+            if self.azure_mode != "asm":
+                azure_cli_common.set_config_mode("asm")
+            blob_params = dict()
+            blob_params["name"] = self.params.get('name', '*/DiskBlob/*')
+            blob_params["container"] = self.params.get('container', '*/Prepare/*')
+            blob_params["storage_account"] = self.params.get('name', '*/Prepare/storage_account/*')
+            blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
+                                            container=blob_params["container"],
+                                            storage_account=blob_params["storage_account"],
+                                            params=blob_params)
+            if not blob_test01.check_exist():
+                self.assertTrue(blob_test01.copy(sto_dst_test01.conn_show()),
+                                "Fail to copy the VHD file %s to storage account %s container %s" %
+                                (blob_params["name"], sto_dst_params["name"], blob_params["container"]))
+            # Recover azure mode
+            if self.azure_mode != "asm":
+                azure_cli_common.set_config_mode(self.azure_mode)
+            # 3. Create an image base on the vhd (only for asm mode)
+            # Image instance
+            # Prepare the Image instance (Only for asm mode)
+            if self.azure_mode == "asm":
+                image_params = dict()
+                if sto_dst_params["name"] != self.vm_params["StorageAccountName"]:
+                    image_params["name"] = self.params.get('name', '*/Image/*') + '-' + sto_dst_params["name"]
+                else:
+                    image_params["name"] = self.params.get('name', '*/Image/*')
+                image_params["blob_url"] = "https://%s.blob.core.windows.net/%s/%s" % \
+                                           (sto_dst_params["name"],
+                                            container_dst_params["name"],
+                                            blob_params["name"])
+                image_params["location"] = sto_dst_params["location"]
+                image_test01 = azure_asm_vm.Image(name=image_params["name"],
+                                                  params=image_params)
+                if not image_test01.check_exist():
+                    self.assertEqual(image_test01.create(image_params), 0,
+                                     "Fail to create vm image %s" % image_params["name"])
+            # 4. Create VM
+            vm_params = copy.deepcopy(self.vm_params)
+            vm_params["Location"] = sto_dst_params["location"]
+            vm_params["region"] = vm_params["Location"].lower().strip(' ')
+            vm_params["StorageAccountName"] = sto_dst_params["name"]
+            vm_params["Container"] = container_dst_params["name"]
+            vm_params["DiskBlobName"] = blob_params["name"]
+            vm_params["VMSize"] = vm_size
+            vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
+            vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
+            if self.azure_mode == "asm":
+                vm_params["Image"] = image_params["name"]
+                vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
+                self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
+                                                    vm_params["VMSize"],
+                                                    vm_params["username"],
+                                                    vm_params["password"],
+                                                    vm_params)
+            else:
+                vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
+                vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
+                vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
+                                                                               vm_params["Container"],
+                                                                               vm_params["DiskBlobName"])
+                vm_params["NicName"] = vm_params["VMName"]
+                vm_params["PublicIpName"] = vm_params["VMName"]
+                vm_params["PublicIpDomainName"] = vm_params["VMName"]
+                vm_params["VnetName"] = vm_params["VMName"]
+                vm_params["VnetSubnetName"] = vm_params["VMName"]
+                vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
+                vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+                self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
+                                                    vm_params["VMSize"],
+                                                    vm_params["username"],
+                                                    vm_params["password"],
+                                                    vm_params)
+            self.assertEqual(0, self.vm_test01.vm_create(vm_params),
+                             "Fail to create VM %s" % self.vm_test01.name)
+            self.assertTrue(self.vm_test01.wait_for_running(),
+                            "VM cannot become running")
+            self.assertTrue(self.vm_test01.verify_alive(),
+                            "Cannot login the VM")
+            self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
+            # Check Resources
+            cpu_std = self.params.get('cpu', '*/vm_sizes/%s/*' % vm_size)
+            memory_std = self.params.get('memory', '*/vm_sizes/%s/*' % vm_size)*1024*1024
+            disksize_std = self.params.get('disk_size', '*/vm_sizes/%s/*' % vm_size)*1024*1024*1024
+            # CPU
+            cpu = int(self.vm_test01.get_output("grep -r processor /proc/cpuinfo|wc -l"))
+            self.log.debug("%s CPU number: Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std))
+            if cpu != cpu_std:
+                error_log += "%s: CPU number is wrong. Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std)
+                result_flag = False
+            # memory
+            memory = int(self.vm_test01.get_output("grep -R MemTotal /proc/meminfo |awk '{print $2}'", sudo=False))
+            delta = float(memory_std - memory)/memory_std
+            self.log.debug("%s Memory: Real: %d, Standard: %d, Delta: %0.1f%%" % (vm_size, memory, memory_std, delta*100))
+            if delta > 0.1:
+                error_log += "%s: Memory is wrong. Real: %d. Standard: %d. Delta: %0.1f%%\n" % \
+                             (vm_size, memory, memory_std, delta*100)
+                result_flag = False
+            # disk_size
+            disksize = int(self.vm_test01.get_output("sudo fdisk -l /dev/sdb|grep -m1 /dev/sdb|awk '{print $5}'", sudo=False))
+            self.log.debug("%s Disk Size: Real: %d. Standard: %d\n" % (vm_size, disksize, disksize_std))
+            if disksize != disksize_std:
+                error_log += "%s: Disk size is wrong. Real: %d. Standard: %d\n" % (vm_size, disksize, disksize_std)
+                result_flag = False
+            self.vm_test01.delete()
+        # Record result
+        self.assertTrue(result_flag, error_log)
+
 
     def tearDown(self):
         self.log.debug("tearDown")

@@ -313,7 +313,7 @@ class SettingsTest(Test):
             self.assertEqual(goal_cpu, real_cpu,
                              "Fail to resize the VM: cpu number is wrong. Goal: %s Real: %s" % (goal_cpu, real_cpu))
             real_memory = int(self.vm_test01.get_output("free -m | grep Mem | awk '\"'{print $2}'\"'"))
-            delta = int(goal_memory * 0.05)
+            delta = int(goal_memory * 0.10)
             self.log.debug(delta)
             self.assertAlmostEqual(goal_memory, real_memory, delta=delta,
                                    msg="Fail to resize the VM: memory is wrong. Goal: %sM Real: %sM" %
