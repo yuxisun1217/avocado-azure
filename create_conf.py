@@ -57,7 +57,7 @@ rhel_version = subprocess.check_output("%s/azure_image_prepare.py -rhelbuild" % 
                                        stderr=subprocess.STDOUT, shell=True).strip('\n')
 wala_version = subprocess.check_output("%s/azure_image_prepare.py -walabuild" % azure_image_prepare_dir,
                                        stderr=subprocess.STDOUT, shell=True).split('.el')[0].strip('\n')
-tagstr = "-"+data.get("tag") if data.get("tag") else ""
+tagstr = "-"+data.get("tag") if (data.get("tag") or data.get("tag") == "None") else ""
 
 CommonYaml = """\
 Common:

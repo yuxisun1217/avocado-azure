@@ -686,6 +686,46 @@ class WALAConfTest(Test):
                             "[RHEL-6]Bug 1371071. "
                             "Fail to enable AutoUpdate after retry %d times" % retry)
 
+    def test_resource_disk_mount_options(self):
+        """
+        ResourceDisk.MountOptions
+        """
+        self.log.info("WALA conf: Resource disk mount options")
+        # 1. ResourceDisk.MountOptions=sync,noatime
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk.MountOptions", "sync,noatime", self.conf_file),
+                        "Fail to set ResourceDisk.MountOptions=sync,noatime")
+        self.vm_test01.session_close()
+        self.assertEqual(self.vm_test01.restart(), 0,
+                         "Fail to restart the VM")
+        self.assertTrue(self.vm_test01.wait_for_running())
+        self.assertTrue(self.vm_test01.verify_alive())
+        time.sleep(30)
+        if float(self.project) < 7.0:
+            self.assertIn("(rw,sync,noatime)",
+                          self.vm_test01.get_output("mount|grep /dev/sdb"),
+                          "Fail to set mount options")
+        else:
+            self.assertIn("(rw,noatime,sync,seclabel,data=ordered)",
+                          self.vm_test01.get_output("mount|grep /dev/sdb"),
+                          "Fail to set mount options")
+        # 2. ResourceDisk.MountOptions=None
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk.MountOptions", "None", self.conf_file),
+                        "Fail to set ResourceDisk.MountOptions=None")
+        self.vm_test01.session_close()
+        self.assertEqual(self.vm_test01.restart(), 0,
+                         "Fail to restart the VM")
+        self.assertTrue(self.vm_test01.wait_for_running())
+        self.assertTrue(self.vm_test01.verify_alive())
+        time.sleep(30)
+        if float(self.project) < 7.0:
+            self.assertIn("(rw)",
+                          self.vm_test01.get_output("mount|grep /dev/sdb"),
+                          "Fail to set mount options")
+        else:
+            self.assertIn("(rw,relatime,seclabel,data=ordered)",
+                          self.vm_test01.get_output("mount|grep /dev/sdb"),
+                          "Fail to set mount options")
+
     def tearDown(self):
         self.log.debug("tearDown")
         self.vm_test01.vm_update()

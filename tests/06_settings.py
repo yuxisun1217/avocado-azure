@@ -230,15 +230,18 @@ class SettingsTest(Test):
         self.assertEqual(self.vm_test01.shutdown(), 0)
         self.assertTrue(self.vm_test01.wait_for_deallocated())
         cmd_params = dict()
-        cmd_params["os_state"] = "Generalized"
+#        cmd_params["os_state"] = "Generalized"
+        cmd_params["os_state"] = "Specialized"
         self.assertEqual(self.vm_test01.capture(vm_image_name, cmd_params), 0,
-                         "Fails to capture the vm: azure cli fail")
-        self.assertTrue(self.vm_test01.wait_for_delete())
+                         "Fail to capture the vm: azure cli fail")
+        self.assertEqual(self.vm_test01.delete(), 0,
+                         "Fail to delete old vm: azure cli fail")
+        self.assertTrue(self.vm_test01.wait_for_delete(),
+                        "Fail to delete old vm: cannot delete")
         self.vm_params["Image"] = vm_image_name
         self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
                          "Fail to create new VM base on capture image")
         self.assertTrue(self.vm_test01.wait_for_running(),
-                        "Bug 1374156. "
                         "VM status cannot become running")
         self.assertTrue(self.vm_test01.verify_alive(username=old_username, password=old_password))
         time.sleep(25)
@@ -264,7 +267,7 @@ class SettingsTest(Test):
                                                        method="ssh_key",
                                                        version="1.4"), 0,
                          "Fail to reset ssh key: azure cli fail")
-        self.assertTrue(self.vm_test01.verify_alive(timeout=50, authentication="publickey"),
+        self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="publickey"),
                         "Fail to reset ssh key: cannot login with ssh key")
         self.log.info("Reset password to ssh key successfully")
         self.assertEqual(self.vm_test01.delete(), 0)

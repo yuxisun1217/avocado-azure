@@ -623,6 +623,7 @@ def mk_floppy(srcks_path, floppy_path):
         shutil.copy(p.walaDir + wala_fullname, floppy_mount + wala_fullname)
     except Exception, e:
         ErrorAndExit("Cannot copy " + p.walaDir + wala_fullname + " to " + floppy_mount + ". Exception: " + str(e))
+    Log("Copy %s to ksfloppy successfully." % wala_fullname)
     # Copy tools(fio,iperf3) to floppy
     try:
         shutil.copytree(p.toolsDir, floppy_mount + "tools/")

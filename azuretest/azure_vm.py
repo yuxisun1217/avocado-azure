@@ -321,7 +321,8 @@ EOF
         :return:
         """
         if self.get_output("grep -R \'%s\' %s" % (key, conf_file)):
-            self.get_output("sed -i -e '/#%s/s/^#//g' -e 's/%s%s.*$/%s%s%s/g' %s" % (key, key, sepr, key, sepr, value, conf_file))
+            self.get_output("sed -i -e '/^.*%s/s/^# *//g' -e 's/%s.*$/%s%s%s/g' %s" %
+                            (key, key, key, sepr, value, conf_file))
         else:
             self.get_output("echo \'%s%s%s\' >> %s" % (key, sepr, value, conf_file))
         time.sleep(0.5)
@@ -489,7 +490,7 @@ EOF
     def get_device_name(self, timeout=WAIT_FOR_RETRY_TIMEOUT):
         r = 0
         interval = 10
-        while r < timeout:
+        while (r*10) < timeout:
             disk = self.get_output("ls /dev/sd* | grep -v [1234567890]", sudo=False).split('\n')[-1]
             if disk not in ["/dev/sda", "/dev/sdb"]:
                 break

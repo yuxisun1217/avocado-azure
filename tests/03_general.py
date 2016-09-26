@@ -530,13 +530,14 @@ class GeneralTest(Test):
 
     def tearDown(self):
         self.log.debug("tearDown")
-        if ("check_sshkey" in self.name.name) or \
-           ("install_uninstall_wala" in self.name.name) or \
-           ("verify_package_signed" in self.name.name):
+        if "check_sshkey" in self.name.name or \
+           "install_uninstall_wala" in self.name.name or \
+           "verify_package_signed" in self.name.name or \
+           "password_sshkey" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
-        if ("start_waagent_repeatedly" in self.name.name) or \
-           ("check_waagent_service" in self.name.name):
+        if "start_waagent_repeatedly" in self.name.name or \
+           "check_waagent_service" in self.name.name:
             self.vm_test01.waagent_service_stop()
             if not self.vm_test01.waagent_service_start():
                 self.vm_test01.delete()

@@ -206,9 +206,8 @@ class ImgPrepTest(Test):
             else:
                 if self.vm_params["VMName"] in vm_dict["name"]:
                     utils_misc.host_command("azure vm delete %s %s -q" %
-                                            (vm_dict["name"], self.vm_params["ResourceGroupName"]))
+                                            (self.vm_params["ResourceGroupName"], vm_dict["name"]))
                     self.log.debug("Delete VM %s" % vm_dict["name"])
-
 
     def test_01_prepare_image(self):
         """

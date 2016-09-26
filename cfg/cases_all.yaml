@@ -16,6 +16,7 @@ azure_mode: !mux
             StorageTest.test_disk_attach_new
             StorageTest.test_disk_detach
             StorageTest.test_disk_attach_exist
+            StorageTest.test_attach_detach_64_disks
             SettingsTest.test_reset_existing_password
             SettingsTest.test_add_new_user
             SettingsTest.test_reset_remote_access
@@ -55,6 +56,7 @@ azure_mode: !mux
             GeneralTest.test_check_sshkey
             GeneralTest.test_check_password_sshkey
             GeneralTest.test_check_waagent_log
+            GeneralTest.test_verify_package_signed
             GeneralTest.test_check_waagent_service
             GeneralTest.test_start_waagent_repeatedly
             GeneralTest.test_check_hyperv_modules
@@ -81,6 +83,7 @@ azure_mode: !mux
             StorageTest.test_disk_detach
             StorageTest.test_disk_attach_exist
             StorageTest.test_change_os_disk_size
+            StorageTest.test_attach_detach_64_disks
             SettingsTest.test_resize_vm
             SettingsTest.test_reset_existing_password
             SettingsTest.test_add_new_user

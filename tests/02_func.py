@@ -6,6 +6,7 @@ from avocado import main
 import sys
 import os
 import copy
+import re
 #sys.path.append(os.path.split(os.path.realpath("__file__"))[0] + "/..")
 sys.path.append(sys.path[0].replace("/tests", ""))
 from azuretest import azure_cli_common
@@ -192,6 +193,7 @@ class FuncTest(Test):
         self.assertTrue(self.vm_test01.modify_value("Provisioning\.DeleteRootPassword", "y", self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("Provisioning\.RegenerateSshHostKeyPair", "y", self.conf_file))
         # In case there's no /root/.bash_history
+        self.vm_test01.get_output("touch /var/lib/dhclient/walatest")
         self.vm_test01.get_output("touch /root/.bash_history")
         # 1. waagent -deprovision [n/y]
         check_list = ["/etc/ssh/ssh_host_*", "/etc/resolv.conf", "/var/lib/dhclient/*",
@@ -287,7 +289,7 @@ class FuncTest(Test):
         self.assertTrue(self.vm_test01.modify_value("Provisioning\.RegenerateSshHostKeyPair", "y", self.conf_file))
         # 1. waagent -deprovision+user [n/y]
         check_list = ["/etc/ssh/ssh_host_*", "/etc/resolv.conf", "/var/lib/dhclient/*",
-                      "/root/.bash_history", "/var/log/waagent.log", "/etc/sudoers.d/waagent"]
+                      "/root/.bash_history", "/var/log/waagent.log"]
         message_list = ["WARNING! The waagent service will be stopped",
                         "WARNING! All SSH host key pairs will be deleted",
                         "WARNING! Cached DHCP leases will be deleted",
@@ -298,7 +300,7 @@ class FuncTest(Test):
                         "WARNING! %s account and entire home directory will be deleted" % self.vm_test01.username]
         # Make files for checking
         self.vm_test01.get_output("touch /var/lib/dhclient/walatest")
-        self.vm_test01.get_output("/root/.bash_history")
+        self.vm_test01.get_output("touch /root/.bash_history")
         # 1.1. waagent -deprovision+user [n]
         deprovision_output = self.vm_test01.get_output("echo `echo 'n' |sudo waagent -deprovision+user`", sudo=False)
         for msg in message_list:
@@ -312,6 +314,9 @@ class FuncTest(Test):
                              "%s should not be deleted" % not_delete_file)
         self.assertNotIn("LOCK", self.vm_test01.get_output("grep -R root /etc/shadow"),
                          "Should not delete root password")
+        self.assertIn(self.vm_test01.username,
+                      self.vm_test01.get_output("grep -r %s /etc/sudoers.d/waagent" % self.vm_test01.username),
+                      "Should not wipe /etc/sudoers.d/waagent")
         if float(self.project) < 7.0:
             self.assertNotIn("localhost.localdomain", self.vm_test01.get_output("grep -R HOSTNAME /etc/sysconfig/network"),
                              "Should not reset hostname")
@@ -324,6 +329,7 @@ class FuncTest(Test):
         # Login with root account because azure user account will be deleted
         self.assertTrue(self.vm_test01.verify_alive(username="root", password=self.vm_test01.password))
         self.vm_test01.get_output("echo 'y' | waagent -deprovision+user", sudo=False)
+        self.vm_test01.get_output("cat /etc/sudoers.d/waagent")
         for delete_file in check_list:
             self.assertIn("No such file", self.vm_test01.get_output("ls %s" % delete_file, sudo=False),
                           "%s is not deleted" % delete_file)
@@ -339,6 +345,8 @@ class FuncTest(Test):
                              "hostname is not reset")
         self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/shadow" % self.vm_test01.username, sudo=False),
                          "%s is not deleted" % self.vm_test01.username)
+        self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/sudoers.d/waagent" % self.vm_test01.username, sudo=False),
+                         "/etc/sudoers.d/waagent is not wiped")
         # recover environment
         self.vm_test01.session_close()
         self.vm_test01.delete()
@@ -370,6 +378,8 @@ class FuncTest(Test):
                              "Hostname is not reset")
         self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/shadow" % self.vm_test01.username, sudo=False),
                          "%s is not deleted" % self.vm_test01.username)
+        self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/sudoers.d/waagent" % self.vm_test01.username, sudo=False),
+                         "/etc/sudoers.d/waagent is not wiped")
 
     def test_waagent_version(self):
         """
@@ -378,7 +388,8 @@ class FuncTest(Test):
         self.log.info("waagent -version")
         # Check the WALinuxAgent version
         wala_version = self.params.get("WALA_Version", "*/Common/*").split('-')[0]
-        show_version = self.vm_test01.get_output("waagent -version", sudo=False).split(' ')[0].replace("WALinuxAgent-", "")
+#        wala_version = re.compile('\d*.\d*.\d*').findall(wala_version_data)[0]
+        show_version = self.vm_test01.get_output("echo `waagent -version`", sudo=False).split(' ')[0].replace("WALinuxAgent-", "")
 #        self.assertIn(wala_version, self.vm_test01.get_output("waagent -version", sudo=False),
 #                      "WALinuxAgent version is wrong")
         self.assertEqual(wala_version, show_version,
@@ -498,9 +509,9 @@ class FuncTest(Test):
                              ' '.join(self.vm_test01.get_output("chkconfig --list waagent").split()),
                              "Shouldn't register waagent service")
         else:
-            self.assertEqual("Loaded: loaded (/usr/lib/systemd/system/waagent.service; disabled; vendor preset: disabled)",
-                             self.vm_test01.get_output("systemctl status waagent | grep Loaded").lstrip(),
-                             "Shouldn't register waagent service")
+            self.assertIn("Loaded: loaded (/usr/lib/systemd/system/waagent.service; disabled; vendor preset: disabled)",
+                          self.vm_test01.get_output("systemctl status waagent | grep Loaded").lstrip(),
+                          "Shouldn't register waagent service")
 
     def test_setup_register_service(self):
         """
