@@ -840,3 +840,49 @@ def container_list(params=None, options='', **kwargs):
         cmd += add_option("--connection-string",
                           params.get("connection_string", None))
     return command(cmd, azure_json=True, **kwargs)
+
+
+def resource_group_list(params=None, options='', **kwargs):
+    """
+
+    :param options:
+    :param kwargs:
+    :return:
+    """
+    cmd = "azure group list" % options
+    if params:
+        cmd += add_option("--subscription",
+                          params.get("subscription", None))
+    return command(cmd, azure_json=True, **kwargs)
+
+
+def resource_group_show(name, params=None, options='', **kwargs):
+    """
+    Helps to show the resource group
+    :param name:
+    :param params:
+    :param options:
+    :param kwargs:
+    :return:
+    """
+    cmd = "azure group show %s %s" % (name, options)
+    if params:
+        cmd += add_option("--subscription",
+                          params.get("subscription", None))
+    return command(cmd, azure_json=True, **kwargs)
+
+
+def resource_group_create(name, params, options='', **kwargs):
+    """
+    Helps to create a resource group
+    :param name: Resource Group name
+    :param params: Params for creating resource group
+    :param options: Other options
+    :param kwargs: Other flags
+    :return:
+    """
+    cmd = "azure group create %s %s" % (name, options)
+    if params:
+        cmd += add_option("--location",
+                          params.get("location", None))
+    return command(cmd, **kwargs)

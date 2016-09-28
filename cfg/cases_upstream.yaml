@@ -1,6 +1,7 @@
 azure_mode: !mux
     asm:
         cases:
+            ImgPrepTest.test_test
             ImgPrepTest.test_00_preparation
             ImgPrepTest.test_01_prepare_image
             ImgPrepTest.test_02_convert_image

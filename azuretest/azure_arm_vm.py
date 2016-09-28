@@ -35,7 +35,7 @@ class VMARM(azure_vm.BaseVM):
     This class handles all basic VM operations for ARM.
     """
 
-    def __init__(self, name, size, username, password, params):
+    def __init__(self, name=None, size=None, username=None, password=None, params=None):
         """
         Initialize the object and set a few attributes.
 
@@ -145,7 +145,7 @@ class VMARM(azure_vm.BaseVM):
         self.dns_name = copy.copy(params.get("DNSName"))
         self.mode = "ARM"
         super(VMARM, self).__init__(name, size, username, password, params)
-        logging.info("Azure VM '%s'", self.name)
+        logging.debug("Azure VM '%s'", self.name)
 
     def vm_create(self, params, options='', timeout=azure_vm.BaseVM.CREATE_TIMEOUT, dianostic=False):
         """
@@ -897,3 +897,116 @@ class StorageAccount(object):
         :param options: extra options
         """
         return azure_cli_arm.sto_acct_keys_list(self.name, self.rg_name, options).stdout
+
+
+class ResourceGroup(object):
+
+    """
+    This class handles all resource group operations for ARM.
+    """
+    DEFAULT_TIMEOUT = 240
+    DELETE_TIMEOUT = 240
+
+    def __init__(self, name=None, params=None):
+        """
+        Initialize the object and set a few attributes.
+
+        :param name: The name of the object
+        :param params: A dict containing Storage Account params
+         params sample:
+        {
+  "id": "/subscriptions/2586c64b-38b4-4527-a140-012d49dfc02c/resourceGroups/walaautoarmwestus",
+  "name": "walaautoarmwestus",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "location": "westus",
+  "tags": {
+    "NoDelete": "True"
+  },
+  "resources": [
+    {
+      "id": "/subscriptions/2586c64b-38b4-4527-a140-012d49dfc02c/resourceGroups/walaautoarmwestus/providers/Microsoft.Compute/virtualMachines/wala72ondtest2",
+      "name": "wala72ondtest2",
+      "type": "virtualMachines",
+      "location": "westus",
+      "tags": null
+    },
+    {
+      "id": "/subscriptions/2586c64b-38b4-4527-a140-012d49dfc02c/resourceGroups/walaautoarmwestus/providers/Microsoft.Compute/virtualMachines/wala72ondtest2/extensions/enablevmaccess",
+      "name": "enablevmaccess",
+      "type": "extensions",
+      "location": "westus",
+      "tags": null
+    }
+  ],
+  "permissions": [
+    {
+      "actions": [
+        "*"
+      ],
+      "notActions": []
+    }
+  ]
+}
+        """
+        self.name = name
+        self.mode = "ARM"
+        self.params = params
+        logging.debug("Azure Resource Group '%s'", self.name)
+
+    def list(self, params=None, options='', **kwargs):
+        """
+        This helps to list all the resource groups
+        :return:
+        """
+        return azure_cli_arm.resource_group_list(params, options, **kwargs).stdout
+
+    def create(self, params=None, options='', **kwargs):
+        """
+        This helps to create a Storage Account
+
+        :param options: extra options
+        :return: Zero if success to create VM
+        """
+        if not params:
+            params = self.params
+        return azure_cli_arm.resource_group_create(self.name, params, options, **kwargs).exit_status
+
+    def update(self, params):
+        """
+        This helps to update Storage Account info
+
+        :param params: A dict containing Storage Account params
+        """
+        return None
+
+    def check_exist(self):
+        try:
+            self.show(debug=False, error_debug=False)
+        except Exception as e:
+            logging.debug("Resource Group %s doesn't exist. Exception: %s" % (self.name, str(e)))
+            return False
+        logging.debug("Resource Group %s exists" % self.name)
+        return True
+
+    def show(self, options='', **kwargs):
+        """
+        Help to show a storage account
+
+        :param options: extra options
+        :return: params - A dict containing storage account params
+        """
+        return azure_cli_arm.resource_group_show(self.name, options, **kwargs).stdout
+
+    def delete(self, options='', timeout=DELETE_TIMEOUT):
+        """
+        Help to delete a storage account
+
+        :param options: extra options
+        :param timeout: Delete timeout
+        :return: Zero if success to delete VM
+        """
+        return None
+#        return azure_cli_arm.resource_group_delete(self.name, options, timeout=timeout).exit_status
+

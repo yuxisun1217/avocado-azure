@@ -27,6 +27,7 @@ import threading
 import platform
 import traceback
 import json
+import yaml
 
 from avocado.core import status
 from avocado.core import exceptions
@@ -196,6 +197,7 @@ def command(cmd, timeout=1200, **kwargs):
     azure_json = kwargs.get('azure_json', False)
     debug = kwargs.get('debug', True)
     ignore_status = kwargs.get('ignore_status', False)
+    error_debug = kwargs.get('error_debug', True)
 #    timeout = kwargs.get('timeout', None)
     if azure_json:
         cmd += " --json"
@@ -215,7 +217,7 @@ def command(cmd, timeout=1200, **kwargs):
         ret = process.run(cmd, timeout=timeout, verbose=debug,
                           ignore_status=ignore_status, shell=True)
     except Exception, e:
-        if "azure" in cmd:
+        if "azure" in cmd and error_debug == True:
             azure_err = "/root/.azure/azure.err"
             if os.path.isfile(azure_err):
                 logging.debug(azure_err)
@@ -303,4 +305,20 @@ def get_sshkey_file():
         return "/%s/.ssh/id_rsa.pub" % myname
     else:
         return "/home/%s/.ssh/id_rsa.pub" % myname
+
+def get_storage_account_list(azure_mode):
+    """
+    Get the uniq storage_account list from vm_sizes.yaml
+    :return: storage_account_list, like [{"walaautoasmeastus":"East US"},{"walaautoasmsea":"Southeast Asia"}]
+    """
+    current_path = os.path.split(sys._getframe().f_code.co_filename)[0]
+    with open("%s/../cfg/vm_sizes.yaml" % current_path, 'r') as f:
+        data = yaml.load(f.read().replace("!mux", ""))
+    storage_account_list = []
+    for item in data['azure_mode'][azure_mode]['vm_sizes'].values():
+        st_dict = {item["storage_account"]:item["location"]}
+        if st_dict not in storage_account_list and item["storage_account"]:
+            storage_account_list.append({item["storage_account"]:item["location"]})
+    return storage_account_list
+
 

@@ -14,7 +14,7 @@ azure_mode: !mux
                 memory: 1.75
                 disk_size: 70
             Medium:
-                storage_ccount:
+                storage_account:
                 location:
                 cpu:
                 memory:
@@ -130,8 +130,8 @@ azure_mode: !mux
                 memory: 140
                 disk_size: 280
             Standard_G1:
-                storage_account: walaautoasmsea
-                location: "Southeast Asia"
+                storage_account: walaautoarmwestus
+                location: "West US"
                 cpu: 2
                 memory: 28
                 disk_size: 384
@@ -142,8 +142,8 @@ azure_mode: !mux
                 memory: 448
                 disk_size: 6144
             Standard_GS5:
-                storage_account: walaautoasmsea
-                location: "Southeast Asia"
+                storage_account: walaautoarmwestus
+                location: "West US"
                 cpu: 32
                 memory: 448
                 disk_size: 896

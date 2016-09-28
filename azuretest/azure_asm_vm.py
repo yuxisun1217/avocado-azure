@@ -34,7 +34,7 @@ class VMASM(azure_vm.BaseVM):
     This class handles all basic VM operations for ASM.
     """
 
-    def __init__(self, name, size, username, password, params):
+    def __init__(self, name=None, size=None, username=None, password=None, params=None):
         """
         Initialize the object and set a few attributes.
 
@@ -478,12 +478,11 @@ class Image(object):
     This class handles all basic Image operations for ASM.
     """
 
-    def __init__(self, name, params):
+    def __init__(self, name=None, params=None):
         """
         Initialize the object and set a few attributes.
 
         :param name: The name of the object
-        :param size: The VM size
         :param params: A dict containing VM params
         params sample:
         """
@@ -492,7 +491,16 @@ class Image(object):
         if params:
             self.params = params
         else:
-            self.update()
+            if name:
+                self.update()
+
+    def list(self, options='', **kwargs):
+        """
+        List vm images
+        :param options: The options of azure vm image list
+        :return: vm image list
+        """
+        return azure_cli_asm.vm_image_list(options, **kwargs).stdout
 
     def show(self, params=None, options=''):
         """
@@ -654,16 +662,55 @@ class Blob(object):
 #        if rt.get("copy").get("status") == "pending":
         return False
 
+#    def copy(self, src_connection_string, params=None, options='', timeout=COPY_TIMEOUT):
+#        """
+#        Start to copy the resource to the specified storage blob which
+#        completes asynchronously
+#
+#        :param options: extra options
+#        :param params: A dict containing dest blob params
+#        :param timeout: Copy timeout
+#        :return:
+#        """
+#        if not params:
+#            params = dict()
+#        params["dest_container"] = self.container
+#        params["source_blob"] = self.name
+#        params["connection_string"] = src_connection_string
+#        params["dest_connection_string"] = self.connection_string
+#        params.setdefault("source_container", "vhds")
+#        azure_cli_asm.blob_copy_start(params, options)
+#        start_time = time.time()
+#        end_time = start_time + timeout
+#
+#        dst_params = dict()
+#        dst_params["connection_string"] = self.connection_string
+#        dst_params["container"] = self.container
+#        dst_params["blob"] = self.name
+#        dst_params["sas"] = params.get("dest_sas", None)
+#        #        rt = azure_cli_asm.blob_copy_show(dst_params).stdout
+#        while time.time() < end_time:
+#            rt = azure_cli_asm.blob_copy_show(dst_params).stdout
+#            status = rt.get("copy").get("status")
+#            logging.debug(status)
+#            if rt.get("copy").get("status") == "success":
+#                return True
+#            else:
+#                time.sleep(10)
+#            #        if rt.get("copy").get("status") == "pending":
+#        return False
+
     def check_exist(self, params=None, options=''):
         if not params:
             params = dict()
         params.setdefault("connection_string", self.connection_string)
         params.setdefault("container", self.container)
         try:
-            azure_cli_asm.blob_show(self.name, params, options=options)
+            azure_cli_asm.blob_show(self.name, params, options=options, debug=False, error_debug=False)
         except Exception, e:
             logging.debug("No blob %s exists. Exception: %s" % (self.name, str(e)))
             return False
+        logging.debug("Blob %s exists" % self.name)
         return True
 
     def show(self, params=None, options=''):
