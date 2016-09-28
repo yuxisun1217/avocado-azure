@@ -49,6 +49,7 @@ class LifeCycleTest(Test):
         self.vm_params["PublicPort"] = self.params.get('public_port', '*/network/*')
         if self.azure_mode == "asm":
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
+            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
             self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],

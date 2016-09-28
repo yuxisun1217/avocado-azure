@@ -52,6 +52,7 @@ class WALAConfTest(Test):
         options = ""
         if self.azure_mode == "asm":
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
+            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
             if "http_proxy" in self.name.name:
                 self.vm_params["DNSName"] = "nay-67-ond-squid.cloudapp.net"

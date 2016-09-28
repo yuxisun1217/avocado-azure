@@ -51,6 +51,7 @@ class StorageTest(Test):
                 self.vm_params["VMSize"] = "Medium"
             self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
+            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
             self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],

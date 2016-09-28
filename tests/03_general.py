@@ -58,6 +58,7 @@ class GeneralTest(Test):
             self.vm_params["ssh_key"] = self.host_pubkey_file
         if self.azure_mode == "asm":
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
+            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
             self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
