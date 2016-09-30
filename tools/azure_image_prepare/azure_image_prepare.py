@@ -105,6 +105,7 @@ class Params(object):
         self.srcksPath = self.ksDir + "RHEL-" + self.Project.split('.')[0] + ".cfg"
         self.isoName = ""  # ISO file name without postfix(.iso)
         self.walaName = ""  # WALA package name
+        self.rpmbuildPath = "/root/rpmbuild"
 
 
 class Logger(object):
@@ -499,14 +500,23 @@ def download_wala_upstream(version=None):
         return 0
     os.chdir(p.TmpDir)
     Log("Change current path to %s" % p.TmpDir)
-    if Run("wget https://github.com/Azure/WALinuxAgent/archive/%s.zip" % tag) != 0:
+    if Run("wget -O WALinuxAgent-%s.tar.gz https://github.com/Azure/WALinuxAgent/archive/v%s.tar.gz" %
+           (version, version)) != 0:
         ErrorAndExit("No such WALA build %s" % tag)
-    Run("unzip -o %s.zip" % tag)
-    os.chdir(p.TmpDir + "WALinuxAgent-" + version)
-    Log("Change current path to %s" % (p.TmpDir + "WALinuxAgent-" + version))
-    Run("curl https://bootstrap.pypa.io/ez_setup.py -o - | python")
-    Run("python setup.py bdist_rpm --post-inst rpm/post-inst")
-    Run("mv dist/*.noarch.rpm %s" % wala_fullpath)
+    Run("mv WALinuxAgent-%s.tar.gz %s/SOURCES/" % (version, p.rpmbuildPath))
+    with open("%s/WALinuxAgent-template.spec" % p.realpath, 'r') as f:
+        spec_data = f.read()
+    with open("%s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath, 'w') as f:
+        f.write(spec_data.replace("upstream_version", version))
+    # Use mock instead of rpmbuild to make rpm package
+    main_project = p.Project.split('.')[0]
+    Run("rpmbuild -bs %s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath)
+    Run("mv %s/SRPMS/WALinuxAgent-%s-1.el*.src.rpm %s" %
+        (p.rpmbuildPath, version, p.TmpDir))
+    Run("runuser -l test -c 'mock -r epel-%s-x86_64 %sWALinuxAgent-%s-1.el7.src.rpm'" %
+        (main_project, p.TmpDir, version))
+    Run("mv /var/lib/mock/epel-%s-x86_64/result/WALinuxAgent-%s-1.el%s.noarch.rpm %s" %
+        (main_project, version, main_project, wala_fullpath))
     time.sleep(0.5)
     if os.path.isfile(wala_fullpath):
         Log("Download %s successfully." % wala_fullpath)
@@ -714,6 +724,11 @@ def CheckEnvironment(dir_create_list, exist_file_list):
 def Download():
     return download_iso(p.Version)
 
+
+def Download_wala():
+    return download_wala(p.WalaVersion)
+
+
 def _get_imagename():
     tagstr = "-%s" % p.Tag if p.Tag else ""
     return rhel_build() + "-wala-" + wala_build() + tagstr
@@ -787,7 +802,8 @@ def main():
                 ErrorAndExit("Environment Check is not pass")
             sys.exit(Download() or Install() or Convert())
         elif re.match("^([-/]*)downloadwala", a):
-            sys.exit(download_wala(p.WalaVersion))
+#            sys.exit(download_wala(p.WalaVersion))
+            sys.exit(Download_wala())
         elif re.match("^([-/]*)download", a):
             sys.exit(Download())
         elif re.match("^([-/]*)install", a):
