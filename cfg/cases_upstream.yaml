@@ -1,7 +1,6 @@
 azure_mode: !mux
     asm:
         cases:
-            ImgPrepTest.test_test
             ImgPrepTest.test_00_preparation
             ImgPrepTest.test_01_prepare_image
             ImgPrepTest.test_02_convert_image
@@ -42,6 +41,7 @@ azure_mode: !mux
             WALAConfTest.test_resource_disk_file_type
             WALAConfTest.test_resource_disk_swap_check
             WALAConfTest.test_resource_disk_large_swap_file
+            WALAConfTest.test_resource_disk_gpt_partition
             WALAConfTest.test_monitor_hostname
             WALAConfTest.test_http_proxy
             WALAConfTest.test_device_timeout

@@ -297,7 +297,7 @@ class VMASM(azure_vm.BaseVM):
     def wait_for_delete(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT, check_cloudservice=False):
         """
         Make sure the VM and Cloud Service are deleted
-        :param times: Retry times of waiting for deleting the VM
+        :param timeout: Retry timeout of waiting for deleting the VM
         :param check_cloudservice: The flag of checking cloud service status
         :return: True if the VM and Cloud Service both do not exist.
         """

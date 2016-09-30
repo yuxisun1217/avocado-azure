@@ -271,79 +271,15 @@ class StorageTest(Test):
         Attach and Detach 64 disks
         """
         self.log.info("Attach and Detach 64 disks")
-        # 1. Check storage account for G5 VM
-        # Destination storage account instance
-        sto_dst_params = dict()
-        sto_dst_params["name"] = self.params.get('storage_account', '*/vm_sizes/Standard_G5/*')
-        sto_dst_params["location"] = self.params.get('location', '*/vm_sizes/Standard_G5/*')
-        sto_dst_params["type"] = 'LRS'
-        if self.azure_mode == "asm":
-            sto_dst_test01 = azure_asm_vm.StorageAccount(name=sto_dst_params["name"],
-                                                         params=sto_dst_params)
-        else:
-            sto_dst_params["ResourceGroupName"] = sto_dst_params["name"]
-            sto_dst_test01 = azure_arm_vm.StorageAccount(name=sto_dst_params["name"],
-                                                         params=sto_dst_params)
-        # Check and create storage account
-        if not sto_dst_test01.check_exist():
-            sto_dst_test01.create(sto_dst_params)
-        # Prepare the container instance
-        container_dst_params = dict()
-        container_dst_params["name"] = self.params.get('container', '*/Prepare/*')
-        container_dst_params["storage_account"] = sto_dst_params["name"]
-        if self.azure_mode == "asm":
-            container_dst_test01 = azure_asm_vm.Container(name=container_dst_params["name"],
-                                                          storage_account=container_dst_params["storage_account"],
-                                                          params=container_dst_params)
-        else:
-            container_dst_params["ResourceGroupName"] = sto_dst_params["name"]
-            container_dst_test01 = azure_asm_vm.Container(name=container_dst_params["name"],
-                                                          storage_account=container_dst_params["storage_account"],
-                                                          params=container_dst_params)
-        # Check and create container
-        if not container_dst_test01.check_exist():
-            container_dst_test01.create(container_dst_params)
-        # 2. Copy the vhd to the specific storage account
-        # Prepare the blob instance
-        blob_params = dict()
-        blob_params["name"] = self.params.get('name', '*/DiskBlob/*')
-        blob_params["container"] = self.params.get('container', '*/Prepare/*')
-        blob_params["storage_account"] = self.params.get('name', '*/Prepare/storage_account/*')
-        blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
-                                        container=blob_params["container"],
-                                        storage_account=blob_params["storage_account"],
-                                        params=blob_params)
-        self.assertTrue(blob_test01.copy(sto_dst_test01.conn_show()),
-                        "Fail to copy the VHD file %s to storage account %s container %s" %
-                        (blob_params["name"], sto_dst_params["name"], blob_params["container"]))
-        # 3. Create an image base on the vhd (only for asm mode)
-        # Image instance
-        # Prepare the Image instance (Only for asm mode)
-        if self.azure_mode == "asm":
-            image_params = dict()
-            image_params["name"] = self.params.get('name', '*/Image/*') + '-' + sto_dst_params["name"]
-            image_params["blob_url"] = "https://%s.blob.core.windows.net/%s/%s" % \
-                                       (sto_dst_params["name"],
-                                        container_dst_params["name"],
-                                        blob_params["name"])
-            image_params["location"] = sto_dst_params["location"]
-            image_test01 = azure_asm_vm.Image(name=image_params["name"],
-                                              params=image_params)
-            if image_test01.check_exist():
-                image_test01.delete()
-            self.assertEqual(image_test01.create(image_params), 0,
-                             "Fail to create vm image %s" % image_params["name"])
-        # 4. Create VM
+        # Create VM
         vm_params = copy.deepcopy(self.vm_params)
-        vm_params["Location"] = sto_dst_params["location"]
-        vm_params["region"] = vm_params["Location"].lower().strip(' ')
-        vm_params["StorageAccountName"] = sto_dst_params["name"]
-        vm_params["Container"] = container_dst_params["name"]
-        vm_params["DiskBlobName"] = blob_params["name"]
+        vm_params["VMSize"] = "Standard_G5"
+        vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
+        vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % vm_params["VMSize"])
+        vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
+        vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % vm_params["VMSize"])
         if self.azure_mode == "asm":
-            vm_params["VMSize"] = "Standard_G5"
-            vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
-            vm_params["Image"] = image_params["name"]
+            vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
             vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
             self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
                                                 vm_params["VMSize"],
@@ -351,13 +287,11 @@ class StorageTest(Test):
                                                 vm_params["password"],
                                                 vm_params)
         else:
-            vm_params["VMSize"] = "Standard_G5"
-            vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
             vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
             vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
             vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
-                                                                                vm_params["Container"],
-                                                                                vm_params["DiskBlobName"])
+                                                                           vm_params["Container"],
+                                                                           vm_params["DiskBlobName"])
             vm_params["NicName"] = vm_params["VMName"]
             vm_params["PublicIpName"] = vm_params["VMName"]
             vm_params["PublicIpDomainName"] = vm_params["VMName"]

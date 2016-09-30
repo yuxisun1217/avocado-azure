@@ -162,7 +162,6 @@ class ImgPrepTest(Test):
         self.log.info("Import the image to Azure")
         self.log.info("Use ASM mode azure cli commands")
         # 1. Upload vhd file to Azure Storage
-#        azure_cli_common.set_config_mode("asm")
         # 1.1 Check if vhd blob already exists
         if self.no_upload:
             self.log.info("The vhd blob already exists. Will not upload the vhd.")
@@ -260,10 +259,6 @@ class ImgPrepTest(Test):
                 if not image_test01.check_exist():
                     self.assertEqual(image_test01.create(image_params), 0,
                                      "Fail to create vm image %s" % image_params["name"])
-
-    def test_test(self):
-        self.log.debug(self.params.get('vm_sizes', '*/azure_mode/*'))
-        self.log.debug(self.params)
 
     def tearDown(self):
         self.log.debug("Teardown.")

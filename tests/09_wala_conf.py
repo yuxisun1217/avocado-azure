@@ -264,7 +264,22 @@ class WALAConfTest(Test):
         Check changing ResourceDisk.Filesystem
         """
         self.log.info("WALA conf: Resource disk file type")
-        # 1. ResourceDisk.Filesystem=ext3
+        # 1. ResourceDisk.Filesystem=ext4 (Default)
+        self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Filesystem", "ext4", self.conf_file))
+        time.sleep(30)
+        self.assertIn("ext4", self.vm_test01.get_output("mount|grep /mnt/resource"),
+                      "Fail to set resource disk file system to ext4")
+        time.sleep(30)
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        for count in range(1, 11):
+            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+            if swapsize == "2047":
+                break
+            else:
+                self.log.info("Swap size is wrong. Retry %d times." % count)
+                time.sleep(30)
+        self.assertNotEqual(10, count, "Swap is not enabled in ext4 file system.")
+        # 2. ResourceDisk.Filesystem=ext3
         self.log.info("ResourceDisk.Filesystem=ext3")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Filesystem", "ext3", self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Format", "y", self.conf_file))
@@ -289,7 +304,17 @@ class WALAConfTest(Test):
         time.sleep(30)
         self.assertIn("ext3", self.vm_test01.get_output("mount|grep /mnt/resource"),
                       "Fail to set resource disk file system to ext3")
-        # 2. ResourceDisk.Filesystem=xfs(Only for RHEL-7)
+        time.sleep(30)
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        for count in range(1, 11):
+            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+            if swapsize == "2047":
+                break
+            else:
+                self.log.info("Swap size is wrong. Retry %d times." % count)
+                time.sleep(30)
+        self.assertNotEqual(10, count, "Swap is not enabled in ext3 file system.")
+        # 3. ResourceDisk.Filesystem=xfs(Only for RHEL-7)
         if float(self.project) < 7.0:
             self.log.info("RHEL-%s doesn't support xfs type. Skip this step." % self.project)
         else:
@@ -317,6 +342,16 @@ class WALAConfTest(Test):
             self.assertIn("xfs", self.vm_test01.get_output("mount|grep /mnt/resource"),
                           "Bug 1372276. "
                           "Fail to set resource disk file system to xfs")
+            time.sleep(30)
+            # Retry 10 times (300s in total) to wait for the swap file created.
+            for count in range(1, 11):
+                swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+                if swapsize == "2047":
+                    break
+                else:
+                    self.log.info("Swap size is wrong. Retry %d times." % count)
+                    time.sleep(30)
+            self.assertNotEqual(10, count, "Swap is not enabled in xfs file system.")
 
     def test_resource_disk_swap_check(self):
         """
@@ -727,6 +762,78 @@ class WALAConfTest(Test):
                           self.vm_test01.get_output("mount|grep /dev/sdb"),
                           "Fail to set mount options")
 
+    def test_resource_disk_gpt_partition(self):
+        """
+        Resource disk GPT partition
+        """
+        self.log.info("WALA conf: Resource disk GPT partition")
+        # Preparation: Create G5 VM
+        vm_params = copy.deepcopy(self.vm_params)
+        vm_params["VMSize"] = "Standard_G5"
+        vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
+        vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
+        vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % vm_params["VMSize"])
+        vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
+        vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % vm_params["VMSize"])
+        if self.azure_mode == "asm":
+            vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
+            vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
+            self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
+                                                vm_params["VMSize"],
+                                                vm_params["username"],
+                                                vm_params["password"],
+                                                vm_params)
+        else:
+            vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
+            vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
+            vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
+                                                                           vm_params["Container"],
+                                                                           vm_params["DiskBlobName"])
+            vm_params["NicName"] = vm_params["VMName"]
+            vm_params["PublicIpName"] = vm_params["VMName"]
+            vm_params["PublicIpDomainName"] = vm_params["VMName"]
+            vm_params["VnetName"] = vm_params["VMName"]
+            vm_params["VnetSubnetName"] = vm_params["VMName"]
+            vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
+            vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+            self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
+                                                vm_params["VMSize"],
+                                                vm_params["username"],
+                                                vm_params["password"],
+                                                vm_params)
+        self.assertEqual(0, self.vm_test01.vm_create(vm_params),
+                         "Fail to create VM %s" % self.vm_test01.name)
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "VM cannot become running")
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Cannot login the VM")
+        # Set resource disk
+        self.log.info("ResourceDisk.SwapSizeMB=5242880")
+        self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Format", "y", self.conf_file))
+        self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Filesystem", "ext4", self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "5242880", self.conf_file))
+        self.vm_test01.session_close()
+        self.assertEqual(self.vm_test01.restart(), 0,
+                         "Fail to restart the VM")
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "Cannot start the VM")
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Cannot login the VM")
+        time.sleep(30)
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        for count in range(1, 11):
+            swapsize = self.vm_test01.get_output("free -mg|grep Swap|awk '{print $2}'", sudo=False)
+            if swapsize == "5119":
+                break
+            else:
+                self.log.info("Swap size is wrong. Retry %d times." % count)
+                time.sleep(30)
+        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=5242880 doesn't work in GPT partition")
+        # Check waagent.log
+        self.assertIn("GPT detected", self.vm_test01.get_output("grep -R GPT /var/log/waagent.log"),
+                      "Doesn't detect GPT partition")
+
     def tearDown(self):
         self.log.debug("tearDown")
         self.vm_test01.vm_update()
@@ -738,9 +845,11 @@ class WALAConfTest(Test):
         else:
             delete_list = ["delete_root_passwd",
                            "http_proxy",
-                           "disable_provisioning"]
-            reboot_list = ["resource_disk_mount_point",
+                           "disable_provisioning",
                            "resource_disk_file_type",
+                           "reset_system_account",
+                           "resource_disk_gpt_partition"]
+            reboot_list = ["resource_disk_mount_point",
                            "resource_disk_swap_check",
                            "resource_disk_large_swap_file"]
             restart_service_list = ["enable_verbose_logging",
@@ -748,7 +857,8 @@ class WALAConfTest(Test):
                                     "monitor_hostname",
                                     "invoke_specific_program",
                                     "reset_system_account",
-                                    "self_update"]
+                                    "self_update",
+                                    "mount_options"]
             case_name = self.name.name.split('.test_')[-1]
             if case_name in delete_list:
                 self.vm_test01.delete()
@@ -770,21 +880,21 @@ class WALAConfTest(Test):
                     self.vm_test01.get_output("hostnamectl set-hostname %s" % self.vm_test01.name)
             if "enable_verbose_logging" in case_name:
                 self.vm_test01.get_output("mv -f /var/log/waagent.log.bak /var/log/waagent.log")
-            if "reset_system_account" in case_name:
-                # Recover uid
-                if not self.vm_test01.verify_alive(username=self.vm_params["username"],
-                                                   password=new_vm_params["password"], timeout=30):
-                    self.vm_test01.delete()
-                    self.vm_test01.wait_for_delete()
-                else:
-                    self.vm_test01.get_output("echo %s | passwd --stdin %s" % (self.vm_params["password"],
-                                                                               self.vm_params["username"]))
-                    self.vm_test01.get_output("echo %s | passwd --stdin root" % self.vm_params["password"])
-                    self.vm_test01.session_close()
-                    self.vm_test01.verify_alive(username="root", password=self.vm_params["password"])
-                    self.vm_test01.get_output("usermod -u %s %s" % (origin_uid, self.vm_params["username"]))
-                    self.assertEqual(origin_uid, self.vm_test01.get_output("id -u %s" % self.vm_params["username"]),
-                                     "Fail to recover uid")
+#            if "reset_system_account" in case_name:
+#                # Recover uid
+#                if not self.vm_test01.verify_alive(username=self.vm_params["username"],
+#                                                   password=new_vm_params["password"], timeout=30):
+#                    self.vm_test01.delete()
+#                    self.vm_test01.wait_for_delete()
+#                else:
+#                    self.vm_test01.get_output("echo %s | passwd --stdin %s" % (self.vm_params["password"],
+#                                                                               self.vm_params["username"]))
+#                    self.vm_test01.get_output("echo %s | passwd --stdin root" % self.vm_params["password"])
+#                    self.vm_test01.session_close()
+#                    self.vm_test01.verify_alive(username="root", password=self.vm_params["password"])
+#                    self.vm_test01.get_output("usermod -u %s %s" % (origin_uid, self.vm_params["username"]))
+#                    self.assertEqual(origin_uid, self.vm_test01.get_output("id -u %s" % self.vm_params["username"]),
+#                                     "Fail to recover uid")
 
         # Clean ssh sessions
         utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)

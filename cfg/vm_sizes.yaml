@@ -37,13 +37,25 @@ azure_mode: !mux
                 cpu: 1
                 memory: 3.5
                 disk_size: 50
+            Standard_D1_v2:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 50
             Standard_D15_v2:
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 20
                 memory: 140
-                disk_size: 1024
+                disk_size: 1000
             Standard_DS1:
+                storage_account: walaautoasmeastuspremium
+                location: "East US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 7
+            Standard_DS1_v2:
                 storage_account: walaautoasmeastuspremium
                 location: "East US"
                 cpu: 1
@@ -111,13 +123,25 @@ azure_mode: !mux
                 cpu: 1
                 memory: 3.5
                 disk_size: 50
+            Standard_D1_v2:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 50
             Standard_D15_v2:
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 20
                 memory: 140
-                disk_size: 1024
+                disk_size: 1000
             Standard_DS1:
+                storage_account: walaautoarmwestuspremium
+                location: "West US"
+                cpu: 1
+                memory: 3.5
+                disk_size: 7
+            Standard_DS1_v2:
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 1

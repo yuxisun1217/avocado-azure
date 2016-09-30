@@ -398,7 +398,7 @@ class VMARM(azure_vm.BaseVM):
         logging.debug("After retry %d times, VM is not deallocated.", r)
         return False
 
-    def wait_for_delete(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT):
+    def wait_for_delete(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT, **kwargs):
         """
 
         :param timeout:
