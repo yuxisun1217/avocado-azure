@@ -3,6 +3,9 @@ project: 7.3
 rhel_version: None
 #wala_version: 2.1.4-1
 wala_version: None
+tag: 
+upstream: False
+type: acceptance
 upstream: False
 base_url: "http://download.eng.pek2.redhat.com/rel-eng/"
 store_dir: "/home/autotest/"
