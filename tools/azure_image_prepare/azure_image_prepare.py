@@ -86,7 +86,6 @@ class Params(object):
         # Cannot use bool(xxx) to convert string to bool type!
         self.Upstream = c.get("Upstream")
         Log("Upstream: %s" % self.Upstream)
-        Log("Case group: %s" % c.get("type"))
         self.TmpDir = c.get("TmpDir")
         self.MainDir = c.get("MainDir")
         self.Baseurl = c.get("Baseurl")
