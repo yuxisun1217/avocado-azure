@@ -89,6 +89,7 @@ class FuncTest(Test):
             self.error("VM %s is not available. Exit." % self.vm_params["VMName"])
         self.project = self.params.get('Project', '*/Common/*')
         self.conf_file = "/etc/waagent.conf"
+        self.wala_version = self.params.get("WALA_Version", "*/Common/*").split('-')[0]
         # Increase sudo password timeout
         self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
 
@@ -206,6 +207,12 @@ class FuncTest(Test):
 #                         "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
                         "WARNING! /etc/resolv.conf will be deleted",
                         "WARNING! root password will be disabled. You will not be able to login as root"]
+        if r"2.0.16" in self.params.get("WALA_Version", "*/Common/*").split('-')[0]:
+            message_list = ["WARNING! The waagent service will be stopped",
+                            "WARNING! All SSH host key pairs will be deleted",
+                            "WARNING! Cached DHCP leases will be deleted",
+                            "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
+                            "WARNING! root password will be disabled. You will not be able to login as root"]
         # 1.1. waagent -deprovision [n]
         deprovision_output = self.vm_test01.get_output("echo `echo 'n' |sudo waagent -deprovision`", sudo=False)
         for msg in message_list:
@@ -299,6 +306,12 @@ class FuncTest(Test):
                         "WARNING! /etc/resolv.conf will be deleted",
                         "WARNING! root password will be disabled. You will not be able to login as root",
                         "WARNING! %s account and entire home directory will be deleted" % self.vm_test01.username]
+        if r"2.0.16" in self.params.get("WALA_Version", "*/Common/*").split('-')[0]:
+            message_list = ["WARNING! The waagent service will be stopped",
+                            "WARNING! All SSH host key pairs will be deleted",
+                            "WARNING! Cached DHCP leases will be deleted",
+                            "WARNING! Nameserver configuration in /etc/resolv.conf will be deleted",
+                            "WARNING! root password will be disabled. You will not be able to login as root"]
         # Make files for checking
         self.vm_test01.get_output("touch /var/lib/dhclient/walatest")
         self.vm_test01.get_output("touch /root/.bash_history")
@@ -346,8 +359,12 @@ class FuncTest(Test):
                              "hostname is not reset")
         self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/shadow" % self.vm_test01.username, sudo=False),
                          "%s is not deleted" % self.vm_test01.username)
-        self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/sudoers.d/waagent" % self.vm_test01.username, sudo=False),
-                         "/etc/sudoers.d/waagent is not wiped")
+        if r"2.0.16" in self.params.get("WALA_Version", "*/Common/*").split('-')[0]:
+            self.assertIn("No such file", self.vm_test01.get_output("ls /etc/sudoers.d/waagent", sudo=False),
+                             "/etc/sudoers.d/waagent is not deleted")
+        else:
+            self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/sudoers.d/waagent" % self.vm_test01.username, sudo=False),
+                             "/etc/sudoers.d/waagent is not wiped")
         # recover environment
         self.vm_test01.session_close()
         self.vm_test01.delete()
@@ -379,8 +396,12 @@ class FuncTest(Test):
                              "Hostname is not reset")
         self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/shadow" % self.vm_test01.username, sudo=False),
                          "%s is not deleted" % self.vm_test01.username)
-        self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/sudoers.d/waagent" % self.vm_test01.username, sudo=False),
-                         "/etc/sudoers.d/waagent is not wiped")
+        if r"2.0.16" in self.params.get("WALA_Version", "*/Common/*").split('-')[0]:
+            self.assertIn("No such file", self.vm_test01.get_output("ls /etc/sudoers.d/waagent", sudo=False),
+                             "/etc/sudoers.d/waagent is not deleted")
+        else:
+            self.assertEqual("", self.vm_test01.get_output("grep -R %s /etc/sudoers.d/waagent" % self.vm_test01.username, sudo=False),
+                             "/etc/sudoers.d/waagent is not wiped")
 
     def test_waagent_version(self):
         """
@@ -451,8 +472,12 @@ class FuncTest(Test):
         Check waagent -help
         """
         # waagent -help
-        help_msg = "usage: /usr/sbin/waagent [-verbose] [-force] [-help] " \
-                   "-deprovision[+user]|-register-service|-version|-daemon|-start|-run-exthandlers]"
+        if self.wala_version == "2.0.16":
+            help_msg = "usage: /usr/sbin/waagent [-verbose] [-force] [-help|" \
+                       "-install|-uninstall|-deprovision[+user]|-version|-serialconsole|-daemon]"
+        else:
+            help_msg = "usage: /usr/sbin/waagent [-verbose] [-force] [-help] " \
+                       "-deprovision[+user]|-register-service|-version|-daemon|-start|-run-exthandlers]"
         self.log.debug("help_msg: \n" + help_msg)
         self.assertEqual(help_msg, self.vm_test01.get_output("waagent -help", sudo=False).strip('\n'),
                          "waagent help message is wrong")

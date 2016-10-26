@@ -182,9 +182,30 @@ test:
     !include : cases_%s.yaml
     azure_mode: !mux
         !remove_node : %s
-""" % (data.get("type", "upstream"), remove_mode)
+""" % (data.get("type", "function"), remove_mode)
     with open(test_yaml, 'w') as f:
         f.write(TestYaml)
 
 write_test_yaml("asm")
 write_test_yaml("arm")
+
+
+# Create polarion_config.yaml
+polarion_yaml = "%s/cfg/polarion_config.yaml" % realpath
+PolarionYaml = """\
+PROJECT: {project}
+RHEL_VERSION: {rhel_version}
+WALA_VERSION: {wala_version}
+TYPE: {runtype}
+RESULT_PATH: {result_path}
+TAG: {tag}
+""".format(
+        project=data.get("project"),
+        rhel_version=rhel_version,
+        wala_version=wala_version,
+        runtype=None if str(data.get("type")) == "2016" else data.get("type"),
+        result_path=realpath+"/run-results/latest",
+        tag="upstream" if str(data.get("upstream")) == "True" else data.get("tag"))
+
+with open(polarion_yaml, 'w') as f:
+    f.write(PolarionYaml)

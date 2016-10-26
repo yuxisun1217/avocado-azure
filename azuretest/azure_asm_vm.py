@@ -558,7 +558,7 @@ class Blob(object):
     This class handles all basic storage blob operations for ASM.
     """
     DEFAULT_TIMEOUT = 240
-    COPY_TIMEOUT = 600
+    COPY_TIMEOUT = 3600
     DELETE_TIMEOUT = 240
     BLOB_UPLOAD_TIMEOUT = 10800
 

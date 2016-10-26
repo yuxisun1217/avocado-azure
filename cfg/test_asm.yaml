@@ -1,6 +1,6 @@
 test:
     !include : common.yaml
     !include : vm_sizes.yaml
-    !include : cases_acceptance.yaml
+    !include : cases_function.yaml
     azure_mode: !mux
         !remove_node : arm

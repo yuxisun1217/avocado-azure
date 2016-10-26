@@ -188,7 +188,9 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.modify_value("Provisioning.RegenerateSshHostKeyPair", "y", self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("Provisioning.SshHostKeyPairType", "rsa", self.conf_file))
         vm_image_name = self.vm_test01.name + "-regsshkey" + self.vm_test01.postfix()
-        self.vm_test01.waagent_deprovision(user=False)
+        deprovision_output = self.vm_test01.waagent_deprovision(user=False)
+        self.assertIn("WARNING! All SSH host key pairs will be deleted", deprovision_output,
+                      "Should have the delete ssh host key message. Messages:\n%s" % deprovision_output)
         self.vm_test01.get_output("mv /etc/ssh/ssh_host_* /tmp")
         self.assertEqual(self.vm_test01.shutdown(), 0)
         self.assertTrue(self.vm_test01.wait_for_deallocated())
@@ -202,12 +204,15 @@ class WALAConfTest(Test):
                          "Fail to create new VM base on capture image")
         self.assertTrue(self.vm_test01.wait_for_running())
         self.assertTrue(self.vm_test01.verify_alive())
-        self.assertNotIn("No such file or directory", self.vm_test01.get_output("ls /etc/ssh/ssh_host_*"),
+        self.assertNotIn("No such file or directory", self.vm_test01.get_output("ls /etc/ssh/ssh_host_rsa_key*"),
                          "Fail to regenerate ssh host key pairs")
         # 2. Provisioning.RegenerateSshHostKeyPair=y (Only check warning message)
         self.log.info("Provisioning.RegenerateSshHostKeyPair=y (Only check warning message)")
         self.assertTrue(self.vm_test01.modify_value("Provisioning.RegenerateSshHostKeyPair", "n", self.conf_file))
-        self.vm_test01.waagent_deprovision(user=False)
+        deprovision_output = self.vm_test01.waagent_deprovision(user=False)
+        self.assertNotIn("WARNING! All SSH host key pairs will be deleted", deprovision_output,
+                         "Bug 1314734. "
+                         "Should not have the delete ssh host key message. Messages:\n%s" % deprovision_output)
         # Check /var/log/messages
         ignore_list = ["failed to get extended button data",
                        "Starting kdump: [FAILED]",
@@ -245,9 +250,15 @@ class WALAConfTest(Test):
                          "Fail to restart the VM")
         self.assertTrue(self.vm_test01.wait_for_running())
         self.assertTrue(self.vm_test01.verify_alive())
-        self.assertNotIn("No such file or directory",
-                         self.vm_test01.get_output("ls /mnt/resource-new/DATALOSS_WARNING_README.txt"),
-                         "There's no DATALOSS_WARNING_README.txt in the new resource path")
+        for retry_times in range(1, 11):
+            if "No such file or directory" not in \
+                    self.vm_test01.get_output("ls /mnt/resource-new/DATALOSS_WARNING_README.txt"):
+                break
+            else:
+                self.log.debug("Retry %d times" % retry_times)
+                time.sleep(10)
+        self.assertNotEqual(10, retry_times,
+                            "There's no DATALOSS_WARNING_README.txt in the new resource path")
         # 2. ResourceDisk.Format=n
         self.log.info("ResourceDisk.Format=n")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Format", "n", self.conf_file))
@@ -256,8 +267,9 @@ class WALAConfTest(Test):
                          "Fail to restart the VM")
         self.assertTrue(self.vm_test01.wait_for_running())
         self.assertTrue(self.vm_test01.verify_alive())
+        time.sleep(10)
         self.assertEqual(self.vm_test01.get_output("mount|grep /dev/sdb"), "",
-                         "Fail to enable Verbose log")
+                         "Fail to disable resource disk format")
 
     def test_resource_disk_file_type(self):
         """
@@ -266,19 +278,29 @@ class WALAConfTest(Test):
         self.log.info("WALA conf: Resource disk file type")
         # 1. ResourceDisk.Filesystem=ext4 (Default)
         self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Filesystem", "ext4", self.conf_file))
-        time.sleep(30)
-        self.assertIn("ext4", self.vm_test01.get_output("mount|grep /mnt/resource"),
-                      "Fail to set resource disk file system to ext4")
-        time.sleep(30)
+        if not self.vm_test01.verify_value("ResourceDisk.SwapSizeMB", "2048"):
+            self.assertTrue(self.vm_test01.modify_value("ResourceDisk.SwapSizeMB", "2048"))
+            self.assertEqual(0, self.vm_test01.restart())
+            self.assertTrue(self.vm_test01.wait_for_running())
+            self.assertTrue(self.vm_test01.verify_alive())
+        for retry_times in range(1, 11):
+            if "ext4" in self.vm_test01.get_output("mount|grep /mnt/resource"):
+                break
+            else:
+                self.log.info("Retry %d times." % retry_times)
+                time.sleep(30)
+        self.assertNotEqual(10, retry_times,
+                            "Fail to set resource disk file system to ext4")
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in range(1, 11):
+        for retry_times in range(1, 11):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "2047":
                 break
             else:
-                self.log.info("Swap size is wrong. Retry %d times." % count)
+                self.log.info("Swap size is wrong. Retry %d times." % retry_times)
                 time.sleep(30)
-        self.assertNotEqual(10, count, "Swap is not enabled in ext4 file system.")
+        self.assertNotEqual(10, retry_times,
+                            "Swap is not enabled in ext4 file system.")
         # 2. ResourceDisk.Filesystem=ext3
         self.log.info("ResourceDisk.Filesystem=ext3")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Filesystem", "ext3", self.conf_file))
@@ -297,10 +319,6 @@ class WALAConfTest(Test):
                          "Fail to create new VM base on capture image")
         self.assertTrue(self.vm_test01.wait_for_running())
         self.assertTrue(self.vm_test01.verify_alive())
-#        self.assertEqual(self.vm_test01.restart(), 0,
-#                         "Fail to restart the VM")
-#        self.assertTrue(self.vm_test01.wait_for_running())
-#        self.assertTrue(self.vm_test01.verify_alive())
         time.sleep(30)
         self.assertIn("ext3", self.vm_test01.get_output("mount|grep /mnt/resource"),
                       "Fail to set resource disk file system to ext3")
@@ -833,6 +851,12 @@ class WALAConfTest(Test):
         # Check waagent.log
         self.assertIn("GPT detected", self.vm_test01.get_output("grep -R GPT /var/log/waagent.log"),
                       "Doesn't detect GPT partition")
+
+    def test_ssh_host_key_pair_type(self):
+        """
+        Ssh host key pair type
+        """
+        self.fail("No such automation test case")
 
     def tearDown(self):
         self.log.debug("tearDown")

@@ -71,7 +71,7 @@ class Run(object):
                     log(case_name)
         return rerun_list
 
-    def mk_rerun_yaml(self):
+    def mk_rerun_yaml(self, rerun_list):
         if self.azure_mode == 'asm':
             remove_node = 'arm'
         else:
@@ -92,8 +92,10 @@ test:
 azure_mode: !mux
     %s:
         cases:
+            ImgPrepTest.test_00_preparation
+            ImgPrepTest.test_03_import_image_to_azure
 """ % self.azure_mode
-        rerun_list = self._get_rerun_list()
+#        rerun_list = self._get_rerun_list()
         rerun_cases_str += '            ' + '\n            '.join(rerun_list)
         log(rerun_cases_str)
         with open(rerun_cases_file, 'w') as f:
@@ -113,12 +115,14 @@ azure_mode: !mux
         log("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)
         # Rerun failed cases
-        log("Rerun failed cases")
-        self.mk_rerun_yaml()
-        log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
-                    (self.avocado_path, self.avocado_path),
-                    timeout=None, ignore_status=True, debug=True).stdout)
-        shutil.copytree(self.job_path, "%s/rerun_result" % self.mode_path)
+        rerun_list = self._get_rerun_list()
+        if rerun_list:
+            log("Rerun failed cases")
+            self.mk_rerun_yaml(rerun_list)
+            log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
+                        (self.avocado_path, self.avocado_path),
+                        timeout=None, ignore_status=True, debug=True).stdout)
+            shutil.copytree(self.job_path, "%s/rerun_result" % self.mode_path)
         log("=============== Test run end:   %s mode ===============" % self.azure_mode)
 
 
@@ -147,6 +151,8 @@ def main():
     if arm_flag:
         arm_run = Run("arm")
         arm_run.run()
+    # Upload result to polarion
+    command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
 #    latest_path = "%s/run-results/latest" % AVOCADO_PATH
 #    if os.path.exists(latest_path):
 #        os.remove(latest_path)

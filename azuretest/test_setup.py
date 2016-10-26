@@ -16,7 +16,7 @@ class Setup(object):
         self.azure_password = self.params.get('password', '*/AzureSub/*')
         azure_cli_common.login_azure(username=self.azure_username,
                                      password=self.azure_password)
-        azure_cli_common.set_config_mode(self.azure_mode)
+
 
 
 

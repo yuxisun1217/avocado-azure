@@ -164,8 +164,9 @@ class GeneralTest(Test):
         self.log.info("Check the new account created by WALinuxAgent")
         self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="password"),
                         "Fail to login with password.")
-        self.assertEqual("%s ALL=(ALL) ALL" % self.vm_params["username"],
-                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent" % self.vm_params["username"]),
+        self.assertEqual("%sALL=(ALL)ALL" % self.vm_params["username"],
+                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent"
+                                                   % self.vm_params["username"]).replace(' ', ''),
                          "The new account sudo permission is wrong")
 
     def test_check_sshkey(self):
@@ -186,15 +187,18 @@ class GeneralTest(Test):
         """
         self.log.info("Access the VM with both ssh key and password")
         # Check ssh key
+        self.log.info("Try to login with ssh_key")
         self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="publickey"),
                         "Fail to login with ssh_key.")
         # Check password
+        self.log.info("Try to login with password")
         self.assertTrue(self.vm_test01.verify_alive(timeout=120, authentication="password"),
                         "Fail to login with password.")
         time.sleep(10)
         self.vm_test01.get_output("grep -R '' /etc/sudoers.d/waagent")
-        self.assertEqual("%s ALL=(ALL) ALL" % self.vm_params["username"],
-                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent" % self.vm_params["username"]),
+        self.assertEqual("%sALL=(ALL)ALL" % self.vm_params["username"],
+                         self.vm_test01.get_output("grep -R %s\ ALL /etc/sudoers.d/waagent"
+                                                   % self.vm_params["username"]).replace(' ', ''),
                          "The new account sudo permission is wrong")
 
     def test_check_waagent_log(self):
@@ -245,8 +249,9 @@ class GeneralTest(Test):
         output = self.vm_test01.get_output("ps aux|grep waagent")
         self.assertIn("/usr/sbin/waagent -daemon", output,
                       "Fail to start waagent: no -daemon process")
-        self.assertIn("/usr/sbin/waagent -run-exthandlers", output,
-                      "Fail to start waagent: no -run-exthandlers process")
+        if r"2.0.16" not in self.params.get("WALA_Version", "*/Common/*").split('-')[0]:
+            self.assertIn("/usr/sbin/waagent -run-exthandlers", output,
+                          "Fail to start waagent: no -run-exthandlers process")
         # 2. service waagent restart
         old_pid = self.vm_test01.get_output("ps aux|grep [w]aagent\ -daemon|awk '{print \$2}'")
         self.assertNotIn("FAILED", self.vm_test01.get_output("service waagent restart"),
