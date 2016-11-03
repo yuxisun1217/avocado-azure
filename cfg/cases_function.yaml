@@ -46,7 +46,6 @@ azure_mode: !mux
             WALAConfTest.test_http_proxy
             WALAConfTest.test_device_timeout
             WALAConfTest.test_disable_provisioning
-            WALAConfTest.test_invoke_specific_program
             WALAConfTest.test_reset_system_account
             WALAConfTest.test_self_update
             GeneralTest.test_check_release_version

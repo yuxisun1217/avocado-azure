@@ -129,17 +129,18 @@ lo eth0\
         self.assertIn("25/tcp open smtp", inside,
                       "port 25 is not opened inside")
         self.assertIn("open", utils_misc.host_command("tcping %s %d" % (self.vm_params["DNSName"],
-                                                                              self.vm_params["PublicPort"]),
-                                                            ignore_status=True),
+                                                                        self.vm_params["PublicPort"]),
+                                                      ignore_status=True),
                       "ssh port should be opened outside")
         self.assertIn("closed", utils_misc.host_command("tcping %s 25" % self.vm_params["DNSName"],
-                                                              ignore_status=True),
+                                                        ignore_status=True),
                       "port 25 shouldn't be opened outside")
 
     def tearDown(self):
         self.log.debug("Teardown.")
         # Clean ssh sessions
-        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9",
+                                ignore_status=True)
 
 if __name__ == "__main__":
     main()

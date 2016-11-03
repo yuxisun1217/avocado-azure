@@ -50,7 +50,8 @@ ignore_case_list = [
         "ImgPrepTest.test_03_import_image_to_azure"
         ]
 
-CUR_PATH = os.getcwd()
+#CUR_PATH = os.getcwd()
+CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 # Parse polarion_config.yaml
 CONFIG_FILE = '%s/../cfg/polarion_config.yaml' % CUR_PATH
@@ -153,7 +154,7 @@ def get_testRecords(xml_file):
                 continue
         workItems.append(workItem)
         testRecords.append(testRecord)
-        logging.info('Get the test record %s from the xml file', testRecord)
+        logging.debug('Get the test record %s from the xml file', testRecord)
 
     logging.info('======Finish to prepare the test cases and records from the xml file======')
 
@@ -237,7 +238,7 @@ def get_exits_workItems(proj_id, gs_doc, case_type):
     if workItems:
         logging.info('Found %s work items', len(workItems))
         for workItem in workItems:
-            logging.info('%-12s %-20s %s', workItem.work_item_id, workItem.type, workItem.title)
+            logging.debug('%-12s %-20s %s', workItem.work_item_id, workItem.type, workItem.title)
             exist_tests[workItem.title] = workItem.work_item_id
 
     logging.info('======Finish to get "%s" test cases from "%s"======', case_type, gs_doc)
@@ -297,7 +298,7 @@ def submit_testResult(proj_id, test_run_id, template_id, testRecords, all_workIt
     return
 
 
-def update_polarion(azure_mode):
+def update_polarion(azure_mode, exist_workItems):
     logging.info('project id: %s' % PROJ_ID)
     logging.info('space: %s' % SPACE)
     logging.info('testrun prefix: %s' % TESTRUN_PREFIX)
@@ -330,9 +331,9 @@ def update_polarion(azure_mode):
 #            )
 
     # Get the workItems exist in the document
-    exist_workItems = {}
-    for doc in case_doc:
-        exist_workItems = dict(exist_workItems, **get_exits_workItems(PROJ_ID, case_doc[doc], CASE_TYPE))
+#    exist_workItems = {}
+#    for doc in case_doc:
+#        exist_workItems = dict(exist_workItems, **get_exits_workItems(PROJ_ID, case_doc[doc], CASE_TYPE))
 
     # Add the new items to the document
     # First get the test cases not in the document
@@ -353,7 +354,7 @@ def update_polarion(azure_mode):
     #mk_logPath()
 
     # Create a test run and add the test record from the xml file
-    test_run_id = "{testrun_prefix} {azure_mode} {timestr}".format(
+    test_run_id = "{testrun_prefix} {azure_mode} Automation {timestr}".format(
             testrun_prefix=TESTRUN_PREFIX, 
             azure_mode=azure_mode,
             timestr=datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
@@ -363,8 +364,12 @@ def update_polarion(azure_mode):
 
 
 if __name__ == '__main__':
+    # Get the workItems exist in the document
+    exist_workItems = {}
+    for doc in case_doc:
+        exist_workItems = dict(exist_workItems, **get_exits_workItems(PROJ_ID, case_doc[doc], CASE_TYPE))
     # Support both ASM and ARM results
     if os.path.isdir(RESULT_PATH+"/ASM"):
-        update_polarion("ASM")
+        update_polarion("ASM", exist_workItems)
     if os.path.isdir(RESULT_PATH+"/ARM"):
-        update_polarion("ARM")
+        update_polarion("ARM", exist_workItems)

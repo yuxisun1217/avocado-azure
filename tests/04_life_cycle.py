@@ -105,6 +105,7 @@ class LifeCycleTest(Test):
         :return:
         """
         self.log.info("Create a VM through Azure CLI")
+        # Create VM through CLI
         self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
                          "Fail to create vm through CLI: azure cli fail")
         self.assertTrue(self.vm_test01.wait_for_running(),
@@ -112,13 +113,15 @@ class LifeCycleTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Fail to create vm through CLI: cannot login")
         self.log.info("Create a VM through Azure CLI successfully")
+        # Check VM status through CLI
+        self.assertEqual(self.vm_params["Location"], self.vm_test01.params["Location"],
+                         "Location property is wrong")
 
     def test_restart_vm(self):
         """
         restart
         """
         self.log.info("Restart a VM")
-#        self.vm_test01.verify_alive()
         before = self.vm_test01.get_output("who -b", sudo=False)
 #        self.vm_test01.session_close()
         self.log.debug("Restart the vm %s", self.vm_params["VMName"])
@@ -131,6 +134,16 @@ class LifeCycleTest(Test):
         if after == before:
             self.fail("VM is not restarted.")
         self.log.info("VM restart successfully.")
+        # Check the swap
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        for count in xrange(1, 11):
+            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+            if swapsize == "2047":
+                break
+            else:
+                self.log.info("Swap size is wrong. Retry %d times." % count)
+                time.sleep(30)
+        self.assertNotEqual(10, count, "Swap is not on after VM restart")
 
     def test_reboot_vm_inside_guest(self):
         """

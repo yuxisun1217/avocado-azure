@@ -13,7 +13,8 @@ POSTFIX = time.strftime("%Y%m%d%H%M")
 AVOCADO_PATH = os.path.split(os.path.realpath(__file__))[0]
 IGNORE_LIST = ["SettingsTest.test_reset_access_successively",
                "SettingsTest.test_reset_pw_after_capture"]
-UPSTREAM = yaml.load(file('%s/config.yaml' % AVOCADO_PATH))["upstream"]
+#UPSTREAM = yaml.load(file('%s/config.yaml' % AVOCADO_PATH))["upstream"]
+SUBMIT_RESULT = yaml.load(file('%s/config.yaml' % AVOCADO_PATH))["submit_result"]
 
 
 def log(msg):
@@ -152,7 +153,13 @@ def main():
         arm_run = Run("arm")
         arm_run.run()
     # Upload result to polarion
-    command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
+    if SUBMIT_RESULT:
+        log("=============== Begin to sumbit result to polarion ===============")
+        command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
+    else:
+        log("Do not submit result to polarion.")
+    log("=============== Finished ===============")
+
 #    latest_path = "%s/run-results/latest" % AVOCADO_PATH
 #    if os.path.exists(latest_path):
 #        os.remove(latest_path)

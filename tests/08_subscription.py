@@ -158,21 +158,21 @@ class SubscriptionTest(Test):
         """
         self.log.info("Get content from RHUI")
         # Preparation
-        self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
+        if "No such file" not in self.vm_test01.get_output("ls /etc/yum.repos.d/rh-cloud.repo"):
+            self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
         # Check rhui files
         rhui_file_list = ["/etc/yum.repos.d/rh-cloud.repo",
-                          "/etc/yum.repos.d/rhui-load-balancers",
                           "/etc/pki/rhui/product/content.crt"]
         for rhui_file in rhui_file_list:
             self.assertNotIn("No such file", self.vm_test01.get_output("ls %s" % rhui_file),
                              "No file %s" % rhui_file)
         # Test yum install/remove
-        self.vm_test01.get_output("yum install -y zip")
-        self.assertEqual("/usr/bin/zip", self.vm_test01.get_output("ls /usr/bin/zip"),
-                         "yum install zip fail")
-        self.vm_test01.get_output("yum remove -y zip")
-        self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/zip"),
-                      "yum remove zip fail")
+        self.vm_test01.get_output("yum install -y expect")
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                         "yum install expect fail")
+        self.vm_test01.get_output("yum remove -y expect")
+        self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                      "yum remove expect fail")
 
     def tearDown(self):
         self.log.debug("tearDown")

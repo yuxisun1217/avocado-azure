@@ -283,7 +283,7 @@ class WALAConfTest(Test):
             self.assertEqual(0, self.vm_test01.restart())
             self.assertTrue(self.vm_test01.wait_for_running())
             self.assertTrue(self.vm_test01.verify_alive())
-        for retry_times in range(1, 11):
+        for retry_times in xrange(1, 11):
             if "ext4" in self.vm_test01.get_output("mount|grep /mnt/resource"):
                 break
             else:
@@ -292,7 +292,7 @@ class WALAConfTest(Test):
         self.assertNotEqual(10, retry_times,
                             "Fail to set resource disk file system to ext4")
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for retry_times in range(1, 11):
+        for retry_times in xrange(1, 11):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "2047":
                 break
@@ -324,7 +324,7 @@ class WALAConfTest(Test):
                       "Fail to set resource disk file system to ext3")
         time.sleep(30)
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in range(1, 11):
+        for count in xrange(1, 11):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "2047":
                 break
@@ -360,16 +360,19 @@ class WALAConfTest(Test):
             self.assertIn("xfs", self.vm_test01.get_output("mount|grep /mnt/resource"),
                           "Bug 1372276. "
                           "Fail to set resource disk file system to xfs")
-            time.sleep(30)
+#            time.sleep(30)
             # Retry 10 times (300s in total) to wait for the swap file created.
-            for count in range(1, 11):
+            for count in xrange(1, 11):
                 swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
                 if swapsize == "2047":
                     break
                 else:
                     self.log.info("Swap size is wrong. Retry %d times." % count)
                     time.sleep(30)
-            self.assertNotEqual(10, count, "Swap is not enabled in xfs file system.")
+            else:
+                self.fail("Bug 1386494. "
+                          "Swap is not enabled in xfs file system.")
+#            self.assertNotEqual(10, count, "Swap is not enabled in xfs file system.")
 
     def test_resource_disk_swap_check(self):
         """

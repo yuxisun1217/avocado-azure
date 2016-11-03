@@ -1,18 +1,16 @@
 import os
 import yaml
 import subprocess
+from optparse import OptionParser
 
 realpath = os.path.split(os.path.realpath(__file__))[0]
 config_yaml = "%s/config.yaml" % realpath
 common_yaml = "%s/cfg/common.yaml" % realpath
 azure_image_prepare_dir = "%s/tools/azure_image_prepare" % realpath
-azure_image_prepare_conf = "%s/azure_image_prepare.yaml" % azure_image_prepare_dir
+azure_image_prepare_yaml = "%s/azure_image_prepare.yaml" % azure_image_prepare_dir
+polarion_yaml = "%s/cfg/polarion_config.yaml" % realpath
 
-# Create azure_image_prepare.yaml
-with open(config_yaml, 'r') as f:
-    data = yaml.load(f)
-
-AzureImagePrepareConf = """\
+AzureImagePrepareYaml = """\
 #
 # Azure Image Prepare Script Configuration
 #
@@ -27,71 +25,51 @@ AzureImagePrepareConf = """\
 # Verbose:     Enable verbose logs
 # ImageSize:   The VM image disk size in GB
 
-Project: %s
-Version: %s
-WalaVersion: %s
-Upstream: %s
-Baseurl: %s
-MainDir: %s
+Project: %(project)s
+Version: %(rhel_version)s
+WalaVersion: %(wala_version)s
+Upstream: %(upstream)s
+Baseurl: %(base_url)s
+MainDir: %(store_dir)s
 TmpDir: /home/tmp/azure/
 Logfile: /var/log/azure_image_prepare.log
 Verbose: y
 ImageSize: 10
-Tag: %s
-""" % (data.get("project"),
-       data.get("rhel_version"),
-       data.get("wala_version"),
-       data.get("upstream"),
-       data.get("base_url"),
-       data.get("store_dir"),
-       data.get("tag"))
-
-with open(azure_image_prepare_conf, 'w') as f:
-    f.write(AzureImagePrepareConf)
-
-# Create common.yaml
-#cmd = "%s/azure_image_prepare.py -rhelbuild" % azure_image_prepare_dir
-#print cmd
-#rhel_version = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).strip('\n')
-rhel_version = subprocess.check_output("%s/azure_image_prepare.py -rhelbuild" % azure_image_prepare_dir,
-                                       stderr=subprocess.STDOUT, shell=True).strip('\n')
-wala_version = subprocess.check_output("%s/azure_image_prepare.py -walabuild" % azure_image_prepare_dir,
-                                       stderr=subprocess.STDOUT, shell=True).split('.el')[0].strip('\n')
-tagstr = "-"+data.get("tag") if (data.get("tag") or data.get("tag") == "None") else ""
+Tag: %(tag)s
+"""
 
 CommonYaml = """\
 Common:
-    Project: %s
-    WALA_Version: %s
+    Project: %(project)s
+    WALA_Version: %(wala_version)s
 AzureSub:
-    username: %s
-    password: %s
+    username: %(azure_username)s
+    password: %(azure_password)s
 RedhatSub:
-    username: %s
-    password: %s
+    username: %(redhat_username)s
+    password: %(redhat_password)s
 Prepare:
     storage_account:
         name: walaautoimages
         type: LRS
         location: "East US"
     container: vhds
-    vhd_file_path: %s
+    vhd_file_path: %(vhd_file_path)s
 DiskBlob:
-    name: %s
+    name: %(os_disk)s
 azure_mode: !mux
     asm:
         azure_mode: "asm"
-        vm_name: walaautos%s
+        vm_name: walaautos%(vm_name_postfix)s
         vm_size: Small
         resourceGroup:
-#            rg_name: walaautoasmeastus
             region: eastus
             storage_account: walaautoasmeastus
             storage_account_type: LRS
             container: vhds
             location: "East US"
         Image:
-            name: %s
+            name: %(image)s
         network:
             public_port: 56000
             endpoint:
@@ -101,12 +79,12 @@ azure_mode: !mux
             name: nay-67-ond-squid
             size: Small
             username: root
-            password: %s
+            password: %(vm_password)s
             proxy_ip: 172.20.0.254
             proxy_port: 3128
     arm:
         azure_mode: "arm"
-        vm_name: walaautor%s
+        vm_name: walaautor%(vm_name_postfix)s
         vm_size: Standard_A1
         resourceGroup:
             rg_name: walaautoarmwestus
@@ -123,16 +101,16 @@ azure_mode: !mux
             name: wala-squid
             size: Standard_A1
             username: root
-            password: %s
+            password: %(vm_password)s
             rg_name: walaautoarmwestus
             region: westus
             proxy_ip: 172.20.0.254
             proxy_port: 3128
 VMUser:
-    username: %s
-    password: %s
-    new_username: %s
-    new_password: %s
+    username: %(vm_username)s
+    password: %(vm_password)s
+    new_username: %(vm_new_username)s
+    new_password: %(vm_new_password)s
 DataDisk:
     container: vhds
     disk_number: 3
@@ -145,67 +123,138 @@ DataDisk:
     disk3:
         size: 1023
         host_caching: ReadWrite
-""" % (data.get("project"),
-       wala_version,
-       data.get("AzureSub").get("username"),
-       data.get("AzureSub").get("password"),
-       data.get("RedhatSub").get("username"),
-       data.get("RedhatSub").get("password"),
-       data.get("store_dir")+"vhd/",
-#       rhel_version+"-Server-x86_64-dvd1.vhd",
-       rhel_version+"-wala-"+wala_version+tagstr+".vhd",
-       str(data.get("project")).replace('.', ''),
-       "walaauto-"+rhel_version+"-wala-"+wala_version+tagstr,
-       data.get("VMUser").get("password"),
-       str(data.get("project")).replace('.', ''),
-       data.get("VMUser").get("password"),
-       data.get("VMUser").get("username"),
-       data.get("VMUser").get("password"),
-       data.get("VMUser").get("new_username"),
-       data.get("VMUser").get("new_password"))
+"""
 
-with open(common_yaml, 'w') as f:
-    f.write(CommonYaml)
-
-
-# Create test_asm.yaml and test_arm.yaml
-def write_test_yaml(azure_mode):
-    test_yaml = "%s/cfg/test_%s.yaml" % (realpath, azure_mode)
-    if azure_mode == "asm":
-        remove_mode = "arm"
-    else:
-        remove_mode = "asm"
-    TestYaml = """\
+TestYaml = """\
 test:
     !include : common.yaml
     !include : vm_sizes.yaml
-    !include : cases_%s.yaml
+    !include : cases_%(case_group)s.yaml
     azure_mode: !mux
-        !remove_node : %s
-""" % (data.get("type", "function"), remove_mode)
-    with open(test_yaml, 'w') as f:
-        f.write(TestYaml)
+        !remove_node : %(remove_mode)s
+"""
 
-write_test_yaml("asm")
-write_test_yaml("arm")
-
-
-# Create polarion_config.yaml
-polarion_yaml = "%s/cfg/polarion_config.yaml" % realpath
 PolarionYaml = """\
-PROJECT: {project}
-RHEL_VERSION: {rhel_version}
-WALA_VERSION: {wala_version}
-TYPE: {runtype}
-RESULT_PATH: {result_path}
-TAG: {tag}
-""".format(
-        project=data.get("project"),
-        rhel_version=rhel_version,
-        wala_version=wala_version,
-        runtype=None if str(data.get("type")) == "2016" else data.get("type"),
-        result_path=realpath+"/run-results/latest",
-        tag="upstream" if str(data.get("upstream")) == "True" else data.get("tag"))
+PROJECT: %(project)s
+RHEL_VERSION: %(rhel_version)s
+WALA_VERSION: %(wala_version)s
+TYPE: %(runtype)s
+RESULT_PATH: %(result_path)s
+TAG: %(tag)s
+"""
 
-with open(polarion_yaml, 'w') as f:
-    f.write(PolarionYaml)
+
+def _write_file_content(filename, content):
+    with open(filename, 'w') as f:
+        f.write(content)
+
+
+class CreateConfFiles(object):
+    def __init__(self, data):
+        """
+        :param data: Parameters dictionary. Parse the config.yaml
+        """
+        self.data = data
+        self.rhel_version = None
+        self.wala_version = None
+
+    def create_azure_image_prepare_yaml(self):
+        """
+        Create azure_image_prepare.yaml. Must be run before all other functions.
+        """
+        azure_image_prepare_yaml_dict = {
+            "project": self.data.get("project"),
+            "rhel_version": self.data.get("rhel_version"),
+            "wala_version": self.data.get("wala_version"),
+            "upstream": self.data.get("upstream"),
+            "base_url": self.data.get("base_url"),
+            "store_dir": self.data.get("store_dir"),
+            "tag": self.data.get("tag")
+        }
+        _write_file_content(azure_image_prepare_yaml,
+                            AzureImagePrepareYaml % azure_image_prepare_yaml_dict)
+        if self.data.get("ondemand"):
+            self.rhel_version = "RHEL-"+str(self.data.get("project"))+"-ondemand"
+        else:
+            self.rhel_version = subprocess.check_output("%s/azure_image_prepare.py -rhelbuild" % azure_image_prepare_dir,
+                                                        stderr=subprocess.STDOUT, shell=True).strip('\n')
+        self.wala_version = subprocess.check_output("%s/azure_image_prepare.py -walabuild" % azure_image_prepare_dir,
+                                                    stderr=subprocess.STDOUT, shell=True).split('.el')[0].strip('\n')
+
+    def create_common_yaml(self, ondemand_os_disk=""):
+        """
+        Create common.yaml
+        """
+        tagstr = "-"+self.data.get("tag") if (self.data.get("tag") or self.data.get("tag") == "None") else ""
+        if self.data.get("customize"):
+            os_disk = self.data.get("os_disk")
+            image = self.data.get("image")
+        elif self.data.get("ondemand"):
+            os_disk = ondemand_os_disk
+            image = "walaauto-RHEL-"+str(self.data.get("project"))+"-ondemand"+"-wala-"+self.wala_version+tagstr
+        else:
+            image = "walaauto-"+self.rhel_version+"-wala-"+self.wala_version+tagstr,
+            os_disk = self.rhel_version+"-wala-"+self.wala_version+tagstr+".vhd"
+        common_yaml_dict = {
+            "project": self.data.get("project"),
+            "wala_version": self.wala_version,
+            "azure_username": self.data.get("AzureSub").get("username"),
+            "azure_password": self.data.get("AzureSub").get("password"),
+            "redhat_username": self.data.get("RedhatSub").get("username"),
+            "redhat_password": self.data.get("RedhatSub").get("password"),
+            "vhd_file_path": self.data.get("store_dir")+"vhd/",
+            "os_disk": os_disk,
+            "vm_name_postfix": str(self.data.get("project")).replace('.', ''),
+            "image": image,
+            "vm_username": self.data.get("VMUser").get("username"),
+            "vm_password": self.data.get("VMUser").get("password"),
+            "vm_new_username": self.data.get("VMUser").get("new_username"),
+            "vm_new_password": self.data.get("VMUser").get("new_password")
+        }
+        _write_file_content(common_yaml,
+                            CommonYaml % common_yaml_dict)
+
+    def create_test_yaml(self, azure_mode):
+        """
+        Create test_asm.yaml or test_arm.yaml
+        """
+        test_yaml = "%s/cfg/test_%s.yaml" % (realpath, azure_mode)
+        test_yaml_dict = {
+            "case_group": self.data.get("type", "function"),
+            "remove_mode": "arm" if azure_mode == "asm" else "asm"
+        }
+        _write_file_content(test_yaml,
+                            TestYaml % test_yaml_dict)
+
+    def create_polarion_config_yaml(self):
+        """
+        Create polarion_config.yaml
+        """
+        polarion_yaml_dict = {
+            "project": self.data.get("project"),
+            "rhel_version": self.rhel_version,
+            "wala_version": self.wala_version,
+            "runtype": None if str(data.get("type")) == "2016" else self.data.get("type"),
+            "result_path": realpath+"/run-results/latest",
+            "tag": "upstream" if str(data.get("upstream")) == "True" else data.get("tag")
+        }
+        _write_file_content(polarion_yaml,
+                            PolarionYaml % polarion_yaml_dict)
+
+
+if __name__ == "__main__":
+    usage = "usage: %prog [-o <osdisk>]"
+    parser = OptionParser(usage)
+    parser.add_option('-o', '--osdisk', dest='osdisk', action='store',
+                      help='The VHD OS disk name(e.g.RHEL-7.3-20161019.0-wala-2.2.0-2.vhd)', metavar='OSDISK.vhd')
+
+    options, args = parser.parse_args()
+
+    with open(config_yaml, 'r') as f:
+        data = yaml.load(f)
+    createFile = CreateConfFiles(data)
+    createFile.create_azure_image_prepare_yaml()
+    createFile.create_common_yaml(options.osdisk)
+    createFile.create_test_yaml("asm")
+    createFile.create_test_yaml("arm")
+    createFile.create_polarion_config_yaml()
