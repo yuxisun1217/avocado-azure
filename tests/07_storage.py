@@ -387,8 +387,8 @@ class StorageTest(Test):
         self.log.debug(os_blob.params)
         current_size_kb = int(os_blob.params.get("contentLength"))
         current_size = (current_size_kb-512)/1024/1024/1024
-        smaller_size = current_size - 1
-        larger_size = current_size + 1
+        smaller_size = current_size - 2
+        larger_size = current_size + 2
         larger_size_kb = larger_size*1024*1024*1024+512
         self.vm_test01.shutdown()
         self.vm_test01.wait_for_deallocated()

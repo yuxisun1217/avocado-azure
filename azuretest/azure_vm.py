@@ -131,7 +131,7 @@ class BaseVM(object):
             raise
         return value
 
-    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end='', reboot=False, sudo=True):
+    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end='', sudo=True):
         logging.debug("DISK: %s", disk)
         if isinstance(project, float) and float(project) >= 7.0:
             u = 'u\n'
@@ -161,12 +161,15 @@ EOF
         if disk+str(partition) not in output:
             logging.error("Fail to part disk %s" % disk)
             raise Exception
-        if reboot:
+#        if reboot:
+#            self.get_output("reboot", sudo=sudo)
+#            time.sleep(60)
+#            self.verify_alive()
+        output = self.get_output("partprobe", sudo=sudo)
+        if "Warning" in output:
             self.get_output("reboot", sudo=sudo)
             time.sleep(60)
             self.verify_alive()
-        else:
-            self.get_output("partprobe", sudo=sudo)
         self.get_output("fdisk -l %s" % disk, sudo=sudo)
         self.get_output("mkfs.ext4 %s" % disk+str(partition), timeout=300, sudo=sudo)
         self.get_output("mkdir %s" % mount_point, sudo=sudo)
@@ -505,5 +508,6 @@ EOF
 
     def postfix(self):
         return utils_misc.postfix()
+
 
 

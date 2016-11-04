@@ -291,6 +291,11 @@ class WALAConfTest(Test):
                 time.sleep(30)
         self.assertNotEqual(10, retry_times,
                             "Fail to set resource disk file system to ext4")
+        # Disable default swap
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("swapoff /dev/mapper/VolGroup-lv_swap")
+        else:
+            self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
         # Retry 10 times (300s in total) to wait for the swap file created.
         for retry_times in xrange(1, 11):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
@@ -322,7 +327,12 @@ class WALAConfTest(Test):
         time.sleep(30)
         self.assertIn("ext3", self.vm_test01.get_output("mount|grep /mnt/resource"),
                       "Fail to set resource disk file system to ext3")
-        time.sleep(30)
+#        time.sleep(30)
+        # Disable default swap
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("swapoff /dev/mapper/VolGroup-lv_swap")
+        else:
+            self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
         # Retry 10 times (300s in total) to wait for the swap file created.
         for count in xrange(1, 11):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
@@ -360,7 +370,12 @@ class WALAConfTest(Test):
             self.assertIn("xfs", self.vm_test01.get_output("mount|grep /mnt/resource"),
                           "Bug 1372276. "
                           "Fail to set resource disk file system to xfs")
-#            time.sleep(30)
+            time.sleep(30)
+        # Disable default swap
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("swapoff /dev/mapper/VolGroup-lv_swap")
+        else:
+            self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
             # Retry 10 times (300s in total) to wait for the swap file created.
             for count in xrange(1, 11):
                 swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
@@ -829,11 +844,12 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Cannot login the VM")
         # Set resource disk
+        swapsize_std = "5242880"
         self.log.info("ResourceDisk.SwapSizeMB=5242880")
         self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Format", "y", self.conf_file))
         self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Filesystem", "ext4", self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "5242880", self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", swapsize_std, self.conf_file))
         self.vm_test01.session_close()
         self.assertEqual(self.vm_test01.restart(), 0,
                          "Fail to restart the VM")
@@ -842,15 +858,17 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Cannot login the VM")
         time.sleep(30)
-        # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in range(1, 11):
+        # Retry 10 times (900s in total) to wait for the swap file created.
+        for count in range(1, 31):
             swapsize = self.vm_test01.get_output("free -mg|grep Swap|awk '{print $2}'", sudo=False)
-            if swapsize == "5119":
+            if int(swapsize) == int(swapsize_std)/1024-1:
                 break
             else:
                 self.log.info("Swap size is wrong. Retry %d times." % count)
                 time.sleep(30)
-        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=5242880 doesn't work in GPT partition")
+        else:
+            self.fail("ResourceDisk.SwapSizeMB=%s doesn't work in GPT partition" % swapsize_std)
+#        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=5242880 doesn't work in GPT partition")
         # Check waagent.log
         self.assertIn("GPT detected", self.vm_test01.get_output("grep -R GPT /var/log/waagent.log"),
                       "Doesn't detect GPT partition")
