@@ -164,12 +164,12 @@ class CreateConfFiles(object):
         """
         azure_image_prepare_yaml_dict = {
             "project": self.data.get("project"),
-            "rhel_version": self.data.get("rhel_version"),
-            "wala_version": self.data.get("wala_version"),
-            "upstream": self.data.get("upstream"),
-            "base_url": self.data.get("base_url"),
-            "store_dir": self.data.get("store_dir"),
-            "tag": self.data.get("tag")
+            "rhel_version": self.data.get("rhel_version", None),
+            "wala_version": self.data.get("wala_version", None),
+            "upstream": self.data.get("upstream", True),
+            "base_url": self.data.get("base_url", "http://download.eng.pek2.redhat.com/rel-eng/"),
+            "store_dir": self.data.get("store_dir", "/home/autotest/"),
+            "tag": self.data.get("tag", None)
         }
         _write_file_content(azure_image_prepare_yaml,
                             AzureImagePrepareYaml % azure_image_prepare_yaml_dict)

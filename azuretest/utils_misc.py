@@ -299,12 +299,15 @@ def host_command(cmd="", ret='stdout', **kwargs):
 
 
 def get_sshkey_file():
-    host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
     myname = host_command("whoami").strip('\n')
     if myname == 'root':
-        return "/%s/.ssh/id_rsa.pub" % myname
+        sshkey_file = "/%s/.ssh/id_rsa.pub" % myname
     else:
-        return "/home/%s/.ssh/id_rsa.pub" % myname
+        sshkey_file = "/home/%s/.ssh/id_rsa.pub" % myname
+    if not os.path.isfile(sshkey_file):
+        host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
+    return sshkey_file
+
 
 def get_storage_account_list(azure_mode):
     """
