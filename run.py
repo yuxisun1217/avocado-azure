@@ -152,14 +152,14 @@ def main():
     log("ASM mode: %s;  ARM mode: %s" % (asm_flag, arm_flag))
     if asm_flag:
         asm_run = Run("asm")
-#        asm_run.run()
+        asm_run.run()
     if arm_flag:
         arm_run = Run("arm")
-#        arm_run.run()
+        arm_run.run()
     # Upload result to polarion
     if SUBMIT_RESULT:
         log("=============== Begin to sumbit result to polarion ===============")
-#        command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
+        command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
     else:
         log("Do not submit result to polarion.")
     log("=============== Finished ===============")
