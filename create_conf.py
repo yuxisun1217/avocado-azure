@@ -202,7 +202,7 @@ class CreateConfFiles(object):
             "azure_password": self.data.get("AzureSub").get("password"),
             "redhat_username": self.data.get("RedhatSub").get("username"),
             "redhat_password": self.data.get("RedhatSub").get("password"),
-            "vhd_file_path": self.data.get("store_dir")+"vhd/",
+            "vhd_file_path": self.data.get("store_dir", "/home/autotest/")+"vhd/",
             "os_disk": os_disk,
             "vm_name_postfix": str(self.data.get("project")).replace('.', ''),
             "image": image,
@@ -235,7 +235,7 @@ class CreateConfFiles(object):
             "rhel_version": self.rhel_version,
             "wala_version": self.wala_version,
             "runtype": None if str(data.get("type")) == "2016" else self.data.get("type"),
-            "result_path": realpath+"/run-results/latest",
+            "result_path": "%srun-results/latest" % self.data.get("store_dir", "/home/autotest/"),
             "tag": "upstream" if str(data.get("upstream")) == "True" else data.get("tag")
         }
         _write_file_content(polarion_yaml,

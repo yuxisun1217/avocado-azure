@@ -48,10 +48,14 @@ class Run(object):
         self.azure_mode = azure_mode
         self.avocado_path = AVOCADO_PATH
         self.job_path = "%s/job-results/latest" % self.avocado_path
-        self.result_path = "%s/run-results/%s" % (self.avocado_path, POSTFIX)
+        config_file = "%s/config.yaml" % self.avocado_path
+        with open(config_file, 'r') as f:
+            data=yaml.load(f)
+        store_dir = data.get("store_dir", "/home/autotest").rstrip('/')
+        self.result_path = "%s/run-results/%s" % (store_dir, POSTFIX)
         if not os.path.exists(self.result_path):
             os.makedirs(self.result_path)
-        latest_path = "%s/run-results/latest" % self.avocado_path
+        latest_path = "%s/run-results/latest" % store_dir
         if os.path.exists(latest_path):
             os.remove(latest_path)
         command("ln -s %s %s" % (POSTFIX, latest_path))
@@ -148,14 +152,14 @@ def main():
     log("ASM mode: %s;  ARM mode: %s" % (asm_flag, arm_flag))
     if asm_flag:
         asm_run = Run("asm")
-        asm_run.run()
+#        asm_run.run()
     if arm_flag:
         arm_run = Run("arm")
-        arm_run.run()
+#        arm_run.run()
     # Upload result to polarion
     if SUBMIT_RESULT:
         log("=============== Begin to sumbit result to polarion ===============")
-        command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
+#        command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
     else:
         log("Do not submit result to polarion.")
     log("=============== Finished ===============")
