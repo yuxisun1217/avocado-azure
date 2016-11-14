@@ -193,8 +193,8 @@ class CreateConfFiles(object):
             os_disk = ondemand_os_disk
             image = "walaauto-RHEL-"+str(self.data.get("project"))+"-ondemand"+"-wala-"+self.wala_version+tagstr
         else:
-            image = "walaauto-"+self.rhel_version+"-wala-"+self.wala_version+tagstr,
             os_disk = self.rhel_version+"-wala-"+self.wala_version+tagstr+".vhd"
+            image = "walaauto-"+self.rhel_version+"-wala-"+self.wala_version+tagstr
         common_yaml_dict = {
             "project": self.data.get("project"),
             "wala_version": self.wala_version,
