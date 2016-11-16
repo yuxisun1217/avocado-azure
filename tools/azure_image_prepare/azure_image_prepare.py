@@ -11,6 +11,7 @@ import string
 import hashlib
 import pwd
 import yaml
+import json
 
 AzureImagePrepareConf = """\
 #
@@ -469,11 +470,18 @@ def get_latest_wala_upstream():
     """
     Get the latest wala build from upstream
     """
-    cmd = "curl https://github.com/Azure/WALinuxAgent/releases/latest"
-    rcode, output = RunGetOutput(cmd)
-    if rcode != 0:
+#    cmd = "curl https://github.com/Azure/WALinuxAgent/releases/latest"
+#    rcode, output = RunGetOutput(cmd)
+#    if rcode != 0:
+#        ErrorAndExit("Cannot get the latest upstream wala build")
+#    walabuild = re.compile('.*tag/(.*)\">').search(output).groups()[0]
+#    return walabuild
+    wala_uri = "https://api.github.com/repos/Azure/WALinuxAgent/releases/latest"
+    body = urllib2.urlopen(wala_uri).read()
+    wala_json = json.loads(body)
+    if not wala_json["name"]:
         ErrorAndExit("Cannot get the latest upstream wala build")
-    walabuild = re.compile('.*tag/(.*)\">').search(output).groups()[0]
+    walabuild = wala_json["name"]
     return walabuild
 
 

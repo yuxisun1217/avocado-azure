@@ -120,7 +120,9 @@ azure_mode: !mux
         log("=============== Test run begin: %s mode ===============" % self.azure_mode)
         cmd1 = "avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" % (self.avocado_path, self.avocado_path, self.azure_mode)
         log(cmd1)
-        log(command(cmd1, timeout=None, ignore_status=True, debug=True).stdout)
+        ret = command(cmd1, timeout=None, ignore_status=True, debug=True)
+        log(ret.stdout)
+        run_exitstatus = ret.exit_status
         log("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)
         # Rerun failed cases
@@ -128,15 +130,18 @@ azure_mode: !mux
         if rerun_list:
             log("Rerun failed cases")
             self.mk_rerun_yaml(rerun_list)
-            log(command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
-                        (self.avocado_path, self.avocado_path),
-                        timeout=None, ignore_status=True, debug=True).stdout)
+            ret_rerun = command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
+                                (self.avocado_path, self.avocado_path),
+                                timeout=None, ignore_status=True, debug=True).stdout
+            log(ret_rerun.stdout)
+            run_exitstatus += ret_rerun.exit_status
             shutil.copytree(self.job_path, "%s/rerun_result" % self.mode_path)
         log("=============== Test run end:   %s mode ===============" % self.azure_mode)
+        return run_exitstatus
 
 
 def provision():
-    Run().provision()
+    return Run().provision()
 
 
 def runtest():
@@ -145,23 +150,25 @@ def runtest():
         parser.error("%s is not azure mode." % AZURE_MODE)
     else:
         log("Azure Mode: %s" % AZURE_MODE)
+        run_exitstatus = 0
         if "asm" in AZURE_MODE:
             asm_run = Run("asm")
-            asm_run.run()
+            run_exitstatus += asm_run.run()
         if "arm" in AZURE_MODE:
             arm_run = Run("arm")
-            arm_run.run()
+            run_exitstatus += arm_run.run()
+        return run_exitstatus
 
 
 def import_result():
     if SUBMIT_RESULT:
         log("=============== Import result to polarion ===============")
-        command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True)
+        ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
         log("Import result successful")
+        return ret
     else:
         log("Do not submit result to polarion.")
-    return 0
-
+        return 0
 
 
 def main():
@@ -171,6 +178,7 @@ def main():
     log("Creating common.yaml and azure_image_prepare.yaml...")
     command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
     log("common.yaml and azure_image_prepare.yaml are created.")
+    # Run main process
     if PROVISION_ONLY:
         log("Provision only")
         sys.exit(provision())
@@ -181,9 +189,7 @@ def main():
         log("Import result only")
         sys.exit(import_result())
     else:
-        provision()
-        runtest()
-        import_result()
+        sys.exit(provision() or runtest() or import_result())
 
 
 if __name__ == "__main__":
