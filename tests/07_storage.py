@@ -82,6 +82,7 @@ class StorageTest(Test):
         self.project = self.params.get("Project", "*/Common/*")
         self.conf_file = "/etc/waagent.conf"
         if "64_disks" in self.name.name:
+            self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
             return
         # If vm doesn't exist, create it. If it exists, start it.
         self.log.debug("Create the vm %s", self.vm_params["VMName"])
@@ -311,10 +312,13 @@ class StorageTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Cannot login the VM")
         # Login with root account
-        self.vm_test01.get_output("echo %s | passwd --stdin root" % vm_params["password"])
+        with open(utils_misc.get_sshkey_file(), 'r') as f:
+            sshkey = f.read()
+        self.vm_test01.get_output("mkdir /root/.ssh;echo '%s' > /root/.ssh/authorized_keys" % sshkey)
+#        self.vm_test01.get_output("echo %s | passwd --stdin root" % vm_params["password"])
         self.vm_test01.session_close()
         self.vm_test01.username = "root"
-        self.assertTrue(self.vm_test01.verify_alive(),
+        self.assertTrue(self.vm_test01.verify_alive(authentication="publickey"),
                         "Cannot login with root account")
         # Attach 64 disks
         disk_blob_size = 1
@@ -350,14 +354,18 @@ class StorageTest(Test):
         # Check the first disk
         first_mountpoint = "/mnt/firstdisk"
         self.vm_test01.get_output("mkdir -p %s" % first_mountpoint)
-        self.vm_test01.vm_disk_mount(disk=dev_list[0], mount_point=first_mountpoint, project=self.project, sudo=False)
+        self.assertTrue(self.vm_test01.vm_disk_mount(disk=dev_list[0], mount_point=first_mountpoint,
+                                                     project=self.project, sudo=False),
+                        "Cannot mount the first disk")
         self.assertTrue(self.vm_test01.vm_disk_check(first_mountpoint),
                         "Check disk /dev/sdc result fail")
         self.vm_test01.get_output("umount %s" % first_mountpoint)
         # Check the last disk
         last_mountpoint = "/mnt/lastdisk"
         self.vm_test01.get_output("mkdir -p %s" % last_mountpoint)
-        self.vm_test01.vm_disk_mount(disk=dev_list[-1], mount_point=last_mountpoint, project=self.project, sudo=False)
+        self.assertTrue(self.vm_test01.vm_disk_mount(disk=dev_list[-1], mount_point=last_mountpoint,
+                                                     project=self.project, sudo=False),
+                        "Cannot mount the last disk")
         self.assertTrue(self.vm_test01.vm_disk_check(last_mountpoint),
                         "Check disk /dev/sdbn result fail")
         self.vm_test01.get_output("umount %s" % last_mountpoint)
@@ -421,6 +429,7 @@ class StorageTest(Test):
 
     def tearDown(self):
         self.log.info("tearDown")
+        return
         self.vm_test01.delete()
         self.vm_test01.wait_for_delete()
         # Clean ssh sessions
