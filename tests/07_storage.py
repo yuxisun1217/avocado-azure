@@ -429,7 +429,6 @@ class StorageTest(Test):
 
     def tearDown(self):
         self.log.info("tearDown")
-        return
         self.vm_test01.delete()
         self.vm_test01.wait_for_delete()
         # Clean ssh sessions
