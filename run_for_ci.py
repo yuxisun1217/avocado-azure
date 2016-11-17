@@ -132,7 +132,7 @@ azure_mode: !mux
             self.mk_rerun_yaml(rerun_list)
             ret_rerun = command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
                                 (self.avocado_path, self.avocado_path),
-                                timeout=None, ignore_status=True, debug=True).stdout
+                                timeout=None, ignore_status=True, debug=True)
             log(ret_rerun.stdout)
             run_exitstatus += ret_rerun.exit_status
             shutil.copytree(self.job_path, "%s/rerun_result" % self.mode_path)
