@@ -120,14 +120,14 @@ class SubscriptionTest(Test):
         self.assertIn(subscription_name, self.vm_test01.get_output("subscription-manager list --consumed"),
                       "Fail to list consumed subscriptions")
         # Check yum install/update
-        self.vm_test01.get_output("yum remove wget -y")
-        self.assertIn("command not found", self.vm_test01.get_output("wget", timeout=1200),
-                      "Fail to yum remove wget")
         self.assertNotIn("This system is not registered to %s" % subscription_name,
-                         self.vm_test01.get_output("yum install wget -y"),
+                         self.vm_test01.get_output("yum install expect -y", timeout=1200),
                          "yum install message is wrong.")
-        self.assertNotIn("command not found", self.vm_test01.get_output("wget", timeout=1200),
-                         "Fail to yum install wget")
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                         "Fail to yum install expect")
+        self.vm_test01.get_output("yum remove expect -y", timeout=1200)
+        self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                      "Fail to yum remove expect")
         # remove all subscriptions
         self.assertIn("1 local certificate has been deleted",
                       self.vm_test01.get_output("subscription-manager remove --all"),
