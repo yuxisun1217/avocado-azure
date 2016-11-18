@@ -333,11 +333,6 @@ class SettingsTest(Test):
 #        self.vm_test01.delete()
 #        self.vm_test01.wait_for_delete()
         if self.vm_test01.verify_alive(timeout=10):
- #            if "reset_remote_access" in self.name.name:
- #                self.vm_test01.get_output("rm -f /etc/ssh/sshd_config_*")
- #            if "add_new_user" in self.name.name:
- #                self.vm_test01.get_output("userdel %s -r" % self.vm_params["new_username"])
- #                self.vm_test01.get_output("sed -i '/%s/s/^.*$//g' /etc/sudoers.d/waagent" % self.vm_params["new_username"])
             if "reset_remote_access" in self.name.name or \
                "reset_pw_diff_auth" in self.name.name or \
                "add_new_user" in self.name.name or \

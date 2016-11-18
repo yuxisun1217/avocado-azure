@@ -318,27 +318,25 @@ EOF
     def modify_value(self, key, value, conf_file="/etc/waagent.conf", sepr='='):
         """
 
-        :param key:
-        :param value:
-        :param conf_file:
-        :return:
+        :param key: The name of the parameter
+        :param value: The value of the parameter
+        :param conf_file: The file to be modified
+        :param sepr: The separate character
+        :return: True/False of the modify result
         """
-        if self.get_output("grep -R \'%s\' %s" % (key, conf_file)):
-            self.get_output("sed -i -e '/^.*%s/s/^# *//g' -e 's/%s.*$/%s%s%s/g' %s" %
-                            (key, key, key, sepr, value, conf_file))
+#        if self.get_output("grep -R \'%s\' %s" % (key, conf_file)):
+#            self.get_output("sed -i -e '/^.*%s/s/^# *//g' -e 's/%s.*$/%s%s%s/g' %s" %
+#                            (key, key, key, sepr, value, conf_file))
+        if self.get_output("grep -R \'^{0}\' {1}".format(key, conf_file)):
+            self.get_output("sed -i 's/{0}.*$/{0}{1}{2}/g' {3}".format(key, sepr, value, conf_file))
         else:
-            self.get_output("echo \'%s%s%s\' >> %s" % (key, sepr, value, conf_file))
+            self.get_output("echo \'{0}{1}{2}\' >> {3}".format(key, sepr, value, conf_file))
         time.sleep(0.5)
-        return self.verify_value(key, value, conf_file)
-#        if not self.get_output("grep -R \"%s=%s\" %s" % (key, value, conf_file)):
-#            logging.error("Fail to modify the %s", conf_file)
-#            return False
-#        else:
-#            return True
+        return self.verify_value(key, value, conf_file, sepr)
 
     def verify_value(self, key, value, conf_file="/etc/waagent.conf", sepr='='):
-        if not self.get_output("grep -R \'^%s%s%s\' %s" % (key, sepr, value, conf_file)):
-            logging.error("Fail to modify to %s%s%s in %s", (key, sepr, value, conf_file))
+        if not self.get_output("grep -R \'^{0}{1}{2}\' {3}".format(key, sepr, value, conf_file)):
+            logging.error("Fail to modify to {0}{1}{2} in {3}".format(key, sepr, value, conf_file))
             return False
         else:
             return True
