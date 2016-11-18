@@ -9,8 +9,24 @@ import pexpect
 import subprocess
 import shlex
 import socket
-
+import time
 from utils_misc import *
+
+
+class LoginError(Exception):
+    def __init__(self, err="Login Error"):
+        Exception.__init__(self, err)
+
+
+class LoginTimeoutError(LoginError):
+    def __init__(self, err="Login Timeout"):
+        LoginError.__init__(self, err)
+
+
+class LoginReturnError(LoginError):
+    def __init__(self, err="Login Return Code is not 0"):
+        LoginError.__init__(self, err)
+
 
 def login_azure(username, password):
     """
@@ -20,22 +36,23 @@ def login_azure(username, password):
     :param password: Azure subscription password
     :return: True if operate successfully
     """
-#    cmd = "azure login -u %s" % username
-#    logging.debug("Login Azure with: %s", username)
-#    login_handle = pexpect.spawn(cmd)
-#    index = login_handle.expect(["[pP]assword:", pexpect.EOF, pexpect.TIMEOUT])
-#    if index == 0:
-#        logging.debug("Enter the password")
-#        login_handle.sendline(password)
-#        login_handle.sendline("\r")
-#        login_handle.expect(["[$#>]", pexpect.EOF, pexpect.TIMEOUT])
-#    else:
-#        return False
-    command("azure login -u %s -p %s" % (username, password))
-    login_ret = command("azure account show --json")
-    if login_ret.exit_status == 0:
-        logging.debug("Login successfully with: %s", username)
-    return True
+    for retry in xrange(1, 11):
+        login_ret = command("azure login -u %s -p %s" % (username, password), ignore_status=True, timeout=60)
+#        login_ret = command("azure account show --json")
+        if login_ret.exit_status == 0:
+            logging.debug("Login successfully with: %s", username)
+            return True
+        else:
+            if login_ret.exit_status == 143:
+                logging.debug("Login timeout. Retry: %d/10" % retry)
+                time.sleep(10)
+            elif login_ret.exit_status == 130:
+                raise KeyboardInterrupt
+            else:
+                raise LoginReturnError
+    else:
+        logging.error("Login failed with: %s", username)
+        raise LoginTimeoutError
 
 
 def logout_azure(username):
