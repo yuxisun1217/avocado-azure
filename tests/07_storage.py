@@ -329,7 +329,7 @@ class StorageTest(Test):
                              "Fail to attach new disk %s" % bn)
         self.assertTrue(self.vm_test01.wait_for_running(),
                         "After attaching 64 disks, VM cannot become running")
-        self.assertTrue(self.vm_test01.verify_alive(),
+        self.assertTrue(self.vm_test01.verify_alive(authentication="publickey"),
                         "After attaching 64 disks, cannot login VM")
         # Put 64 dev names into dev_list
         import string
@@ -375,7 +375,7 @@ class StorageTest(Test):
                              "Fail to detach disk lun=%s: azure cli fail" % bn)
         self.assertTrue(self.vm_test01.wait_for_running(),
                         "After detaching 64 disks, VM cannot become running")
-        self.assertTrue(self.vm_test01.verify_alive(),
+        self.assertTrue(self.vm_test01.verify_alive(authentication="publickey"),
                         "After detaching 64 disks, cannot login VM")
         # Check the devices
         fdisk_list = self.vm_test01.get_output("ls /dev/sd*").split()

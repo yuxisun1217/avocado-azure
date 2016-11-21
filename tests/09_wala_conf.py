@@ -575,8 +575,8 @@ class WALAConfTest(Test):
             vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ addr|awk '\"'{print $2}'\"'|tr -d addr:")
         else:
             vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ |awk '\"'{print $2}'\"'|tr -d addr:")
-        self.assertTrue(self.vm_test01.modify_value("HttpProxy\.Host", http_host, self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("HttpProxy\.Port", http_port, self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Host", http_host, self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Port", http_port, self.conf_file))
         self.assertTrue(self.vm_test01.waagent_service_restart())
         self.assertIn("10 packets captured",
                       vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip),
@@ -666,7 +666,7 @@ class WALAConfTest(Test):
         self.vm_test01.session_close()
         self.vm_test01.verify_alive(username="root", password=self.vm_params["password"])
         # Change uid
-        origin_uid = self.vm_test01.get_output("id -u %s" % self.vm_params["username"])
+#        origin_uid = self.vm_test01.get_output("id -u %s" % self.vm_params["username"])
         self.vm_test01.get_output("usermod -u 400 %s" % self.vm_params["username"])
         self.assertEqual("400", self.vm_test01.get_output("id -u %s" % self.vm_params["username"]),
                          "Fail to set uid")
@@ -738,25 +738,26 @@ class WALAConfTest(Test):
             version_file = "/usr/lib/python2.6/site-packages/azurelinuxagent/common/version.py"
         else:
             version_file = "/usr/lib/python2.7/site-packages/azurelinuxagent/common/version.py"
-        self.vm_test01.get_output("sed -i \"s/^AGENT_VERSION.*$/AGENT_VERSION = '2.1.5'/g\" %s" % version_file)
+        self.vm_test01.get_output("sudo sed -i \"s/^AGENT_VERSION.*$/AGENT_VERSION = '{0}'/g\" {1}"
+                                  .format(old_version, version_file),
+                                  sudo=False)
         self.assertEqual("AGENT_VERSION = '%s'" % old_version,
                          self.vm_test01.get_output("grep -R '^AGENT_VERSION' %s" % version_file),
                          "Fail to modify local version to %s" % old_version)
         # Enable AutoUpdate
         self.assertTrue(self.vm_test01.modify_value("AutoUpdate.Enabled", "y"),
                         "Fail to set AutoUpdate.Enabled=y")
-        self.vm_test01.get_output("service waagent restart")
-        time.sleep(5)
+        self.vm_test01.waagent_service_restart(self.project)
         # Check feature
-        time.sleep(20)
-        for retry in range(1, 11):
+        time.sleep(30)
+        for retry in xrange(1, 11):
             if "egg" in self.vm_test01.get_output("ps aux|grep [W]AL"):
                 break
             self.log.info("Wait for updating. Retry %d times" % retry)
-            time.sleep(10)
-        self.assertNotEqual(10, retry,
-                            "[RHEL-6]Bug 1371071. "
-                            "Fail to enable AutoUpdate after retry %d times" % retry)
+            time.sleep(30)
+        else:
+            self.fail("[RHEL-6]Bug 1371071. "
+                      "Fail to enable AutoUpdate after retry %d times" % retry)
 
     def test_resource_disk_mount_options(self):
         """
