@@ -392,7 +392,9 @@ EOF
         if not password:
             password = self.password
 #            password = self.params.get("password", "")
-        client = self.params.get("file_transfer_client", "ssh")
+        logging.debug(username)
+        logging.debug(password)
+        client = self.params.get("file_transfer_client", "scp")
         address = self.get_public_address()
         port = self.get_ssh_port()
         log_filename = ("transfer-%s-to-%s-%s.log" %
