@@ -175,9 +175,9 @@ def main():
     # modify /etc/avocado/avocado.conf
     config()
     # Create configuration files
-    log("Creating common.yaml and azure_image_prepare.yaml...")
+    log("Creating configuration files...")
     command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
-    log("common.yaml and azure_image_prepare.yaml are created.")
+    log("Configuration files are created.")
     # Run main process
     if PROVISION_ONLY:
         log("Provision only")

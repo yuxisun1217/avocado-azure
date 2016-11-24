@@ -1,9 +1,11 @@
 import os
+import sys
 import yaml
 import subprocess
 from optparse import OptionParser
 
 realpath = os.path.split(os.path.realpath(__file__))[0]
+#config_yaml = "%s/config.yaml" % realpath
 config_yaml = "%s/config.yaml" % realpath
 common_yaml = "%s/cfg/common.yaml" % realpath
 azure_image_prepare_dir = "%s/tools/azure_image_prepare" % realpath
@@ -138,7 +140,7 @@ PolarionYaml = """\
 PROJECT: %(project)s
 RHEL_VERSION: %(rhel_version)s
 WALA_VERSION: %(wala_version)s
-TYPE: %(runtype)s
+TYPE: %(case_group)s
 RESULT_PATH: %(result_path)s
 TAG: %(tag)s
 """
@@ -150,11 +152,12 @@ def _write_file_content(filename, content):
 
 
 class CreateConfFiles(object):
-    def __init__(self, data):
+    def __init__(self, type, data):
         """
         :param data: Parameters dictionary. Parse the config.yaml
         """
         self.data = data
+        self.type = type
         self.rhel_version = None
         self.wala_version = None
 
@@ -164,7 +167,7 @@ class CreateConfFiles(object):
         """
         azure_image_prepare_yaml_dict = {
             "project": self.data.get("project"),
-            "rhel_version": self.data.get("rhel_version", None),
+            "rhel_version": self.data.get("onpremise").get("rhel_version", None),
             "wala_version": self.data.get("wala_version", None),
             "upstream": self.data.get("upstream", True),
             "base_url": self.data.get("base_url", "http://download.eng.pek2.redhat.com/rel-eng/"),
@@ -173,28 +176,37 @@ class CreateConfFiles(object):
         }
         _write_file_content(azure_image_prepare_yaml,
                             AzureImagePrepareYaml % azure_image_prepare_yaml_dict)
-        if self.data.get("ondemand"):
-            self.rhel_version = "RHEL-"+str(self.data.get("project"))+"-ondemand"
+        if self.type == "ondemand":
+            self.rhel_version = "RHEL-{0}-ondemand".format(self.data.get("project"))
         else:
             self.rhel_version = subprocess.check_output("%s/azure_image_prepare.py -rhelbuild" % azure_image_prepare_dir,
                                                         stderr=subprocess.STDOUT, shell=True).strip('\n')
         self.wala_version = subprocess.check_output("%s/azure_image_prepare.py -walabuild" % azure_image_prepare_dir,
                                                     stderr=subprocess.STDOUT, shell=True).split('.el')[0].strip('\n')
 
-    def create_common_yaml(self, ondemand_os_disk=""):
+    def create_common_yaml(self, ondemand_os_disk=None):
         """
         Create common.yaml
         """
         tagstr = "-"+self.data.get("tag") if (self.data.get("tag") or self.data.get("tag") == "None") else ""
-        if self.data.get("customize"):
-            os_disk = self.data.get("os_disk")
-            image = self.data.get("image")
-        elif self.data.get("ondemand"):
+        if self.type == "customize":
+            os_disk = self.data.get("customize").get("os_disk")
+            image = self.data.get("customize").get("image")
+        elif self.type == "ondemand":
             os_disk = ondemand_os_disk
-            image = "walaauto-RHEL-"+str(self.data.get("project"))+"-ondemand"+"-wala-"+self.wala_version+tagstr
-        else:
+            if not os_disk:
+                print "No ondemand os_disk."
+                sys.exit(1)
+#            image = "walaauto-RHEL-"+str(self.data.get("project"))+"-ondemand"+"-wala-"+self.wala_version+tagstr
+            image = "walaauto-RHEL-{0}-ondemand-wala-{1}{2}".format(self.data.get("project"), self.wala_version, tagstr)
+        elif self.type == "onpremise":
             os_disk = self.rhel_version+"-wala-"+self.wala_version+tagstr+".vhd"
             image = "walaauto-"+self.rhel_version+"-wala-"+self.wala_version+tagstr
+        else:
+            parser.print_help()
+            parser.error("Wrong type!")
+        print image
+        print os_disk
         common_yaml_dict = {
             "project": self.data.get("project"),
             "wala_version": self.wala_version,
@@ -220,7 +232,7 @@ class CreateConfFiles(object):
         """
         test_yaml = "%s/cfg/test_%s.yaml" % (realpath, azure_mode)
         test_yaml_dict = {
-            "case_group": self.data.get("type", "function"),
+            "case_group": self.data.get("case_group", "function"),
             "remove_mode": "arm" if azure_mode == "asm" else "asm"
         }
         _write_file_content(test_yaml,
@@ -234,7 +246,7 @@ class CreateConfFiles(object):
             "project": self.data.get("project"),
             "rhel_version": self.rhel_version,
             "wala_version": self.wala_version,
-            "runtype": None if str(data.get("type")) == "2016" else self.data.get("type"),
+            "case_group": "function" if str(self.data.get("case_group")) == "2016" else self.data.get("case_group"),
             "result_path": "%srun-results/latest" % self.data.get("store_dir", "/home/autotest/"),
             "tag": "upstream" if str(data.get("upstream")) == "True" else data.get("tag")
         }
@@ -245,6 +257,9 @@ class CreateConfFiles(object):
 if __name__ == "__main__":
     usage = "usage: %prog [-o <osdisk>]"
     parser = OptionParser(usage)
+    parser.add_option('-t', '--type', dest='type', action='store',
+                      help='The type of the test. Default value is onpremise. '
+                           '(onpremise/ondemand/customize)', metavar='TYPE')
     parser.add_option('-o', '--osdisk', dest='osdisk', action='store',
                       help='The VHD OS disk name(e.g.RHEL-7.3-20161019.0-wala-2.2.0-2.vhd)', metavar='OSDISK.vhd')
 
@@ -252,7 +267,13 @@ if __name__ == "__main__":
 
     with open(config_yaml, 'r') as f:
         data = yaml.load(f)
-    createFile = CreateConfFiles(data)
+    type = options.type
+    if not type:
+        type = data.get("type", None)
+        if not type:
+            parser.print_help()
+            parser.error("The type must be specified.")
+    createFile = CreateConfFiles(type, data)
     createFile.create_azure_image_prepare_yaml()
     createFile.create_common_yaml(options.osdisk)
     createFile.create_test_yaml("asm")

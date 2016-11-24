@@ -1,8 +1,7 @@
 %define name WALinuxAgent
 %define version upstream_version
 %define unmangled_version upstream_version
-%define unmangled_version upstream_version
-%define release 1
+%define release 0
 
 %if 0%{?rhel} < 7
 %global initsys sysV
@@ -15,6 +14,8 @@ Name: %{name}
 Version: %{version}
 Release: %{release}%{?dist}
 Source0: %{name}-%{unmangled_version}.tar.gz
+Patch0: agent-no-auto-update.patch
+Patch1: agent-no-auto-update-when-upgrading.patch
 License: Apache License Version 2.0
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
@@ -67,6 +68,8 @@ images that are built to run in the Azure environment.
 
 %prep
 %setup -n %{name}-%{unmangled_version} -n %{name}-%{unmangled_version}
+%patch0 -p1
+%patch1 -p1
 
 %build
 python setup.py build
@@ -115,6 +118,18 @@ fi
 %defattr(-,root,root)
 
 %changelog
+* Thu Nov 03 2016 Dave Anderson <anderson@redhat.com> - 2.2.0-3
+- Set implicit default of AutoUpdate.Enabled=n when upgrading
+  Resolves: rhbz#1374115
+
+* Fri Oct 28 2016 Dave Anderson <anderson@redhat.com> - 2.2.0-2
+- Set AutoUpdate.Enabled=n
+  Resolves: rhbz#1374115
+
+* Fri Sep 30 2016 Dave Anderson <anderson@redhat.com> - 2.2.0-1
+- Update to v2.2.0
+  Resolves: rhbz#1360492
+
 * Wed Sep 21 2016 Dave Anderson <anderson@redhat.com> - 2.1.5-2
 - Several QE updates to this file
   Resolves: rhbz#1360492
@@ -123,7 +138,7 @@ fi
 - Update to v2.1.5
   Resolves: rhbz#1360492
 
-* Wed Jan 16 2016 Dave Anderson <anderson@redhat.com> - 2.0.16-1
+* Thu Jan 14 2016 Dave Anderson <anderson@redhat.com> - 2.0.16-1
 - Update to 2.0.16
   Resolves: rhbz#1296360
 

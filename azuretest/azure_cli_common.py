@@ -24,8 +24,15 @@ class LoginTimeoutError(LoginError):
 
 
 class LoginReturnError(LoginError):
-    def __init__(self, err="Login Return Code is not 0"):
+    def __init__(self, exit_status):
+        err = "Login Error. Exit status: {0}".format(exit_status)
         LoginError.__init__(self, err)
+
+
+class ChangeModeError(Exception):
+    def __init__(self, exit_status):
+        err = "Change Azure Mode Error. Exit status: {0}".format(exit_status)
+        Exception.__init__(self, err)
 
 
 def login_azure(username, password):
@@ -41,7 +48,7 @@ def login_azure(username, password):
 #        login_ret = command("azure account show --json")
         if login_ret.exit_status == 0:
             logging.debug("Login successfully with: %s", username)
-            return True
+            return login_ret.exit_status
         else:
             if login_ret.exit_status == 143:
                 logging.debug("Login timeout. Retry: %d/10" % retry)
@@ -49,7 +56,7 @@ def login_azure(username, password):
             elif login_ret.exit_status == 130:
                 raise KeyboardInterrupt
             else:
-                raise LoginReturnError
+                raise LoginReturnError(login_ret.exit_status)
     else:
         logging.error("Login failed with: %s", username)
         raise LoginTimeoutError
@@ -64,14 +71,18 @@ def logout_azure(username):
     """
     cmd = "azure logout -u %s" % username
     logging.debug("Logout Azure with: %s", username)
-    cmd = shlex.split(cmd)
-    try:
-        subprocess.check_call(cmd)
-    except:
-        logging.error("Failed to logout with: %s", username)
-        raise
-    logging.debug("Logout successfully with: %s", username)
-    return True
+#    cmd = shlex.split(cmd)
+#    try:
+#        subprocess.check_call(cmd)
+#    except:
+#        raise Exception("Failed to logout with: %s", username)
+    ret = command(cmd, timeout=60)
+    if ret.exit_status == 0:
+        logging.debug("Logout successfully with: %s", username)
+        return 0
+    else:
+        logging.error("Logout Error. Exit status: {0}".format(ret.exit_status))
+        return ret.exit_status
 
 
 def account_clear(options=''):
@@ -83,12 +94,18 @@ def account_clear(options=''):
     """
     cmd = "azure account clear --quiet %s" % options
     logging.debug("Clear Azure account")
-    cmd = shlex.split(cmd)
-    try:
-        subprocess.check_call(cmd)
-    except:
+#    cmd = shlex.split(cmd)
+#    try:
+#        subprocess.check_call(cmd)
+#    except:
+#        logging.error("Failed to clear account")
+#        raise
+    ret = command(cmd, timeout=60)
+    if ret.exit_status == 0:
+        return 0
+    else:
         logging.error("Failed to clear account")
-        raise
+        return ret.exit_status
 
 
 def set_config_mode(mode="asm"):
@@ -100,58 +117,20 @@ def set_config_mode(mode="asm"):
     """
     logging.debug("Change the azure config mode as %s", mode)
     cmd = "azure config mode %s" % mode
-    cmd = shlex.split(cmd)
-    try:
-        subprocess.check_call(cmd)
-    except:
-        logging.error("Fails to change the azure config mode: %s", mode)
-        raise
-    else:
-        logging.debug("Success to change the azure config mode: %s", mode)
-        return True
-
-
-#def check_dns(dns):
-#    """
-#    Check if the domain name can be visited.
-#
-#    :return:
-#    -1: Wrong domain name
-#    0: Running/Stopped/Starting
-#    1: Stopped(deallocated)
-#    """
+#    cmd = shlex.split(cmd)
 #    try:
-#        ip = socket.getaddrinfo(dns, None)[0][4][0]
+#        subprocess.check_call(cmd)
 #    except:
-#        logging.debug("Wrong Domain Name: %s", dns)
+#        logging.error("Fails to change the azure config mode: %s", mode)
 #        raise
-#    if ip == '0.0.0.0':
-#        logging.debug("Cloud Service is Stopped(deallocated).")
-#        return False
 #    else:
-#        logging.debug("Cloud Service is Running.")
+#        logging.debug("Success to change the azure config mode: %s", mode)
 #        return True
+    ret = command(cmd, timeout=60)
+    if ret.exit_status == 0:
+        logging.debug("Success to change the azure config mode: %s", mode)
+        return ret.exit_status
+    else:
+        logging.error("Fail to change the azure config mode: %s", mode)
+        raise ChangeModeError(ret.exit_status)
 
-
-#def host_command(cmd="", ret='stdout', **kwargs):
-#    """
-#
-#    :param ret: stdout: return stdout; exit_status: return exit_status
-#    :param cmd:
-#    :return:
-#    """
-#    if ret == 'exit_status':
-#        return command(cmd, **kwargs).exit_status
-#    elif ret == 'stdout':
-#        return command(cmd, **kwargs).stdout
-#    else:
-#        return command(cmd, **kwargs)
-
-
-#def get_sshkey_file():
-#    host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
-#    myname = host_command("whoami").strip('\n')
-#    if myname == 'root':
-#        return "/%s/.ssh/id_rsa.pub" % myname
-#    else:
-#        return "/home/%s/.ssh/id_rsa.pub" % myname

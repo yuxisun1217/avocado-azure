@@ -494,13 +494,13 @@ def download_wala_upstream(version=None):
         version = re.compile('\d*\.\d*\.\d*').findall(tag)[0]
     else:
         version = re.compile('\d*\.\d*\.\d*').findall(version)[0]
-        tag = "WALinuxAgent-%s-1" % version
+        tag = "WALinuxAgent-%s-0" % version
         x, y, z = version.split('.')
         if int(x) >= 2:
             if int(y) >= 1:
                 if int(z) >= 2:
                     tag = 'v' + version
-    p.walaName = "WALinuxAgent-%s-1.el%s" % (version, p.Project.split('.')[0])
+    p.walaName = "WALinuxAgent-%s-0.el%s" % (version, p.Project.split('.')[0])
     wala_fullpath = "%s.noarch.rpm" % (p.walaDir+p.walaName)
     CreateDir(p.walaDir)
     if os.path.isfile(wala_fullpath):
@@ -519,12 +519,14 @@ def download_wala_upstream(version=None):
     # Use mock instead of rpmbuild to make rpm package
     main_project = p.Project.split('.')[0]
     Run("rpmbuild -bs %s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath)
-    Run("mv %s/SRPMS/WALinuxAgent-%s-1.el*.src.rpm %s" %
-        (p.rpmbuildPath, version, p.TmpDir))
-    Run("runuser -l test -c 'mock -r epel-%s-x86_64 %sWALinuxAgent-%s-1.el7.src.rpm'" %
-        (main_project, p.TmpDir, version))
-    Run("mv /var/lib/mock/epel-%s-x86_64/result/WALinuxAgent-%s-1.el%s.noarch.rpm %s" %
-        (main_project, version, main_project, wala_fullpath))
+    src_name = RunGetOutput("find {0}/SRPMS/WALinuxAgent-{1}-0.*.src.rpm"
+                            .format(p.rpmbuildPath, version))[1].strip('\n').split('/')[-1]
+    Log(src_name)
+    Run("mv {0}/SRPMS/{1} {2}".format(p.rpmbuildPath, src_name, p.TmpDir))
+    Run("runuser -l test -c 'mock -r epel-{0}-x86_64 {1}{2}'"
+        .format(main_project, p.TmpDir, src_name))
+    Run("mv /var/lib/mock/epel-{0}-x86_64/result/{1}.noarch.rpm {2}"
+        .format(main_project, p.walaName, wala_fullpath))
     time.sleep(0.5)
     if os.path.isfile(wala_fullpath):
         Log("Download %s successfully." % wala_fullpath)
