@@ -2,6 +2,7 @@ import os
 import sys
 import yaml
 import subprocess
+import logging
 from optparse import OptionParser
 
 realpath = os.path.split(os.path.realpath(__file__))[0]
@@ -262,6 +263,12 @@ if __name__ == "__main__":
                            '(onpremise/ondemand/customize)', metavar='TYPE')
     parser.add_option('-o', '--osdisk', dest='osdisk', action='store',
                       help='The VHD OS disk name(e.g.RHEL-7.3-20161019.0-wala-2.2.0-2.vhd)', metavar='OSDISK.vhd')
+    parser.add_option('-p', '--provision-only', dest='provision_only', default=False, action='store_true',
+                      help='Only run provision. Do not run test cases.')
+    parser.add_option('-r', '--run-only', dest='run_only', default=False, action='store_true',
+                      help='Only run test cases. Do not provision.')
+    parser.add_option('-i', '--import-only', dest='import_only', default=False, action='store_true',
+                      help='Only import the latest result to polarion. Do not run tests.')
 
     options, args = parser.parse_args()
 

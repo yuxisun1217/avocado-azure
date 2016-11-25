@@ -6,23 +6,25 @@ import time
 import shutil
 import json
 import yaml
+import logging
 from optparse import OptionParser
 from azuretest.utils_misc import *
+import ondemand_provision
 
 LOGFILE = "/tmp/run-avocado-azure.log"
 POSTFIX = time.strftime("%Y%m%d%H%M")
 AVOCADO_PATH = os.path.split(os.path.realpath(__file__))[0]
+OSDISK_PATH = "{0}/ondemand_osdisk".format(AVOCADO_PATH)
 IGNORE_LIST = ["SettingsTest.test_reset_access_successively",
                "SettingsTest.test_reset_pw_after_capture"]
-#UPSTREAM = yaml.load(file('%s/config.yaml' % AVOCADO_PATH))["upstream"]
 SUBMIT_RESULT = yaml.load(file('%s/config.yaml' % AVOCADO_PATH))["submit_result"]
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(filename)s %(levelname)s %(message)s',
+                    datefmt='[%Y-%m-%d %H:%M:%S]',
+                    filename=LOGFILE,
+                    filemode='w')
 
-def log(msg):
-    prefix = time.strftime("%Y-%m-%d %H:%M:%S ")
-    msg = prefix + msg + '\n'
-    with open(LOGFILE, 'a') as f:
-        f.write(msg)
 
 def config():
     avocado_conf = '/etc/avocado/avocado.conf'
@@ -63,7 +65,7 @@ class Run(object):
         self.mode_path = "%s/%s" % (self.result_path, self.azure_mode.upper())
 
     def _get_rerun_list(self):
-        log("Rerun case list:")
+        logging.info("Rerun case list:")
         with open('%s/results.json' % self.job_path, 'r') as f:
             data = f.read()
         result_dict = json.loads(data)
@@ -74,7 +76,7 @@ class Run(object):
                 case_name = case["test"].split(':')[1]
                 if case_name not in IGNORE_LIST:
                     rerun_list.append(case_name)
-                    log(case_name)
+                    logging.info(case_name)
         return rerun_list
 
     def mk_rerun_yaml(self, rerun_list):
@@ -102,46 +104,60 @@ azure_mode: !mux
             ImgPrepTest.test_03_import_image_to_azure
 """ % self.azure_mode
         rerun_cases_str += '            ' + '\n            '.join(rerun_list)
-        log(rerun_cases_str)
+        logging.debug(rerun_cases_str)
         with open(rerun_cases_file, 'w') as f:
             f.write(rerun_cases_str)
 
-    def provision(self):
-        log("Provisioning...")
+    def provision_onpremise(self):
+        logging.info("Onpremise provisioning...")
         cmd = "avocado run {0}/tests/01_img_prep.py --multiplex {0}/cfg/provision.yaml".format(self.avocado_path)
-        log(command(cmd, timeout=None, ignore_status=True, debug=True).stdout)
+        logging.debug(command(cmd, timeout=None, ignore_status=True, debug=True).stdout)
         if self._get_rerun_list():
-            log("Error: Provision Failed!")
+            logging.error("Onpremise provision failed!")
             sys.exit(1)
-        log("Provision successful.")
+        logging.info("Onpremise provision successful.")
         return 0
 
+    def provision_ondemand(self):
+        logging.info("Ondemand provisioning...")
+#        cmd = "python {0}/ondemand_provision.py".format(AVOCADO_PATH)
+#        ret = command(cmd, timeout=None, ignore_status=True, debug=True)
+#        if ret.exit_status != 0:
+#            logging.error("Ondemand privision failed!")
+#            sys.exit(1)
+#        os_disk = ret.stdout
+        os_disk = ondemand_provision.main()
+        return 0, os_disk
+
     def run(self):
-        log("=============== Test run begin: %s mode ===============" % self.azure_mode)
+        logging.info("=============== Test run begin: %s mode ===============" % self.azure_mode)
         cmd1 = "avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" % (self.avocado_path, self.avocado_path, self.azure_mode)
-        log(cmd1)
+        logging.debug(cmd1)
         ret = command(cmd1, timeout=None, ignore_status=True, debug=True)
-        log(ret.stdout)
+        logging.debug(ret.stdout)
         run_exitstatus = ret.exit_status
-        log("Copy %s to %s" % (self.job_path, self.mode_path))
+        logging.info("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)
         # Rerun failed cases
         rerun_list = self._get_rerun_list()
         if rerun_list:
-            log("Rerun failed cases")
+            logging.info("Rerun failed cases")
             self.mk_rerun_yaml(rerun_list)
             ret_rerun = command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
                                 (self.avocado_path, self.avocado_path),
                                 timeout=None, ignore_status=True, debug=True)
-            log(ret_rerun.stdout)
+            logging.debug(ret_rerun.stdout)
             run_exitstatus += ret_rerun.exit_status
             shutil.copytree(self.job_path, "%s/rerun_result" % self.mode_path)
-        log("=============== Test run end:   %s mode ===============" % self.azure_mode)
+        logging.info("=============== Test run end:   %s mode ===============" % self.azure_mode)
         return run_exitstatus
 
 
 def provision():
-    return Run().provision()
+    if TYPE == "onpremise":
+        return Run().provision_onpremise()
+    elif TYPE == "ondemand":
+        return Run().provision_ondemand()
 
 
 def runtest():
@@ -149,7 +165,7 @@ def runtest():
         parser.print_help()
         parser.error("%s is not azure mode." % AZURE_MODE)
     else:
-        log("Azure Mode: %s" % AZURE_MODE)
+        logging.info("Azure Mode: %s" % AZURE_MODE)
         run_exitstatus = 0
         if "asm" in AZURE_MODE:
             asm_run = Run("asm")
@@ -162,34 +178,85 @@ def runtest():
 
 def import_result():
     if SUBMIT_RESULT:
-        log("=============== Import result to polarion ===============")
+        logging.info("=============== Import result to polarion ===============")
         ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
-        log("Import result successful")
+        logging.info("Import result successful")
         return ret
     else:
-        log("Do not submit result to polarion.")
+        logging.info("Do not submit result to polarion.")
         return 0
+
+
+def _get_osdisk(osdisk_path=OSDISK_PATH):
+    if not options.osdisk:
+        if os.path.isfile(osdisk_path):
+            with open(osdisk_path, 'r') as f:
+                osdisk = f.read().split("\n")
+            if ".vhd" not in osdisk:
+                logging.error("osdisk format is wrong.")
+                sys.exit(1)
+        else:
+            logging.error("No osdisk")
+            sys.exit(1)
+    else:
+        osdisk = options.osdisk
+    return osdisk
 
 
 def main():
     # modify /etc/avocado/avocado.conf
     config()
     # Create configuration files
-    log("Creating configuration files...")
-    command("/usr/bin/python %s/create_conf.py" % AVOCADO_PATH, debug=True)
-    log("Configuration files are created.")
-    # Run main process
-    if PROVISION_ONLY:
-        log("Provision only")
-        sys.exit(provision())
-    elif RUN_ONLY:
-        log("Run test only")
-        sys.exit(runtest())
-    elif IMPORT_ONLY:
-        log("Import result only")
-        sys.exit(import_result())
+    if TYPE == "onpremise":
+        logging.info("Creating configuration files...")
+        command("/usr/bin/python {0}/create_conf.py --type=onpremise".format(AVOCADO_PATH), debug=True)
+        logging.info("Configuration files are created.")
+        # Run main process
+        if PROVISION_ONLY:
+            logging.info("Provision only")
+            sys.exit(provision())
+        elif RUN_ONLY:
+            logging.info("Run test only")
+            sys.exit(runtest())
+        elif IMPORT_ONLY:
+            logging.info("Import result only")
+            sys.exit(import_result())
+        else:
+            sys.exit(provision() or runtest() or import_result())
+    elif TYPE == "ondemand":
+        # Run main process
+        if os.path.isfile(OSDISK_PATH):
+            os.remove(OSDISK_PATH)
+        if PROVISION_ONLY:
+            logging.info("Provision only")
+            sys.exit(provision())
+        elif RUN_ONLY:
+            logging.info("Run test only")
+            osdisk = _get_osdisk()
+            command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk={1}"
+                    .format(AVOCADO_PATH, osdisk), debug=True)
+            sys.exit(runtest())
+        elif IMPORT_ONLY:
+            logging.info("Import result only")
+            command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk=empty"
+                    .format(AVOCADO_PATH), debug=True)
+            sys.exit(import_result())
+        else:
+            ret = provision()
+            osdisk = _get_osdisk()
+            command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk={1}"
+                    .format(AVOCADO_PATH, osdisk), debug=True)
+            ret += runtest()
+            ret += import_result()
+            sys.exit(ret)
+    elif TYPE == "customize":
+        logging.info("Creating configuration files...")
+        command("/usr/bin/python {0}/create_conf.py --type=customize".format(AVOCADO_PATH), debug=True)
+        logging.info("Configuration files are created.")
+        sys.exit(runtest() or import_result())
     else:
-        sys.exit(provision() or runtest() or import_result())
+        parser.print_help()
+        parser.error("Wrong type!")
 
 
 if __name__ == "__main__":
@@ -205,11 +272,18 @@ if __name__ == "__main__":
                       help='The azure modes you want to run test cases(asm,arm). Separate with comma. '
                            'If not set, run both asm and arm mode.',
                       metavar='AZUREMODE')
+    parser.add_option('-o', '--osdisk', dest='osdisk', action='store',
+                      help='The VHD OS disk name(e.g.RHEL-7.3-20161019.0-wala-2.2.0-2.vhd)', metavar='OSDISK.vhd')
+    parser.add_option('-t', '--type', dest='type', action='store',
+                      help='The type of the test. Default value is onpremise. '
+                           '(onpremise/ondemand/customize)', metavar='TYPE')
 
     options, args = parser.parse_args()
     AZURE_MODE = options.azure_mode.lower()
     PROVISION_ONLY = options.provision_only
     RUN_ONLY = options.run_only
     IMPORT_ONLY = options.import_only
+
+    TYPE = options.type if options.type else yaml.load(file('%s/config.yaml' % AVOCADO_PATH)).get("type", "onpremise")
 
     main()
