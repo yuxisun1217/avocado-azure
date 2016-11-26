@@ -29,7 +29,7 @@
 # RedhatSub: Red Hat Subscription account
 # VMUser: The VM user account
 #####################################################################
-type:
+type: onpremise
 onpremise:
     rhel_version: None
 customize:
