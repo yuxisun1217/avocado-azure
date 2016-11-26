@@ -1,7 +1,7 @@
 ondemand: False
 upstream: True
 tag:
-type: function
+case_group: function
 submit_result: True
 base_url: 'http://download.eng.pek2.redhat.com/rel-eng/'
 store_dir: '/home/autotest/'
