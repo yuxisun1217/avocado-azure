@@ -800,11 +800,12 @@ def main():
     file_exist_list = [p.srcksPath]
 
     # argv
+    Setup()
     for a in sys.argv[1:]:
         if re.match("^([-/]*)(help|usage|\?)", a):
             sys.exit(Usage())
-        elif re.match("^([-/]*)setup", a):
-            sys.exit(Setup())
+#        elif re.match("^([-/]*)setup", a):
+#            sys.exit(Setup())
         elif re.match("^([-/]*)check", a):
             sys.exit(CheckEnvironment(dir_create_list, file_exist_list))
         elif re.match("^([-/]*)all", a):
