@@ -516,6 +516,7 @@ def download_wala_upstream(version=None):
         spec_data = f.read()
     with open("%s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath, 'w') as f:
         f.write(spec_data.replace("upstream_version", version))
+    Run("/usr/bin/cp -f {0}/patch/* {1}/SOURCES/".format(p.realpath, p.rpmbuildPath))
     # Use mock instead of rpmbuild to make rpm package
     main_project = p.Project.split('.')[0]
     Run("rpmbuild -bs %s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath)
@@ -772,8 +773,8 @@ def Setup():
     os.chdir(os.path.split(os.path.realpath(__file__))[0])
     if not os.path.isdir(p.MainDir):
         os.makedirs(p.MainDir)
-    Run("cp -r tools %s" % p.MainDir)
-    Run("cp -r ks %s" % p.MainDir)
+    Run("/usr/bin/cp -r -f {0}/tools {1}".format(p.realpath, p.MainDir))
+    Run("/usr/bin/cp -r -f {0}/ks {1}".format(p.realpath, p.MainDir))
     Log("Setup finished.")
     return 0
 
@@ -799,18 +800,21 @@ def main():
     dir_create_list = [p.TmpDir, p.MainDir, p.ksDir, p.vhdDir, p.isoDir]
     file_exist_list = [p.srcksPath]
 
+    ret = Setup()
+    ret += CheckEnvironment(dir_create_list, file_exist_list)
+    if ret != 0:
+        ErrorAndExit("Environment Check is not pass")
     # argv
-    Setup()
     for a in sys.argv[1:]:
         if re.match("^([-/]*)(help|usage|\?)", a):
             sys.exit(Usage())
 #        elif re.match("^([-/]*)setup", a):
 #            sys.exit(Setup())
-        elif re.match("^([-/]*)check", a):
-            sys.exit(CheckEnvironment(dir_create_list, file_exist_list))
+#        elif re.match("^([-/]*)check", a):
+#            sys.exit(CheckEnvironment(dir_create_list, file_exist_list))
         elif re.match("^([-/]*)all", a):
-            if CheckEnvironment(dir_create_list, file_exist_list) == 1:
-                ErrorAndExit("Environment Check is not pass")
+#            if CheckEnvironment(dir_create_list, file_exist_list) == 1:
+#                ErrorAndExit("Environment Check is not pass")
             sys.exit(Download() or Install() or Convert())
         elif re.match("^([-/]*)downloadwala", a):
 #            sys.exit(download_wala(p.WalaVersion))
