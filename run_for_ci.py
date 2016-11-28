@@ -229,19 +229,23 @@ def main():
             os.remove(OSDISK_PATH)
         if PROVISION_ONLY:
             logging.info("Provision only")
+            command("/usr/bin/python {0}/create_conf.py --type=ondemand --provision-only"
+                    .format(AVOCADO_PATH), debug=True)
             sys.exit(provision())
         elif RUN_ONLY:
             logging.info("Run test only")
             osdisk = _get_osdisk()
-            command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk={1}"
+            command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk={1} --run-only"
                     .format(AVOCADO_PATH, osdisk), debug=True)
             sys.exit(runtest())
         elif IMPORT_ONLY:
             logging.info("Import result only")
-            command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk=empty"
+            command("/usr/bin/python {0}/create_conf.py --type=ondemand --import-only"
                     .format(AVOCADO_PATH), debug=True)
             sys.exit(import_result())
         else:
+            command("/usr/bin/python {0}/create_conf.py --type=ondemand --provision-only"
+                    .format(AVOCADO_PATH), debug=True)
             ret = provision()
             osdisk = _get_osdisk()
             command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk={1}"

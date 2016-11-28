@@ -184,6 +184,7 @@ class CreateConfFiles(object):
                                                         stderr=subprocess.STDOUT, shell=True).strip('\n')
         self.wala_version = subprocess.check_output("%s/azure_image_prepare.py -walabuild" % azure_image_prepare_dir,
                                                     stderr=subprocess.STDOUT, shell=True).split('.el')[0].strip('\n')
+        return 0
 
     def create_common_yaml(self, ondemand_os_disk=None):
         """
@@ -206,8 +207,8 @@ class CreateConfFiles(object):
         else:
             parser.print_help()
             parser.error("Wrong type!")
-        print image
-        print os_disk
+        print "Image: %s" % image
+        print "OS Disk: %s" % os_disk
         common_yaml_dict = {
             "project": self.data.get("project"),
             "wala_version": self.wala_version,
@@ -226,6 +227,7 @@ class CreateConfFiles(object):
         }
         _write_file_content(common_yaml,
                             CommonYaml % common_yaml_dict)
+        return 0
 
     def create_test_yaml(self, azure_mode):
         """
@@ -238,6 +240,7 @@ class CreateConfFiles(object):
         }
         _write_file_content(test_yaml,
                             TestYaml % test_yaml_dict)
+        return 0
 
     def create_polarion_config_yaml(self):
         """
@@ -253,6 +256,7 @@ class CreateConfFiles(object):
         }
         _write_file_content(polarion_yaml,
                             PolarionYaml % polarion_yaml_dict)
+        return 0
 
 
 if __name__ == "__main__":
@@ -281,8 +285,18 @@ if __name__ == "__main__":
             parser.print_help()
             parser.error("The type must be specified.")
     createFile = CreateConfFiles(type, data)
-    createFile.create_azure_image_prepare_yaml()
-    createFile.create_common_yaml(options.osdisk)
-    createFile.create_test_yaml("asm")
-    createFile.create_test_yaml("arm")
-    createFile.create_polarion_config_yaml()
+    ret = createFile.create_azure_image_prepare_yaml()
+    if options.provision_only:
+        pass
+    elif options.run_only:
+        ret += createFile.create_common_yaml(options.osdisk)
+        ret += createFile.create_test_yaml("asm")
+        ret += createFile.create_test_yaml("arm")
+    elif options.import_only:
+        ret += createFile.create_polarion_config_yaml()
+    else:
+        ret += createFile.create_common_yaml(options.osdisk)
+        ret += createFile.create_test_yaml("asm")
+        ret += createFile.create_test_yaml("arm")
+        ret += createFile.create_polarion_config_yaml()
+    sys.exit(ret)
