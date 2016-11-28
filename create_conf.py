@@ -166,9 +166,14 @@ class CreateConfFiles(object):
         """
         Create azure_image_prepare.yaml. Must be run before all other functions.
         """
+        if self.type == "onpremise":
+            rhel_version = self.data.get("onpremise", None).get("rhel_version", None),
+        else:
+            rhel_version = "None"
         azure_image_prepare_yaml_dict = {
             "project": self.data.get("project"),
-            "rhel_version": self.data.get("onpremise").get("rhel_version", None),
+#            "rhel_version": self.data.get("onpremise", None).get("rhel_version", None),
+            "rhel_version": rhel_version,
             "wala_version": self.data.get("wala_version", None),
             "upstream": self.data.get("upstream", True),
             "base_url": self.data.get("base_url", "http://download.eng.pek2.redhat.com/rel-eng/"),
