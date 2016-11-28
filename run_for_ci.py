@@ -126,8 +126,7 @@ azure_mode: !mux
 #            logging.error("Ondemand privision failed!")
 #            sys.exit(1)
 #        os_disk = ret.stdout
-        os_disk = ondemand_provision.main()
-        return 0, os_disk
+        return ondemand_provision.main()
 
     def run(self):
         logging.info("=============== Test run begin: %s mode ===============" % self.azure_mode)
