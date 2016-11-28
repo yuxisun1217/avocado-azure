@@ -167,7 +167,7 @@ class CreateConfFiles(object):
         Create azure_image_prepare.yaml. Must be run before all other functions.
         """
         if self.type == "onpremise":
-            rhel_version = self.data.get("onpremise", None).get("rhel_version", None),
+            rhel_version = self.data.get("onpremise").get("rhel_version", None)
         else:
             rhel_version = "None"
         azure_image_prepare_yaml_dict = {
