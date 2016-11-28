@@ -115,7 +115,7 @@ azure_mode: !mux
         if self._get_rerun_list():
             logging.error("Onpremise provision failed!")
             sys.exit(1)
-        logging.info("Onpremise provision successful.")
+        logging.info("Onpremise provision successfully.")
         return 0
 
     def provision_ondemand(self):
