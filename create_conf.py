@@ -195,7 +195,7 @@ class CreateConfFiles(object):
         """
         Create common.yaml
         """
-        tagstr = "-"+self.data.get("tag") if (self.data.get("tag") or self.data.get("tag") == "None") else ""
+        tagstr = "-"+self.data.get("tag") if (self.data.get("tag") and self.data.get("tag") != "None") else ""
         if self.type == "customize":
             os_disk = self.data.get("customize").get("os_disk")
             image = self.data.get("customize").get("image")
