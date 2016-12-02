@@ -1,7 +1,7 @@
 azure_mode: !mux
     asm:
         cases:
-            TestTest.test_pass
+            LifeCycleTest.test_create_vm
     arm:
         cases:
-            TestTest.test_pass
+            LifeCycleTest.test_create_vm
