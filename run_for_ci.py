@@ -186,6 +186,13 @@ def import_result():
         return 0
 
 
+def teardown():
+    logging.info("=============== Teardown ===============")
+    ret = command("avocado run %s/tests/01_img_prep.py: --multiplex {0}/cfg/provision.yaml".format(AVOCADO_PATH))
+    logging.info("Teardown finished.")
+    return ret
+
+
 def _get_osdisk(osdisk_path=OSDISK_PATH):
     if not options.osdisk:
         if os.path.isfile(osdisk_path):
@@ -216,12 +223,15 @@ def main():
             sys.exit(provision())
         elif RUN_ONLY:
             logging.info("Run test only")
-            sys.exit(runtest())
+            sys.exit(runtest() or teardown())
         elif IMPORT_ONLY:
             logging.info("Import result only")
             sys.exit(import_result())
+#        elif TEARDOWN:
+#            logging.info("Teardown only")
+#            sys.exit(teardown())
         else:
-            sys.exit(provision() or runtest() or import_result())
+            sys.exit(provision() or runtest() or import_result() or teardown())
     elif TYPE == "ondemand":
         # Run main process
         if os.path.isfile(OSDISK_PATH):
@@ -236,12 +246,17 @@ def main():
             osdisk = _get_osdisk()
             command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk={1} --run-only"
                     .format(AVOCADO_PATH, osdisk), debug=True)
-            sys.exit(runtest())
+            sys.exit(runtest() or teardown())
         elif IMPORT_ONLY:
             logging.info("Import result only")
             command("/usr/bin/python {0}/create_conf.py --type=ondemand --import-only"
                     .format(AVOCADO_PATH), debug=True)
             sys.exit(import_result())
+#        elif TEARDOWN:
+#            command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk=empty"
+#                    .format(AVOCADO_PATH), debug=True)
+#            logging.info("Teardown only")
+#            sys.exit(teardown())
         else:
             command("/usr/bin/python {0}/create_conf.py --type=ondemand --provision-only"
                     .format(AVOCADO_PATH), debug=True)
@@ -251,6 +266,7 @@ def main():
                     .format(AVOCADO_PATH, osdisk), debug=True)
             ret += runtest()
             ret += import_result()
+            ret += teardown()
             sys.exit(ret)
     elif TYPE == "customize":
         logging.info("Creating configuration files...")
@@ -271,6 +287,8 @@ if __name__ == "__main__":
                       help='Only run test cases. Do not provision.')
     parser.add_option('-i', '--import-only', dest='import_only', default=False, action='store_true',
                       help='Only import the latest result to polarion. Do not run tests.')
+    parser.add_option('-T', '--teardown', dest='teardown', default=False, action='store_true',
+                      help='Delete the VMs and images that generated in this test run.')
     parser.add_option('-m', '--mode', dest='azure_mode', default='asm,arm', action='store',
                       help='The azure modes you want to run test cases(asm,arm). Separate with comma. '
                            'If not set, run both asm and arm mode.',
@@ -286,6 +304,7 @@ if __name__ == "__main__":
     PROVISION_ONLY = options.provision_only
     RUN_ONLY = options.run_only
     IMPORT_ONLY = options.import_only
+    TEARDOWN = options.teardown
 
     TYPE = options.type if options.type else yaml.load(file('%s/config.yaml' % AVOCADO_PATH)).get("type", "onpremise")
 
