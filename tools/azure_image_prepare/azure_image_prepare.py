@@ -800,21 +800,21 @@ def main():
     dir_create_list = [p.TmpDir, p.MainDir, p.ksDir, p.vhdDir, p.isoDir]
     file_exist_list = [p.srcksPath]
 
-    ret = Setup()
-    ret += CheckEnvironment(dir_create_list, file_exist_list)
-    if ret != 0:
-        ErrorAndExit("Environment Check is not pass")
+#    ret = Setup()
+#    ret += CheckEnvironment(dir_create_list, file_exist_list)
+#    if ret != 0:
+#        ErrorAndExit("Environment Check is not pass")
     # argv
     for a in sys.argv[1:]:
         if re.match("^([-/]*)(help|usage|\?)", a):
             sys.exit(Usage())
-#        elif re.match("^([-/]*)setup", a):
-#            sys.exit(Setup())
-#        elif re.match("^([-/]*)check", a):
-#            sys.exit(CheckEnvironment(dir_create_list, file_exist_list))
+        elif re.match("^([-/]*)setup", a):
+            sys.exit(Setup())
+        elif re.match("^([-/]*)check", a):
+            sys.exit(CheckEnvironment(dir_create_list, file_exist_list))
         elif re.match("^([-/]*)all", a):
-#            if CheckEnvironment(dir_create_list, file_exist_list) == 1:
-#                ErrorAndExit("Environment Check is not pass")
+            if CheckEnvironment(dir_create_list, file_exist_list) == 1:
+                ErrorAndExit("Environment Check is not pass")
             sys.exit(Download() or Install() or Convert())
         elif re.match("^([-/]*)downloadwala", a):
 #            sys.exit(download_wala(p.WalaVersion))

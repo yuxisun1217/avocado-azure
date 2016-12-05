@@ -130,13 +130,13 @@ class ImgPrepTest(Test):
         Install an image from iso
         """
         realpath = os.path.split(os.path.realpath(__file__))[0]
-#        cmd = "/usr/bin/python %s/../tools/azure_image_prepare/azure_image_prepare.py -setup" % realpath
-#        self.assertEqual(utils_misc.host_command(cmd, ret='exit_status'), 0,
-#                         "Fail to setup environment")
+        cmd = "/usr/bin/python %s/../tools/azure_image_prepare/azure_image_prepare.py -setup" % realpath
+        self.assertEqual(utils_misc.host_command(cmd, ret='exit_status'), 0,
+                         "Fail to setup environment")
         self.log.info("Begin to install image")
-#        cmd = "/usr/bin/python %s/../tools/azure_image_prepare/azure_image_prepare.py -check" % realpath
-#        self.assertEqual(utils_misc.host_command(cmd, ret='exit_status'), 0,
-#                         "Fail to check environment")
+        cmd = "/usr/bin/python %s/../tools/azure_image_prepare/azure_image_prepare.py -check" % realpath
+        self.assertEqual(utils_misc.host_command(cmd, ret='exit_status'), 0,
+                         "Fail to check environment")
         cmd = "/usr/bin/python %s/../tools/azure_image_prepare/azure_image_prepare.py -download" % realpath
         self.assertEqual(utils_misc.host_command(cmd, ret='exit_status', timeout=12*3600), 0,
                          "Fail to download iso")
