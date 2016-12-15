@@ -260,7 +260,7 @@ class ImgPrepTest(Test):
                     self.assertEqual(image_test01.create(image_params), 0,
                                      "Fail to create vm image %s" % image_params["name"])
         # Waiting for the blob copy finish
-        time.sleep(60)
+        time.sleep(120)
 
     def tearDown(self):
         self.log.debug("Teardown.")
