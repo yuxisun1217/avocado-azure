@@ -199,7 +199,7 @@ def _get_osdisk(osdisk_path=OSDISK_PATH):
     if not options.osdisk:
         if os.path.isfile(osdisk_path):
             with open(osdisk_path, 'r') as f:
-                osdisk = f.read().split("\n")
+                osdisk = f.read().strip("\n")
             if ".vhd" not in osdisk:
                 logging.error("osdisk format is wrong.")
                 sys.exit(1)
@@ -262,7 +262,8 @@ def main():
         else:
             command("/usr/bin/python {0}/create_conf.py --type=ondemand --provision-only"
                     .format(AVOCADO_PATH), debug=True)
-            ret = provision()
+            ret = 0
+            ret += provision()
             osdisk = _get_osdisk()
             command("/usr/bin/python {0}/create_conf.py --type=ondemand --osdisk={1}"
                     .format(AVOCADO_PATH, osdisk), debug=True)
