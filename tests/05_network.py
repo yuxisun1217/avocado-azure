@@ -119,6 +119,7 @@ lo eth0\
                                   "-e \'/inet_interfaces = all/s/^#//g\' "
                                   "/etc/postfix/main.cf")
         self.vm_test01.get_output("service postfix restart")
+        time.sleep(1)
         self.assertIn("0.0.0.0:25", self.vm_test01.get_output("netstat -antp"),
                       "Fail to start postfix and listen to 0.0.0.0")
         # Check endpoint
