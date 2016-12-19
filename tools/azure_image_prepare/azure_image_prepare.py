@@ -621,7 +621,7 @@ def mk_floppy(srcks_path, floppy_path):
     floppy_mount = p.TmpDir + "ksfloppy/"
     CreateDir(floppy_mount)
     # Create new floppy img
-    Run("dd bs=512 count=2880 if=/dev/zero of=" + floppy_path)
+    Run("dd bs=512 count=20000 if=/dev/zero of=" + floppy_path)
     Run("mkfs.msdos " + floppy_path)
     Run("mount -o loop " + floppy_path + " " + floppy_mount)
     # Copy ks file to floppy
