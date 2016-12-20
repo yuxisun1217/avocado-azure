@@ -190,7 +190,7 @@ def import_result():
 
 def teardown():
     logging.info("=============== Teardown ===============")
-    ret = command("avocado run %s/tests/01_img_prep.py: --multiplex {0}/cfg/provision.yaml".format(AVOCADO_PATH))
+    ret = command("avocado run {0}/tests/01_img_prep.py: --multiplex {0}/cfg/provision.yaml".format(AVOCADO_PATH))
     logging.info("Teardown finished.")
     return ret
 
