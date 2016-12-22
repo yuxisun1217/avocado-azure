@@ -861,7 +861,6 @@ class WALAConfTest(Test):
         time.sleep(300)
         # Retry 10 times (300s in total) to wait for the swap file created.
         for count in range(1, 11):
-            self.log.debug(self.vm_test01.get_output("tail -10 /var/log/waagent.log"))
             swapsize = self.vm_test01.get_output("free -mg|grep Swap|awk '{print $2}'", sudo=False)
             if int(swapsize) == int(swapsize_std)/1024-1:
                 break
@@ -869,6 +868,7 @@ class WALAConfTest(Test):
                 self.log.info("Swap size is wrong. Retry %d times." % count)
                 time.sleep(30)
         else:
+            self.log.debug(self.vm_test01.get_output("tail -10 /var/log/waagent.log"))
             self.fail("ResourceDisk.SwapSizeMB=%s doesn't work in GPT partition" % swapsize_std)
 #        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=5242880 doesn't work in GPT partition")
         # Check waagent.log
