@@ -858,9 +858,10 @@ class WALAConfTest(Test):
                         "Cannot start the VM")
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Cannot login the VM")
-        time.sleep(30)
-        # Retry 10 times (900s in total) to wait for the swap file created.
-        for count in range(1, 31):
+        time.sleep(300)
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        for count in range(1, 11):
+            self.log.debug(self.vm_test01.get_output("tail -10 /var/log/waagent.log"))
             swapsize = self.vm_test01.get_output("free -mg|grep Swap|awk '{print $2}'", sudo=False)
             if int(swapsize) == int(swapsize_std)/1024-1:
                 break
