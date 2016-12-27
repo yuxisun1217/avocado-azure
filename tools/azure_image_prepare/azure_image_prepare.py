@@ -11,7 +11,6 @@ import string
 import hashlib
 import pwd
 import yaml
-import json
 
 AzureImagePrepareConf = """\
 #
@@ -24,7 +23,7 @@ WalaVersion:                                # Specify a WALinuxAgent rpm version
 Upstream: False                             # If get WALinuxAgent from upstream(github), set it to True; else, set it to False
 Baseurl: http://download.eng.pek2.redhat.com/rel-eng/  # The URL to download original iso. Must be end with "/".
 MainDir: /home/autotest/                    # The main folder to store original iso. Must be end with "/".
-TmpDir: /home/tmp/azure/                    # Temporary folder to store the ks floppy, new iso and mount point. Must be end with "/".
+TmpDir: /home/tmp/azure/                    # Temporary folder to store the temporary files, such as new iso and mount point. Must be end with "/".
 Logfile: /tmp/azure_image_prepare.log       # Logfile
 Verbose: n                                  # Enable verbose logs
 ImageSize: 10                               # The VM image disk size in GB
@@ -100,6 +99,7 @@ class Params(object):
         self.walaDir = self.MainDir + "wala/RHEL-" + self.Project[0] + "/"
         self.ksDir = self.MainDir + "ks/"
         self.toolsDir = self.MainDir + "tools/"
+        self.rhuiDir = self.MainDir + "rhui/"
         self.vhdDir = self.MainDir + "vhd/"
         self.isoDir = self.MainDir + "iso/RHEL-" + self.Project + "/"
         self.newisoDir = self.TmpDir + "newiso/"
@@ -284,7 +284,7 @@ def CheckFileExist(filepath, ifexit=True):
     """
     Check if file exists. If not, save log and exit.
     """
-    if os.path.isfile(filepath) == False:
+    if os.path.exists(filepath) == False:
         if ifexit:
             ErrorAndExit(filepath + " doesn't exist")
         else:
@@ -297,7 +297,7 @@ def CheckFileNotExist(filepath, ifexit=True):
     """
     If file exists, remove it.
     """
-    if os.path.isfile(filepath):
+    if os.path.exists(filepath):
         Warn(filepath + " already exists. Remove it.")
         try:
             os.remove(filepath)
@@ -316,6 +316,18 @@ def _hashfile(afile, hasher, blocksize=65536):
         hasher.update(buf)
         buf = afile.read(blocksize)
     return hasher.hexdigest()
+
+
+def _copyfile(src, dst, ftype="file"):
+    CheckFileExist(src)
+    try:
+        if ftype == "tree":
+            shutil.copytree(src, dst)
+        else:
+            shutil.copy(src, dst)
+    except Exception, e:
+        ErrorAndExit("Cannot copy {0} to {1}. Exception: {2}".format(src, dst, str(e)))
+    Log("Copy {0} to {1} successfully.".format(src, dst))
 
 
 ###### Download the latest build ######
@@ -565,11 +577,27 @@ def wala_build():
     Log("WALA version: %s" % wala_build)
     return wala_build
 
+
 ###### Install ######
+def copy2iso(newiso_mount):
+    # Copy ks file to newiso
+    _copyfile(p.srcksPath, newiso_mount+"ks.cfg")
+    # Copy WALinuxAgent package to newiso
+    download_wala(p.WalaVersion)
+    wala_fullname = p.walaName+".noarch.rpm"
+    _copyfile(p.walaDir+wala_fullname, newiso_mount+wala_fullname)
+    # Copy tools(fio,iperf3) to newiso
+    _copyfile(p.toolsDir, newiso_mount+"tools/", ftype="tree")
+    # Copy RHUI package to newiso
+    rhui_fullpath = RunGetOutput("ls {0}rhui-azure-rhel{1}*.rpm"
+                                 .format(p.rhuiDir, p.Project.split('.')[0]))[1].strip('\n')
+    _copyfile(rhui_fullpath, newiso_mount+os.path.basename(rhui_fullpath))
+    Log("Copy files to {0} successfully.".format(newiso_mount))
+
 
 def mk_iso(iso_path, newiso_path):
     """
-    Modify isolinux.cfg. Make new iso.
+    Modify isolinux.cfg. Copy WALA package, tools, ks.cfg in. Make new iso.
     """
     if (iso_path == None) or (os.path.isfile(iso_path) == False):
         ErrorAndExit("No RHEL iso. Please download again")
@@ -579,83 +607,38 @@ def mk_iso(iso_path, newiso_path):
     CreateDir(iso_mount)
     # Mount origional iso and copy to new path.
     retcode, out = RunGetOutput("mount -o loop " + iso_path + " " + iso_mount)
-    if retcode == False and out.find("mounting read-only") == -1:
+    if retcode is False and out.find("mounting read-only") == -1:
         ErrorAndExit("Cannot mount " + iso_path + " to " + iso_mount)
     Log("Copying iso to newiso...")
-    try:
-        shutil.copytree(iso_mount, newiso_mount)
-    except Exception, e:
-        ErrorAndExit("Copy iso tree fail. Exception: " + str(e))
-    Log("Copy iso tree successfully.")
+    _copyfile(iso_mount, newiso_mount, ftype="tree")
     Run("umount " + iso_mount)
-    # Modify isolinux.cfg. Add ks=floppy.
+    # Modify isolinux.cfg. Add ks=cdrom.
     CheckFileExist(isolinux)
     if float(p.Project) < 7.0:
-        #        Run("sed -i '/^\ *append\ initrd/s/$/\ ks=floppy/' "+isolinux)
         Run("sed -i %s\
             -e 's/timeout 600/timeout 30/'\
-            -e '/append initrd=/s/$/ ks=floppy/'" % isolinux)
+            -e '/append initrd=/s/$/ ks=cdrom/'" % isolinux)
     elif float(p.Project) >= 7.0:
-        #        Run("sed -i '/^\ *append\ initrd/s/$/\ ks=cdrom\:\/dev\/sr1\:\/ks.cfg/' "+isolinux)
         Run("sed -i %s\
             -e '/menu[[:space:]][[:space:]]*default/d'\
             -e 's/timeout 600/timeout 30/'\
-            -e '/append initrd=/s/$/ ks=cdrom:\/dev\/fd0:\/ks.cfg/'\
+            -e '/append initrd=/s/$/ ks=cdrom/'\
             -e '/^label linux/{N;s/$/\\n  menu default/}'" % isolinux)
     os.chmod(isolinux, 444)
+    # Copy files into newiso
+    copy2iso(newiso_mount)
     # Make new iso
     isoinfo = RunGetOutput("isoinfo -d -i " + iso_path)[1]
     m = re.search("Volume id:([^\n]*)", isoinfo)
     volid = m.group(1)[1:]
-    #    Run("mkisofs -o "+newiso_path+" -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -R -J -v -T "+newiso_mount)
-    Run("mkisofs -J -R -v -T -V \"" + volid + "\" -o " + newiso_path + " -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table " + newiso_mount)
+#    Run("mkisofs -J -R -v -T -V \"" + volid + "\" -o " + newiso_path + " -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table " + newiso_mount)
+    Run("mkisofs -J -R -v -T -V \"{0}\" -o {1} -b isolinux/isolinux.bin -c isolinux/boot.cat "
+        "-no-emul-boot -boot-load-size 4 -boot-info-table {2}".format(volid, newiso_path, newiso_mount))
     Log("Make " + newiso_path + " successfully.")
     return 0
 
 
-def mk_floppy(srcks_path, floppy_path):
-    """
-    Make ksfloppy.img. Put ks.cfg,wala package and tools in it.
-    """
-    CheckFileNotExist(floppy_path)
-    floppy_mount = p.TmpDir + "ksfloppy/"
-    CreateDir(floppy_mount)
-    # Create new floppy img
-    Run("dd bs=512 count=20000 if=/dev/zero of=" + floppy_path)
-    Run("mkfs.msdos " + floppy_path)
-    Run("mount -o loop " + floppy_path + " " + floppy_mount)
-    # Copy ks file to floppy
-    dstks_path = floppy_mount + "ks.cfg"
-    CheckFileExist(srcks_path)
-    try:
-        shutil.copy(srcks_path, dstks_path)
-    except Exception, e:
-        ErrorAndExit("Cannot copy " + srcks_path + " to " + floppy_mount + ". Exception: " + str(e))
-    # Copy WALinuxAgent package to floppy
-    # For brewkoji-1.9-1
-    # wala_fullname = p.walaName
-#    if os.path.isfile(p.walaDir + wala_fullname):
-#        Log("%s already exists." % p.walaDir + wala_fullname)
-#    else:
-#        download_wala(p.WalaVersion)
-    download_wala(p.WalaVersion)
-    wala_fullname = p.walaName + ".noarch.rpm"
-    try:
-        shutil.copy(p.walaDir + wala_fullname, floppy_mount + wala_fullname)
-    except Exception, e:
-        ErrorAndExit("Cannot copy " + p.walaDir + wala_fullname + " to " + floppy_mount + ". Exception: " + str(e))
-    Log("Copy %s to ksfloppy successfully." % wala_fullname)
-    # Copy tools(fio,iperf3) to floppy
-    try:
-        shutil.copytree(p.toolsDir, floppy_mount + "tools/")
-    except Exception, e:
-        ErrorAndExit("Cannot copy " + p.toolsDir + " to " + floppy_mount + ". Exception: " + str(e))
-    Run("umount " + floppy_mount)
-    Log("Create ks floppy successfully.")
-    return 0
-
-
-def mk_qcow2(newiso_path, qcow2_path, floppy_path):
+def mk_qcow2(newiso_path, qcow2_path):
     """
     Install img through kickstart.
     """
@@ -664,7 +647,8 @@ def mk_qcow2(newiso_path, qcow2_path, floppy_path):
     Run("qemu-img create %s %dG -f qcow2" % (qcow2_path, p.ImageSize))
     CheckFileExist(qcow2_path)
     # Install image
-    Run("virt-install --name walatestimg --ram 1024 --network bridge=virbr0 --vcpus 1 --cdrom " + newiso_path + " --disk path=" + qcow2_path + ",bus=virtio --disk path=" + floppy_path + ",device=floppy --noreboot")
+    Run("virt-install --name walatestimg --ram 1024 --network bridge=virbr0 --vcpus 1 "
+        "--cdrom {0} --disk path={1},bus=virtio --noreboot".format(newiso_path, qcow2_path))
     Log("Install qcow2 image successfully.")
     return 0
 
@@ -711,7 +695,6 @@ def CheckEnvironment(dir_create_list, exist_file_list):
     Run("virsh undefine walatestimg", chk_err=False)
     _umount(p.TmpDir + "iso")
     _umount(p.TmpDir + "newiso")
-    _umount(p.TmpDir + "ksfloppy")
     if os.path.isdir(p.TmpDir):
         try:
             shutil.rmtree(p.TmpDir)
@@ -747,15 +730,11 @@ def _get_imagename():
 
 def Install():
     get_newest_local_isoname()
-    floppy_path = p.TmpDir + "ksfloppy.img"
-#    qcow2_path = p.TmpDir + rhel_build() + "-wala-" + wala_build() + ".qcow2"
     qcow2_path = p.TmpDir + _get_imagename() + ".qcow2"
     iso_path = p.isoDir + p.isoName + ".iso"
     newiso_path = p.TmpDir + p.isoName + "-ks.iso"
-    srcks_path = p.srcksPath
     return mk_iso(iso_path, newiso_path) or \
-           mk_floppy(srcks_path, floppy_path) or \
-           mk_qcow2(newiso_path, qcow2_path, floppy_path)
+           mk_qcow2(newiso_path, qcow2_path)
 
 
 def Convert():

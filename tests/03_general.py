@@ -227,7 +227,7 @@ class GeneralTest(Test):
         """
         self.log.info("Verify all packages are signed")
         self.vm_test01.get_output("rm -f /etc/yum.repos.d/redhat.repo")
-        self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
+        self.vm_test01.get_output("rpm -ivh /root/rhui*.rpm")
         self.assertIn("rh-cloud.repo", self.vm_test01.get_output("ls /etc/yum.repos.d/"),
                       "RHUI is not installed. Cannot use yum.")
         self.vm_test01.get_output("rpm -e WALinuxAgent")
@@ -318,7 +318,7 @@ class GeneralTest(Test):
                       "Fail to remove WALinuxAgent package")
         # 2.1 yum install WALinuxAgent
         self.vm_test01.get_output("rm -f /etc/yum.repos.d/redhat.repo")
-        self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
+        self.vm_test01.get_output("rpm -ivh /root/rhui*.rpm")
         time.sleep(1)
         self.assertIn("rh-cloud.repo", self.vm_test01.get_output("ls /etc/yum.repos.d/"),
                       "RHUI is not installed. Cannot use yum.")

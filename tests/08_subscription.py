@@ -159,7 +159,7 @@ class SubscriptionTest(Test):
         self.log.info("Get content from RHUI")
         # Preparation
         if "No such file" in self.vm_test01.get_output("ls /etc/yum.repos.d/rh-cloud.repo"):
-            self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
+            self.vm_test01.get_output("rpm -ivh /root/rhui*.rpm")
         # Check rhui files
         rhui_file_list = ["/etc/yum.repos.d/rh-cloud.repo",
                           "/etc/pki/rhui/product/content.crt"]
