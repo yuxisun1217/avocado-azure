@@ -87,7 +87,7 @@ class Params(object):
         self.Upstream = c.get("Upstream")
         Log("Upstream: %s" % self.Upstream)
         self.TmpDir = c.get("TmpDir")
-        self.MainDir = c.get("MainDir")
+        main_dir = c.get("MainDir")
         self.Baseurl = c.get("Baseurl")
         get_verbose = c.get("Verbose")
         self.Logfile = c.get("Logfile")
@@ -96,12 +96,14 @@ class Params(object):
         if get_verbose is not None and get_verbose.lower().startswith("y"):
             myLogger.verbose = True
             # self.ConfigDir=os.path.dirname(configfile_path)+"/"
-        self.walaDir = self.MainDir + "wala/RHEL-" + self.Project[0] + "/"
-        self.ksDir = self.MainDir + "ks/"
-        self.toolsDir = self.MainDir + "tools/"
-        self.rhuiDir = self.MainDir + "rhui/"
-        self.vhdDir = self.MainDir + "vhd/"
-        self.isoDir = self.MainDir + "iso/RHEL-" + self.Project + "/"
+        self.walaDir = main_dir + "wala/RHEL-" + self.Project[0] + "/"
+        tool_path = self.realpath + "tools/azure_image_prepare/"
+        self.ksDir = tool_path + "ks/"
+        self.toolsDir = tool_path + "tools/"
+        self.rhuiDir = tool_path + "rhui/"
+        self.patchDir = tool_path + "patch/"
+        self.vhdDir = main_dir + "vhd/"
+        self.isoDir = main_dir + "iso/RHEL-" + self.Project + "/"
         self.newisoDir = self.TmpDir + "newiso/"
         self.srcksPath = self.ksDir + "RHEL-" + self.Project.split('.')[0] + ".cfg"
         self.isoName = ""  # ISO file name without postfix(.iso)
@@ -379,7 +381,8 @@ def download_iso(version=None):
     iso_name = latest_build + '-Server-x86_64-dvd1.iso'
     iso_url = p.Baseurl + latest_build + '/compose/Server/x86_64/iso/' + iso_name
     md5_url = iso_url + '.MD5SUM'
-    iso_folder = p.MainDir + 'iso/RHEL-' + p.Project + '/'
+#    iso_folder = p.MainDir + 'iso/RHEL-' + p.Project + '/'
+    iso_folder = p.isoDir
     iso_fullpath = iso_folder + iso_name
     CreateDir(iso_folder)
     try:
@@ -528,7 +531,7 @@ def download_wala_upstream(version=None):
         spec_data = f.read()
     with open("%s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath, 'w') as f:
         f.write(spec_data.replace("upstream_version", version))
-    Run("/usr/bin/cp -f {0}/patch/* {1}/SOURCES/".format(p.realpath, p.rpmbuildPath))
+    Run("/usr/bin/cp -f {0}* {1}/SOURCES/".format(p.patchDir, p.rpmbuildPath))
     # Use mock instead of rpmbuild to make rpm package
     main_project = p.Project.split('.')[0]
     Run("rpmbuild -bs %s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath)
@@ -748,14 +751,14 @@ def Convert():
     return qcow2_to_vhd(qcow2_path, vhd_path)
 
 
-def Setup():
-    os.chdir(os.path.split(os.path.realpath(__file__))[0])
-    if not os.path.isdir(p.MainDir):
-        os.makedirs(p.MainDir)
-    Run("/usr/bin/cp -r -f {0}/tools {1}".format(p.realpath, p.MainDir))
-    Run("/usr/bin/cp -r -f {0}/ks {1}".format(p.realpath, p.MainDir))
-    Log("Setup finished.")
-    return 0
+#def Setup():
+#    os.chdir(os.path.split(os.path.realpath(__file__))[0])
+#    if not os.path.isdir(p.MainDir):
+#        os.makedirs(p.MainDir)
+#    Run("/usr/bin/cp -r -f {0}/tools {1}".format(p.realpath, p.MainDir))
+#    Run("/usr/bin/cp -r -f {0}/ks {1}".format(p.realpath, p.MainDir))
+#    Log("Setup finished.")
+#    return 0
 
 
 ###### Main ######
@@ -776,8 +779,8 @@ def main():
     p = Params(configfile_path, realpath)
 
     # Check file lists
-    dir_create_list = [p.TmpDir, p.MainDir, p.ksDir, p.vhdDir, p.isoDir]
-    file_exist_list = [p.srcksPath]
+    dir_create_list = [p.TmpDir, p.vhdDir, p.isoDir]
+    file_exist_list = [p.srcksPath, p.toolsDir, p.patchDir, p.rhuiDir]
 
 #    ret = Setup()
 #    ret += CheckEnvironment(dir_create_list, file_exist_list)
@@ -787,8 +790,8 @@ def main():
     for a in sys.argv[1:]:
         if re.match("^([-/]*)(help|usage|\?)", a):
             sys.exit(Usage())
-        elif re.match("^([-/]*)setup", a):
-            sys.exit(Setup())
+#        elif re.match("^([-/]*)setup", a):
+#            sys.exit(Setup())
         elif re.match("^([-/]*)check", a):
             sys.exit(CheckEnvironment(dir_create_list, file_exist_list))
         elif re.match("^([-/]*)all", a):
