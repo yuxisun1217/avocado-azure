@@ -97,7 +97,7 @@ class Params(object):
             myLogger.verbose = True
             # self.ConfigDir=os.path.dirname(configfile_path)+"/"
         self.walaDir = main_dir + "wala/RHEL-" + self.Project[0] + "/"
-        tool_path = self.realpath + "tools/azure_image_prepare/"
+        tool_path = self.realpath + "/"
         self.ksDir = tool_path + "ks/"
         self.toolsDir = tool_path + "tools/"
         self.rhuiDir = tool_path + "rhui/"
@@ -292,6 +292,8 @@ def CheckFileExist(filepath, ifexit=True):
         else:
             Error(filepath + " doesn't exist.")
             return False
+    else:
+        LogIfVerbose(filepath + " exists.")
     return True
 
 
