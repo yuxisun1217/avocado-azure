@@ -222,7 +222,11 @@ def command(cmd, timeout=1200, **kwargs):
             if os.path.isfile(azure_err):
                 logging.debug(azure_err)
                 with open(azure_err, 'r') as f:
-                    logging.debug(f.read())
+                    azure_error_msg = f.read()
+                logging.debug(azure_error_msg)
+                if "TooManyRequests" in azure_error_msg:
+                    logging.debug("Too many requests. Wait for 300s.")
+                    time.sleep(300)
         logging.debug(str(e))
         raise
     if debug:
