@@ -109,6 +109,18 @@ azure_mode: !mux
                 cpu: 16
                 memory: 32
                 disk_size: 64
+            Standard_H8:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 8
+                memory: 56
+                disk_size: 1000
+            Standard_H16mr:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 16
+                memory: 224
+                disk_size: 2000
     arm:
         vm_sizes:
             Standard_A1:
@@ -207,3 +219,15 @@ azure_mode: !mux
                 cpu: 16
                 memory: 32
                 disk_size: 64
+            Standard_H8:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 8
+                memory: 56
+                disk_size: 1000
+            Standard_H16mr:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 16
+                memory: 224
+                disk_size: 2000

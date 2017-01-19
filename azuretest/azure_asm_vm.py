@@ -264,7 +264,7 @@ class VMASM(azure_vm.BaseVM):
         """
         logging.debug("Wait for running")
         r = 0
-        interval = 10
+        interval = 30
         while r < times:
             self.vm_update()
             if self.is_running():
@@ -283,7 +283,7 @@ class VMASM(azure_vm.BaseVM):
         """
         logging.debug("Wait for deallocated")
         r = 0
-        interval = 10
+        interval = 30
         while (r * interval) < timeout:
             self.vm_update()
             if self.is_deallocated():
@@ -303,7 +303,7 @@ class VMASM(azure_vm.BaseVM):
         """
         logging.debug("Wait for delete")
         r = 0
-        interval = 10
+        interval = 30
         while (r * interval) < timeout:
             self.vm_update()
             if not self.exists():
@@ -457,7 +457,7 @@ class VMASM(azure_vm.BaseVM):
         """
         logging.debug("Wait for cloud service delete")
         r = 0
-        interval = 10
+        interval = 30
         while (r * interval) < timeout:
             try:
                 self.cloudservice_show()

@@ -371,11 +371,13 @@ class GeneralTest(Test):
         if self.azure_mode == "asm":
             vm_size_list = ["Small", "A11", "Standard_A1_v2", "Standard_A8m_v2",
                             "Standard_D1", "Standard_D15_v2", "Standard_DS1", "Standard_DS15_v2",
-                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s"]
+                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s",
+                            "Standard_H8", "Standard_H16mr"]
         else:
             vm_size_list = ["Standard_A1", "Standard_A11", "Standard_A1_v2", "Standard_A8m_v2",
                             "Standard_D1", "Standard_D15_v2", "Standard_DS1", "Standard_DS15_v2",
-                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s"]
+                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s",
+                            "Standard_H8", "Standard_H16mr"]
         for vm_size in vm_size_list:
             # Create VM
             vm_params = copy.deepcopy(self.vm_params)
