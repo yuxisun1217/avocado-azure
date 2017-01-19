@@ -31,6 +31,18 @@ azure_mode: !mux
                 cpu: 16
                 memory: 112
                 disk_size: 382
+            Standard_A1_v2:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 1
+                memory: 2
+                disk_size: 10
+            Standard_A8m_v2:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 8
+                memory: 64
+                disk_size: 80
             Standard_D1:
                 storage_account: walaautoasmeastus
                 location: "East US"
@@ -117,6 +129,18 @@ azure_mode: !mux
                 cpu: 16
                 memory: 112
                 disk_size: 382
+            Standard_A1_v2:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 1
+                memory: 2
+                disk_size: 10
+            Standard_A8m_v2:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 8
+                memory: 64
+                disk_size: 80
             Standard_D1:
                 storage_account: walaautoarmwestus
                 location: "West US"
