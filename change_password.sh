@@ -24,6 +24,7 @@ function set_redhat_pw {
 }
 
 function decrypt {
+    git checkout $PASSWORD_ENCRYPT
     rm -f $PASSWORD_DECRYPT
     openssl enc -des3 -d -in $PASSWORD_ENCRYPT -out $PASSWORD_DECRYPT -k $key_pw
     grep "AzureSub" $PASSWORD_DECRYPT > /dev/null
@@ -38,6 +39,7 @@ function decrypt {
 function encrypt {
     rm -f $PASSWORD_ENCRYPT
     openssl enc -des3 -e -in $PASSWORD_DECRYPT -out $PASSWORD_ENCRYPT -k $key_pw
+    echo "Encrypt to $PASSWORD_ENCRYPT successfully."
 }
 
 # Parse options
