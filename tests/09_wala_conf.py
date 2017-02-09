@@ -578,11 +578,11 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.modify_value("HttpProxy.Host", http_host, self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("HttpProxy.Port", http_port, self.conf_file))
         self.assertTrue(self.vm_test01.waagent_service_restart())
-        self.assertIn("10 packets captured",
-                      vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip),
+        output = vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip),
+        vm_proxy.shutdown()
+        self.assertIn("10 packets captured", output,
                       "Bug 1368002. "
                       "waagent doesn't use http proxy")
-#        vm_proxy.shutdown()
 
     def test_device_timeout(self):
         """

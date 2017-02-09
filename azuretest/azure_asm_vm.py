@@ -121,7 +121,9 @@ class VMASM(azure_vm.BaseVM):
         :param options: extra options
         :return: Zero if success to create VM
         """
-        return azure_cli_asm.vm_create(params, options, timeout=timeout).exit_status
+        ret = azure_cli_asm.vm_create(params, options, timeout=timeout).exit_status
+        time.sleep(120)
+        return ret
 
     def vm_list(self, params=None, options='', timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT, **kwargs):
         """
@@ -264,7 +266,7 @@ class VMASM(azure_vm.BaseVM):
         """
         logging.debug("Wait for running")
         r = 0
-        interval = 30
+        interval = 10
         while r < times:
             self.vm_update()
             if self.is_running():

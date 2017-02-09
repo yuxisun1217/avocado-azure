@@ -108,3 +108,4 @@ azure_mode: !mux
             SubscriptionTest.test_product_certificate
             SubscriptionTest.test_rhui
             NetworkTest.test_connectivity_check
+            GeneralTest.test_check_cpu_mem_disk
