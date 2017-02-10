@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source prepare.sh
+
 function case1()
 {
     VMSIZE="D14V2"
@@ -60,7 +62,19 @@ function case4()
     done
 }
 
-case1
-#case2
-#case3
-#case4
+function execute()
+{
+	local execute_file=$0
+	local y=''
+
+	for y in case1 case2 case3 case4
+	do
+		d_pre_work ${y}
+		${y}
+		clean_up ${y}
+        sleep 2
+	done
+}
+
+execute
+
