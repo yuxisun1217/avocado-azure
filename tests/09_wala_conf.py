@@ -578,7 +578,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.modify_value("HttpProxy.Host", http_host, self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("HttpProxy.Port", http_port, self.conf_file))
         self.assertTrue(self.vm_test01.waagent_service_restart())
-        output = vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip),
+        output = vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip)
         vm_proxy.shutdown()
         self.assertIn("10 packets captured", output,
                       "Bug 1368002. "
@@ -861,7 +861,7 @@ class WALAConfTest(Test):
         time.sleep(300)
         # Retry 10 times (300s in total) to wait for the swap file created.
         for count in range(1, 11):
-            swapsize = self.vm_test01.get_output("free -mg|grep Swap|awk '{print $2}'", sudo=False)
+            swapsize = self.vm_test01.get_output("free -g|grep Swap|awk '{print $2}'", sudo=False)
             if int(swapsize) == int(swapsize_std)/1024-1:
                 break
             else:
