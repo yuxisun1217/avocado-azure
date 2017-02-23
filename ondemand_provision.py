@@ -73,8 +73,14 @@ class OndPrep(object):
         """
         # Download and make wala rpm package
         utils_misc.host_command("{0}/tools/azure_image_prepare/azure_image_prepare.py -downloadwala".format(REALPATH))
-        wala_package = "WALinuxAgent-{0}-0.el{1}.noarch.rpm"\
-            .format(self.wala_version, str(self.project).split('.')[0])
+        # If have no postfix, add "-0";else, use the WALA version directly
+        if '-' not in self.wala_version:
+            wala_version = self.wala_version + '-0'
+        else:
+            wala_version = self.wala_version
+        wala_package = "WALinuxAgent-{0}.el{1}.noarch.rpm"\
+            .format(wala_version, str(self.project).split('.')[0])
+
         wala_package_fullpath = "{0}wala/RHEL-{1}/{2}" \
             .format(self.params["store_dir"], str(self.project).split('.')[0], wala_package)
         if not os.path.isfile(wala_package_fullpath):
