@@ -66,19 +66,18 @@ class GeneralTest(Test):
                                                 self.vm_params["password"],
                                                 self.vm_params)
         else:
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + "." + self.vm_params[
-                "region"] + ".cloudapp.azure.com"
             self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
                                                                                 self.vm_params["Container"],
                                                                                 self.vm_params["DiskBlobName"])
-            self.vm_params["NicName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-            self.vm_params["VnetName"] = self.vm_params["VMName"]
-            self.vm_params["VnetSubnetName"] = self.vm_params["VMName"]
+            self.vm_params["NicName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["PublicIpName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["PublicIpDomainName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
@@ -397,18 +396,18 @@ class GeneralTest(Test):
                                                     vm_params["password"],
                                                     vm_params)
             else:
-                vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
                 vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
                 vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
                                                                                vm_params["Container"],
                                                                                vm_params["DiskBlobName"])
-                vm_params["NicName"] = vm_params["VMName"]
-                vm_params["PublicIpName"] = vm_params["VMName"]
-                vm_params["PublicIpDomainName"] = vm_params["VMName"]
+                vm_params["NicName"] = vm_params["ResourceGroupName"]
+                vm_params["PublicIpName"] = vm_params["ResourceGroupName"]
+                vm_params["PublicIpDomainName"] = vm_params["ResourceGroupName"]
                 vm_params["VnetName"] = vm_params["ResourceGroupName"]
                 vm_params["VnetSubnetName"] = vm_params["ResourceGroupName"]
                 vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
                 vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+                vm_params["DNSName"] = vm_params["VnetName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
                 self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
                                                     vm_params["VMSize"],
                                                     vm_params["username"],

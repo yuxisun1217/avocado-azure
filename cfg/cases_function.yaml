@@ -65,8 +65,8 @@ azure_mode: !mux
             SubscriptionTest.test_rhui
             NetworkTest.test_connectivity_check
             NetworkTest.test_endpoint_check
-            StorageTest.test_attach_detach_64_disks
             GeneralTest.test_check_cpu_mem_disk
+            StorageTest.test_attach_detach_64_disks
     arm:
         cases:
             ImgPrepTest.test_00_preparation

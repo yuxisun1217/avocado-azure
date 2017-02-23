@@ -62,18 +62,18 @@ class StorageTest(Test):
             if "disk_attach" in self.name.name:
                 self.vm_params["VMSize"] = "Standard_A2"
             self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
                                                                                 self.vm_params["Container"],
                                                                                 self.vm_params["DiskBlobName"])
-            self.vm_params["NicName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-            self.vm_params["VnetName"] = self.vm_params["VMName"]
-            self.vm_params["VnetSubnetName"] = self.vm_params["VMName"]
+            self.vm_params["NicName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["PublicIpName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["PublicIpDomainName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
