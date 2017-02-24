@@ -74,7 +74,7 @@ class ImgPrepTest(Test):
         if self.azure_mode == "asm":
              self.image_basename = self.params.get('name', '*/Image/*')
         # VM basename
-        self.vm_basename = self.params.get('vm_name', '*/azure_mode/*')
+        self.vm_basename = "walaauto"
 
     def test_00_preparation(self):
         """
