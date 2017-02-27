@@ -861,8 +861,8 @@ class WALAConfTest(Test):
         time.sleep(300)
         # Retry 10 times (300s in total) to wait for the swap file created.
         for count in range(1, 11):
-            swapsize = self.vm_test01.get_output("free -g|grep Swap|awk '{print $2}'", sudo=False)
-            if int(swapsize) == int(swapsize_std)/1024-1:
+            swapsize = self.vm_test01.get_output("cat /proc/meminfo|grep SwapTotal|awk '{print $2}'", sudo=False)
+            if (int(swapsize)+4)/1024 == int(swapsize_std):
                 break
             else:
                 self.log.info("Swap size is wrong. Retry %d times." % count)
