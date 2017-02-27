@@ -61,9 +61,9 @@ class NetworkTest(Test):
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
                                                                                 self.vm_params["Container"],
                                                                                 self.vm_params["DiskBlobName"])
-            self.vm_params["NicName"] = self.vm_params["ResourceGroupName"]
-            self.vm_params["PublicIpName"] = self.vm_params["ResourceGroupName"]
-            self.vm_params["PublicIpDomainName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["NicName"] = self.vm_params["VMName"]
+            self.vm_params["PublicIpName"] = self.vm_params["VMName"]
+            self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
             self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
