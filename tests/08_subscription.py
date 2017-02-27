@@ -171,6 +171,8 @@ class SubscriptionTest(Test):
         self.assertNotIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
                          "yum install expect fail")
         self.vm_test01.get_output("yum remove -y expect")
+        # Sleep 10s to wait for the remove completed.
+        time.sleep(10)
         self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
                       "yum remove expect fail")
 
