@@ -146,11 +146,12 @@ class SubscriptionTest(Test):
         Check RHEL Server product certificate
         """
         self.log.info("check RHEL Server product certificate")
-        self.assertNotIn("No such file", self.vm_test01.get_output("ls /etc/pki/product*/69.pem"),
-                         "No product certificate: /etc/pki/product*/69.pem")
+        cert="/etc/pki/product-default/69.pem"
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls %s" % cert),
+                         "No product certificate: %s" % cert)
         self.assertIn("CN=Red Hat Product ID",
-                      self.vm_test01.get_output("openssl x509 -in /etc/pki/product*/69.pem -noout -text"),
-                      "Fail to read product certificate: /etc/pki/product*/69.pem")
+                      self.vm_test01.get_output("openssl x509 -in %s -noout -text" % cert),
+                      "Fail to read product certificate: %s" % cert)
 
     def test_rhui(self):
         """
