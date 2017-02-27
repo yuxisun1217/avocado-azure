@@ -15,7 +15,8 @@ POSTFIX = time.strftime("%Y%m%d%H%M")
 AVOCADO_PATH = os.path.split(os.path.realpath(__file__))[0]
 OSDISK_PATH = "{0}/ondemand_osdisk".format(AVOCADO_PATH)
 IGNORE_LIST = ["SettingsTest.test_reset_access_successively",
-               "SettingsTest.test_reset_pw_after_capture"]
+               "SettingsTest.test_reset_pw_after_capture",
+               "StorageTest.test_attach_detach_64_disks"]
 SUBMIT_RESULT = yaml.load(file('%s/config.yaml' % AVOCADO_PATH))["submit_result"]
 LOGFILE = "/tmp/run-avocado-azure/run-avocado-azure.log-" + POSTFIX
 if not os.path.isdir(os.path.dirname(LOGFILE)):
