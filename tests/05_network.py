@@ -114,28 +114,27 @@ lo eth0\
         if "command not found" in self.vm_test01.get_output("nmap", timeout=5):
             self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
             self.vm_test01.get_output("yum -y install nmap")
-        # Set postfix, listen to 0.0.0.0
-        self.vm_test01.get_output("sed -i -e \'/inet_interfaces = localhost/s/^/#/g\' "
-                                  "-e \'/inet_interfaces = all/s/^#//g\' "
-                                  "/etc/postfix/main.cf")
-        self.vm_test01.get_output("service postfix restart")
-        time.sleep(1)
-        self.assertIn("0.0.0.0:25", self.vm_test01.get_output("netstat -antp"),
-                      "Fail to start postfix and listen to 0.0.0.0")
+        # Stop firewall
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("service iptables stop")
+        else:
+            self.vm_test01.get_output("systemctl stop firewalld")
+        self.assertIn("0.0.0.0:111", self.vm_test01.get_output("netstat -antp"),
+                      "rpcbind is not started and listened to 0.0.0.0")
         # Check endpoint
         import re
-        inside = re.sub(r'\s+', ' ', self.vm_test01.get_output("nmap 127.0.0.1"))
+        inside = re.sub(r'\s+', ' ', self.vm_test01.get_output("nmap 127.0.0.1 -p 22,111|grep tcp"))
         self.assertIn("22/tcp open ssh", inside,
                       "port 22 is not opened inside")
-        self.assertIn("25/tcp open smtp", inside,
-                      "port 25 is not opened inside")
-        self.assertIn("open", utils_misc.host_command("tcping %s %d" % (self.vm_params["DNSName"],
-                                                                        self.vm_params["PublicPort"]),
-                                                      ignore_status=True),
+        self.assertIn("111/tcp open rpcbind", inside,
+                      "port 111 is not opened inside")
+        outside = re.sub(r'\s+', ' ', utils_misc.host_command("nmap %s -p %d,111|grep tcp" %
+                                                              (self.vm_params["DNSName"],
+                                                               self.vm_params["PublicPort"])))
+        self.assertIn("22/tcp open ssh", outside,
                       "ssh port should be opened outside")
-        self.assertIn("closed", utils_misc.host_command("tcping %s 25" % self.vm_params["DNSName"],
-                                                        ignore_status=True),
-                      "port 25 shouldn't be opened outside")
+        self.assertIn("111/tcp filtered rpcbind", outside,
+                      "port 111 shouldn't be opened outside")
 
     def tearDown(self):
         self.log.debug("Teardown.")
