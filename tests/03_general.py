@@ -140,7 +140,9 @@ class GeneralTest(Test):
                        "Job NetworkManager-wait-online.service/start failed with result .dependency.",
                        "rngd.service: main process exited, code=exited, status=1/FAILURE",
                        "Unit rngd.service entered failed state",
-                       "rngd.service failed"]
+                       "rngd.service failed",
+                       "Fast TSC calibration failed",
+                       "INFO sfdisk with --part-type failed [1], retrying with -c"]
         ignore_msg = '|'.join(ignore_list)
         cmd = "cat /var/log/messages | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
         error_log = self.vm_test01.get_output(cmd)
