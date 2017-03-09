@@ -856,9 +856,9 @@ class WALAConfTest(Test):
                          "Fail to restart the VM")
         self.assertTrue(self.vm_test01.wait_for_running(),
                         "Cannot start the VM")
+        time.sleep(300)
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Cannot login the VM")
-        time.sleep(300)
         # Retry 10 times (300s in total) to wait for the swap file created.
         for count in range(1, 11):
             swapsize = self.vm_test01.get_output("cat /proc/meminfo|grep SwapTotal|awk '{print $2}'", sudo=False)

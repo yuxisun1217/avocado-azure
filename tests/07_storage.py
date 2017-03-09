@@ -321,10 +321,11 @@ class StorageTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(authentication="publickey"),
                         "Cannot login with root account")
         # Attach 64 disks
+        disk_num = 2
         disk_blob_size = 1
         disk_blob_params = dict()
         disk_blob_params["host_caching"] = "None"
-        for bn in range(1, 65):
+        for bn in range(1, disk_num+1):
             self.assertEqual(self.vm_test01.disk_attach_new(disk_blob_size, disk_blob_params), 0,
                              "Fail to attach new disk %s" % bn)
         self.assertTrue(self.vm_test01.wait_for_running(),
@@ -339,38 +340,28 @@ class StorageTest(Test):
             for letter2 in list(string.lowercase[:26]):
                 dev_list.append("/dev/sd%s" % (letter1 + letter2))
                 count += 1
-                if count == 66:
+                if count == disk_num+2:
                     break
-            if count == 66:
+            if count == disk_num+2:
                 break
         # remove /dev/sda and /dev/sdb
-        dev_list.pop(0)
-        dev_list.pop(0)
+        dev_list = dev_list[2:]
         self.log.debug(dev_list)
         # Check the devices
         fdisk_list = self.vm_test01.get_output("ls /dev/sd*").split()
         self.assertTrue(set(dev_list).issubset(fdisk_list),
                         "Wrong devices. Devices in VM: %s" % fdisk_list)
-        # Check the first disk
-        first_mountpoint = "/mnt/firstdisk"
-        self.vm_test01.get_output("mkdir -p %s" % first_mountpoint)
-        self.assertTrue(self.vm_test01.vm_disk_mount(disk=dev_list[0], mount_point=first_mountpoint,
-                                                     project=self.project, sudo=False),
-                        "Cannot mount the first disk")
-        self.assertTrue(self.vm_test01.vm_disk_check(first_mountpoint),
-                        "Check disk /dev/sdc result fail")
-        self.vm_test01.get_output("umount %s" % first_mountpoint)
-        # Check the last disk
-        last_mountpoint = "/mnt/lastdisk"
-        self.vm_test01.get_output("mkdir -p %s" % last_mountpoint)
-        self.assertTrue(self.vm_test01.vm_disk_mount(disk=dev_list[-1], mount_point=last_mountpoint,
-                                                     project=self.project, sudo=False),
-                        "Cannot mount the last disk")
-        self.assertTrue(self.vm_test01.vm_disk_check(last_mountpoint),
-                        "Check disk /dev/sdbn result fail")
-        self.vm_test01.get_output("umount %s" % last_mountpoint)
+        # Check the 64 disks
+        mountpoint = "/mnt/newdisk"
+        for dev in dev_list:
+            self.assertTrue(self.vm_test01.vm_disk_mount(disk=dev_list[0], mount_point=mountpoint,
+                                                         project=self.project, sudo=False, reboot=False),
+                            "Cannot mount the first disk")
+            self.assertTrue(self.vm_test01.vm_disk_check(mountpoint),
+                            "Check disk %s result fail" % dev)
+            self.vm_test01.get_output("umount %s" % mountpoint)
         # Detach 64 disks
-        for bn in range(0, 64):
+        for bn in range(0, disk_num):
             self.assertEqual(self.vm_test01.disk_detach(disk_lun=bn), 0,
                              "Fail to detach disk lun=%s: azure cli fail" % bn)
         self.assertTrue(self.vm_test01.wait_for_running(),

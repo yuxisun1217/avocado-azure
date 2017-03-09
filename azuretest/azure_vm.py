@@ -131,7 +131,8 @@ class BaseVM(object):
             raise
         return value
 
-    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end='', sudo=True):
+    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end='',
+                      sudo=True, reboot=True, authentication="password"):
         logging.debug("DISK: %s", disk)
         if isinstance(project, float) and float(project) >= 7.0:
             u = 'u\n'
@@ -161,18 +162,14 @@ EOF
         if disk+str(partition) not in output:
             logging.error("Fail to part disk %s" % disk)
             raise Exception
-#        if reboot:
-#            self.get_output("reboot", sudo=sudo)
-#            time.sleep(60)
-#            self.verify_alive()
         output = self.get_output("partprobe", sudo=sudo)
-        if "Warning" in output:
+        if "Warning" in output and reboot is True:
             self.get_output("reboot", sudo=sudo)
             time.sleep(60)
-            self.verify_alive()
+            self.verify_alive(authentication=authentication)
         self.get_output("fdisk -l %s" % disk, sudo=sudo)
         self.get_output("mkfs.ext4 %s" % disk+str(partition), timeout=300, sudo=sudo)
-        self.get_output("mkdir %s" % mount_point, sudo=sudo)
+        self.get_output("mkdir -p %s" % mount_point, sudo=sudo)
         self.get_output("mount %s %s" % (disk+str(partition), mount_point), sudo=sudo)
         if self.get_output("mount | grep %s" % mount_point, sudo=sudo) == "":
             logging.error("Fail to mount %s to %s" % (disk+str(partition), mount_point))
