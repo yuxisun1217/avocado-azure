@@ -320,8 +320,9 @@ class StorageTest(Test):
         self.vm_test01.username = "root"
         self.assertTrue(self.vm_test01.verify_alive(authentication="publickey"),
                         "Cannot login with root account")
+        self.vm_test01.session_close()
         # Attach 64 disks
-        disk_num = 2
+        disk_num = 64
         disk_blob_size = 1
         disk_blob_params = dict()
         disk_blob_params["host_caching"] = "None"
