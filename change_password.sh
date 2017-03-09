@@ -7,6 +7,7 @@ function help {
     echo "-a: Set Azure password"
     echo "-r: Set RHN password"
     echo "-p: The key password for encrypt/decrypt"
+    echo "-d: Decrypt only"
 }
 
 function _set_pw {
@@ -43,7 +44,7 @@ function encrypt {
 }
 
 # Parse options
-while getopts "a:r:p:" arg
+while getopts "a:r:p:d" arg
 do
     case $arg in
         a)
@@ -52,6 +53,8 @@ do
             redhat_pw=$OPTARG;;
         p)
             key_pw=$OPTARG;;
+        d)
+            decrypt_only=true;;
         ?)  # else
             help
         exit 1
@@ -64,14 +67,22 @@ if [ ! $key_pw ];then
     exit 1
 fi
 
-if [ ! $azure_pw ] && [ ! $redhat_pw ];then
-    echo "ERROR: Must set Azure or RHN password!"
-    help
-    exit 1
+if [ ! $decrypt_only ];then
+    if [ ! $azure_pw ] && [ ! $redhat_pw ];then
+        echo "ERROR: Must set Azure or RHN password!"
+        help
+        exit 1
+    fi
 fi
 
 # Decrypt
 decrypt
+
+if [ $decrypt_only ];then
+    cat $PASSWORD_DECRYPT
+    rm -f $PASSWORD_ENCRYPT
+    exit 0
+fi
 
 # Modify password
 if [ $azure_pw ];then
