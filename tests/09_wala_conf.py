@@ -86,7 +86,11 @@ class WALAConfTest(Test):
                                                 self.vm_params["password"],
                                                 self.vm_params)
         self.log.debug("Create the vm %s", self.vm_params["VMName"])
+        self.project = self.params.get('Project', '*/Common/*')
+        self.conf_file = "/etc/waagent.conf"
         # If vm doesn't exist, create it. If it exists, start it.
+        if "gpt_partition" in self.name.name:
+            return
         self.vm_test01.vm_update()
         if not self.vm_test01.exists():
             self.vm_test01.vm_create(self.vm_params, options)
@@ -97,8 +101,6 @@ class WALAConfTest(Test):
                 self.vm_test01.wait_for_running()
         if not self.vm_test01.verify_alive():
             self.error("VM %s is not available. Exit." % self.vm_params["VMName"])
-        self.project = self.params.get('Project', '*/Common/*')
-        self.conf_file = "/etc/waagent.conf"
         # Increase sudo password timeout
         self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
         # Backup waagent.conf and waagent.log

@@ -40,15 +40,17 @@ class StorageTest(Test):
         self.vm_params["password"] = self.params.get('password', '*/VMUser/*')
         self.vm_params["VMSize"] = self.params.get('vm_size', '*/azure_mode/*')
         self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-        self.vm_params["Location"] = self.params.get('location', '*/resourceGroup/*')
-        self.vm_params["region"] = self.params.get('region', '*/resourceGroup/*')
-        self.vm_params["StorageAccountName"] = self.params.get('storage_account', '*/resourceGroup/*')
         self.vm_params["Container"] = self.params.get('container', '*/resourceGroup/*')
         self.vm_params["DiskBlobName"] = self.params.get('name', '*/DiskBlob/*')
         self.vm_params["PublicPort"] = self.params.get('public_port', '*/network/*')
         if self.azure_mode == "asm":
             if "disk_attach" in self.name.name:
                 self.vm_params["VMSize"] = "Medium"
+            if "attach_detach_64_disks" in self.name.name:
+                self.vm_params["VMSize"] = "Standard_G5"
+            self.vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
+            self.vm_params["region"] = self.vm_params["Location"].lower().replace(' ', '')
+            self.vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
             self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
             self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
@@ -61,6 +63,11 @@ class StorageTest(Test):
         else:
             if "disk_attach" in self.name.name:
                 self.vm_params["VMSize"] = "Standard_A2"
+            if "attach_detach_64_disks" in self.name.name:
+                self.vm_params["VMSize"] = "Standard_G5"
+            self.vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
+            self.vm_params["region"] = self.vm_params["Location"].lower().replace(' ', '')
+            self.vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
             self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
             self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
@@ -81,9 +88,6 @@ class StorageTest(Test):
                                                 self.vm_params)
         self.project = self.params.get("Project", "*/Common/*")
         self.conf_file = "/etc/waagent.conf"
-        if "64_disks" in self.name.name:
-            self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-            return
         # If vm doesn't exist, create it. If it exists, start it.
         self.log.debug("Create the vm %s", self.vm_params["VMName"])
         self.vm_test01.vm_update()
@@ -272,45 +276,45 @@ class StorageTest(Test):
         Attach and Detach 64 disks
         """
         self.log.info("Attach and Detach 64 disks")
-        # Create VM
-        vm_params = copy.deepcopy(self.vm_params)
-        vm_params["VMSize"] = "Standard_G5"
-        vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
-        vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-        vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
-        vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-        if self.azure_mode == "asm":
-            vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
-            vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
-            self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
-                                                vm_params["VMSize"],
-                                                vm_params["username"],
-                                                vm_params["password"],
-                                                vm_params)
-        else:
-            vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
-            vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
-            vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
-                                                                           vm_params["Container"],
-                                                                           vm_params["DiskBlobName"])
-            vm_params["NicName"] = vm_params["VMName"]
-            vm_params["PublicIpName"] = vm_params["VMName"]
-            vm_params["PublicIpDomainName"] = vm_params["VMName"]
-            vm_params["VnetName"] = vm_params["VMName"]
-            vm_params["VnetSubnetName"] = vm_params["VMName"]
-            vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-            vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-            self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
-                                                vm_params["VMSize"],
-                                                vm_params["username"],
-                                                vm_params["password"],
-                                                vm_params)
-        self.assertEqual(0, self.vm_test01.vm_create(vm_params),
-                         "Fail to create VM %s" % self.vm_test01.name)
-        self.assertTrue(self.vm_test01.wait_for_running(),
-                        "VM cannot become running")
-        self.assertTrue(self.vm_test01.verify_alive(),
-                        "Cannot login the VM")
+#        # Create VM
+#        vm_params = copy.deepcopy(self.vm_params)
+#        vm_params["VMSize"] = "Standard_G5"
+#        vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
+#        vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % vm_params["VMSize"])
+#        vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
+#        vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % vm_params["VMSize"])
+#        if self.azure_mode == "asm":
+#            vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
+#            vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
+#            self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
+#                                                vm_params["VMSize"],
+#                                                vm_params["username"],
+#                                                vm_params["password"],
+#                                                vm_params)
+#        else:
+#            vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
+#            vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
+#            vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
+#                                                                           vm_params["Container"],
+#                                                                           vm_params["DiskBlobName"])
+#            vm_params["NicName"] = vm_params["VMName"]
+#            vm_params["PublicIpName"] = vm_params["VMName"]
+#            vm_params["PublicIpDomainName"] = vm_params["VMName"]
+#            vm_params["VnetName"] = vm_params["VMName"]
+#            vm_params["VnetSubnetName"] = vm_params["VMName"]
+#            vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
+#            vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+#            self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
+#                                                vm_params["VMSize"],
+#                                                vm_params["username"],
+#                                                vm_params["password"],
+#                                                vm_params)
+#        self.assertEqual(0, self.vm_test01.vm_create(vm_params),
+#                         "Fail to create VM %s" % self.vm_test01.name)
+#        self.assertTrue(self.vm_test01.wait_for_running(),
+#                        "VM cannot become running")
+#        self.assertTrue(self.vm_test01.verify_alive(),
+#                        "Cannot login the VM")
         # Login with root account
         with open(utils_misc.get_sshkey_file(), 'r') as f:
             sshkey = f.read()
