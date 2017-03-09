@@ -210,13 +210,7 @@ class GeneralTest(Test):
         if "python /usr/sbin/waagent -daemon" not in self.vm_test01.get_output("ps aux|grep [w]aagent"):
             self.vm_test01.get_output("service waagent start")
         # The ignore_list must not be empty.
-        ignore_list = ["ERROR:CalledProcessError. Error Code is 255",
-                       "ERROR:CalledProcessError. Command result was swapon: /mnt/resource/swapfile: swapon failed: Device or resource busy",
-                       "ERROR:CalledProcessError. Failed to activate swap at /mnt/resource/swapfile",
-                       "ERROR:CalledProcessError. Error Code is 1$",
-                       "ERROR:CalledProcessError. Command string was pidof dhclient",
-                       "ERROR:CalledProcessError. Command result was $",
-                       "INFO sfdisk with --part-type failed [1], retrying with -c"]
+        ignore_list = ["INFO sfdisk with --part-type failed \[1\], retrying with -c"]
         ignore_msg = '|'.join(ignore_list)
         cmd = "cat /var/log/waagent.log | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
         error_log = self.vm_test01.get_output(cmd)
