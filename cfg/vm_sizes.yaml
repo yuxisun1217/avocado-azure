@@ -14,17 +14,17 @@ azure_mode: !mux
                 memory: 1.75
                 disk_size: 70
             Medium:
-                storage_account:
-                location:
-                cpu:
-                memory:
-                disk_size:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 2
+                memory: 3.5
+                disk_size: 135
             Large:
-                storage_account:
-                location:
-                cpu:
-                memory:
-                disk_size:
+                storage_account: walaautoasmeastus
+                location: "East US"
+                cpu: 4
+                memory: 7
+                disk_size: 285
             A11:
                 storage_account: walaautoasmeastus
                 location: "East US"
@@ -129,6 +129,12 @@ azure_mode: !mux
                 cpu: 1
                 memory: 1.75
                 disk_size: 70
+            Standard_A2:
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 2
+                memory: 3.5
+                disk_size: 135
             Standard_A3:
                 storage_account: walaautoarmwestus
                 location: "West US"

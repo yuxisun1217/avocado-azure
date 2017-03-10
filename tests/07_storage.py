@@ -38,7 +38,7 @@ class StorageTest(Test):
         self.vm_params = dict()
         self.vm_params["username"] = self.params.get('username', '*/VMUser/*')
         self.vm_params["password"] = self.params.get('password', '*/VMUser/*')
-        self.vm_params["VMSize"] = self.params.get('vm_size', '*/azure_mode/*')
+#        self.vm_params["VMSize"] = self.params.get('vm_size', '*/azure_mode/*')
         self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
         self.vm_params["Container"] = self.params.get('container', '*/resourceGroup/*')
         self.vm_params["DiskBlobName"] = self.params.get('name', '*/DiskBlob/*')
@@ -46,8 +46,10 @@ class StorageTest(Test):
         if self.azure_mode == "asm":
             if "disk_attach" in self.name.name:
                 self.vm_params["VMSize"] = "Medium"
-            if "attach_detach_64_disks" in self.name.name:
+            elif "attach_detach_64_disks" in self.name.name:
                 self.vm_params["VMSize"] = "Standard_G5"
+            else:
+                self.vm_params["VMSize"] = "Small"
             self.vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
             self.vm_params["region"] = self.vm_params["Location"].lower().replace(' ', '')
             self.vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
@@ -63,8 +65,10 @@ class StorageTest(Test):
         else:
             if "disk_attach" in self.name.name:
                 self.vm_params["VMSize"] = "Standard_A2"
-            if "attach_detach_64_disks" in self.name.name:
+            elif "attach_detach_64_disks" in self.name.name:
                 self.vm_params["VMSize"] = "Standard_G5"
+            else:
+                self.vm_params["VMSize"] = "Standard_A1"
             self.vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
             self.vm_params["region"] = self.vm_params["Location"].lower().replace(' ', '')
             self.vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
@@ -168,7 +172,6 @@ class StorageTest(Test):
             time.sleep(5)
             self.vm_test01.wait_for_running()
             # parted, mkfs, mount, test
-#            disk = self.vm_test01.get_output("ls /dev/sd* | grep -v [1234567890] | grep -v sd[ab]").strip('\n').split('\n')[-1]
             self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
             disk = self.vm_test01.get_device_name()
             self.assertIsNotNone(disk,
@@ -202,9 +205,6 @@ class StorageTest(Test):
         time.sleep(5)
         self.vm_test01.wait_for_running()
         self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
-#        self.assertEqual("fdisk: cannot open %s: No such file or directory" % disk,
-#                         self.vm_test01.get_output("fdisk -l %s" % disk),
-#                         "After detach, disk still exists")
         self.assertIn("No such file",
                       self.vm_test01.get_output("ls %s" % disk),
                       "After detach, disk still exists")
@@ -242,7 +242,6 @@ class StorageTest(Test):
         except IndexError, e:
             self.fail("Fail to get datadisk name. Exception: %s" % str(e))
         self.log.debug("DISKNAME: %s", disk_name)
-#        self.vm_test01.verify_alive()
         # Detach disk
         self.assertEqual(self.vm_test01.disk_detach(disk_lun=0), 0,
                          "Fail to detach disk before re-attach: azure cli fail")
@@ -276,50 +275,10 @@ class StorageTest(Test):
         Attach and Detach 64 disks
         """
         self.log.info("Attach and Detach 64 disks")
-#        # Create VM
-#        vm_params = copy.deepcopy(self.vm_params)
-#        vm_params["VMSize"] = "Standard_G5"
-#        vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
-#        vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-#        vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
-#        vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-#        if self.azure_mode == "asm":
-#            vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
-#            vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
-#            self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
-#                                                vm_params["VMSize"],
-#                                                vm_params["username"],
-#                                                vm_params["password"],
-#                                                vm_params)
-#        else:
-#            vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
-#            vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
-#            vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
-#                                                                           vm_params["Container"],
-#                                                                           vm_params["DiskBlobName"])
-#            vm_params["NicName"] = vm_params["VMName"]
-#            vm_params["PublicIpName"] = vm_params["VMName"]
-#            vm_params["PublicIpDomainName"] = vm_params["VMName"]
-#            vm_params["VnetName"] = vm_params["VMName"]
-#            vm_params["VnetSubnetName"] = vm_params["VMName"]
-#            vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-#            vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-#            self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
-#                                                vm_params["VMSize"],
-#                                                vm_params["username"],
-#                                                vm_params["password"],
-#                                                vm_params)
-#        self.assertEqual(0, self.vm_test01.vm_create(vm_params),
-#                         "Fail to create VM %s" % self.vm_test01.name)
-#        self.assertTrue(self.vm_test01.wait_for_running(),
-#                        "VM cannot become running")
-#        self.assertTrue(self.vm_test01.verify_alive(),
-#                        "Cannot login the VM")
         # Login with root account
         with open(utils_misc.get_sshkey_file(), 'r') as f:
             sshkey = f.read()
         self.vm_test01.get_output("mkdir /root/.ssh;echo '%s' > /root/.ssh/authorized_keys" % sshkey)
-#        self.vm_test01.get_output("echo %s | passwd --stdin root" % vm_params["password"])
         self.vm_test01.session_close()
         self.vm_test01.username = "root"
         self.assertTrue(self.vm_test01.verify_alive(authentication="publickey"),
