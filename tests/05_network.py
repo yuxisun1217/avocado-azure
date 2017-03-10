@@ -131,9 +131,9 @@ lo eth0\
         outside = re.sub(r'\s+', ' ', utils_misc.host_command("nmap %s -p %d,111|grep tcp" %
                                                               (self.vm_params["DNSName"],
                                                                self.vm_params["PublicPort"])))
-        self.assertIn("22/tcp open ssh", outside,
+        self.assertIn("%d/tcp open" % self.vm_params["PublicPort"], outside,
                       "ssh port should be opened outside")
-        self.assertIn("111/tcp filtered rpcbind", outside,
+        self.assertIn("111/tcp filtered", outside,
                       "port 111 shouldn't be opened outside")
 
     def tearDown(self):

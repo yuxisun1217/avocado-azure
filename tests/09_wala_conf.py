@@ -172,9 +172,9 @@ class WALAConfTest(Test):
         self.log.info("Logs.Verbose=n")
         self.assertTrue(self.vm_test01.modify_value("Logs\.Verbose", "n", self.conf_file))
 #        self.assertTrue(self.vm_test01.modify_value("Logs\.File", "\/var\/log\/waagent-new\.log", self.conf_file))
-        self.vm_test01.get_output("rm -f /var/log/waagent.log")
         self.vm_test01.waagent_service_restart()
-        time.sleep(5)
+        self.vm_test01.get_output("rm -f %s" % waagent_log_file)
+        time.sleep(50)
         self.assertEqual(self.vm_test01.get_output("cat %s|grep VERBOSE" % waagent_log_file), "",
                          "Fail to disable Verbose log")
 
@@ -229,7 +229,8 @@ class WALAConfTest(Test):
                        "Job NetworkManager-wait-online.service/start failed with result .dependency.",
                        "rngd.service: main process exited, code=exited, status=1/FAILURE",
                        "Unit rngd.service entered failed state",
-                       "rngd.service failed"]
+                       "rngd.service failed",
+                       "kernel: Fast TSC calibration failed"]
         ignore_msg = '|'.join(ignore_list)
         cmd = "cat /var/log/messages | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
         error_log = self.vm_test01.get_output(cmd)
