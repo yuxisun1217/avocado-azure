@@ -110,6 +110,9 @@ lo eth0\
         Check the endpoints of the VM
         """
         self.log.info("Check the endpoints of the VM")
+        # Check rpcbind
+        self.assertIn("0.0.0.0:111", self.vm_test01.get_output("netstat -antp"),
+                      "rpcbind is not started and listened to 0.0.0.0")
         # install nmap
         if "command not found" in self.vm_test01.get_output("nmap", timeout=5):
             self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
@@ -119,8 +122,7 @@ lo eth0\
             self.vm_test01.get_output("service iptables stop")
         else:
             self.vm_test01.get_output("systemctl stop firewalld")
-        self.assertIn("0.0.0.0:111", self.vm_test01.get_output("netstat -antp"),
-                      "rpcbind is not started and listened to 0.0.0.0")
+        time.sleep(5)
         # Check endpoint
         import re
         inside = re.sub(r'\s+', ' ', self.vm_test01.get_output("nmap 127.0.0.1 -p 22,111|grep tcp"))
