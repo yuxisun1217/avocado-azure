@@ -13,7 +13,14 @@ from . import remote
 from . import data_dir
 from . import utils_misc
 from . import azure_cli_common
-
+from aexpect.exceptions import ExpectError
+from aexpect.exceptions import ExpectProcessTerminatedError
+from aexpect.exceptions import ExpectTimeoutError
+from aexpect.exceptions import ShellCmdError
+from aexpect.exceptions import ShellError
+from aexpect.exceptions import ShellProcessTerminatedError
+from aexpect.exceptions import ShellStatusError
+from aexpect.exceptions import ShellTimeoutError
 
 class VMDeadError(Exception):
     """
@@ -282,25 +289,36 @@ EOF
         return self.login(timeout=timeout, username=username, password=password,
                           authentication=authentication)
 
-    def get_output(self, cmd="", timeout=DEFAULT_TIMEOUT, sudo=True):
+    def get_output(self, cmd="", timeout=DEFAULT_TIMEOUT, sudo=True, max_retry=1):
         """
 
         :param cmd:
         :param timeout: SSH connection timeout
         :param sudo: If the command need sudo permission
-        :return: None if except
+        :param max_retry: The max retry number
+        :return: raise if exception
         """
         sudo_cmd = "echo %s | sudo -S sh -c \"\"" % self.password
         if sudo:
             cmd = "sudo sh -c \"%s\"" % cmd
 #            cmd = "echo %s | sudo -S sh -c \"%s\"" % (self.password, cmd)
-        try:
-            if sudo:
-                self.session.cmd_output(sudo_cmd)
-            output = self.session.cmd_output(cmd, timeout).rstrip('\n')
-        except Exception, e:
-            logging.debug("Run command %s fail. Exception: %s", cmd, str(e))
-            return ''
+        for retry in xrange(1, max_retry+1):
+            try:
+                if sudo:
+                    self.session.cmd_output(sudo_cmd)
+                output = self.session.cmd_output(cmd, timeout).rstrip('\n')
+            except ShellTimeoutError, e:
+                logging.debug("Run command %s timeout. Retry %d/%d" % (cmd, retry, max_retry))
+                self.verify_alive()
+                continue
+            except Exception, e:
+                logging.debug("Run command %s fail. Exception: %s", cmd, str(e))
+                raise
+            else:
+                break
+        else:
+            logging.debug("After retry %d times, run command %s timeout. Exception: %s" % (retry, cmd, e))
+            raise
         logging.debug(output)
         return output
 
