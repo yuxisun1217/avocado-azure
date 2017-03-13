@@ -127,7 +127,6 @@ class SubscriptionTest(Test):
                          "Fail to yum install expect")
         self.vm_test01.get_output("yum remove expect -y", timeout=1200)
         time.sleep(30)
-        self.vm_test01.verify_alive()
         self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
                       "Fail to yum remove expect")
         # remove all subscriptions
