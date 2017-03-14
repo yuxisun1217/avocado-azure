@@ -29,7 +29,21 @@ class VMDeadError(Exception):
     def __init__(self):
         self.message = "VM is not alive."
 
-
+WAAGENT_IGNORELIST = ["INFO sfdisk with --part-type failed \[1\], retrying with -c"]
+MESSAGES_IGNORELIST = ["failed to get extended button data",
+                       "kdump.service: main process exited, code=exited, status=1/FAILURE",
+                       "Failed to start Crash recovery kernel arming.",
+                       "Unit kdump.service entered failed state.",
+                       "kdump.service failed.",
+                       "kdumpctl: Starting kdump: \[FAILED\]",
+                       "acpi PNP0A03:00: _OSC failed \(AE_NOT_FOUND\); disabling ASPM",
+                       "acpi PNP0A03:00: fail to add MMCONFIG information, can.t access extended PCI configuration space under this bridge.",
+                       "Dependency failed for Network Manager Wait Online.",
+                       "Job NetworkManager-wait-online.service/start failed with result .dependency.",
+                       "rngd.service: main process exited, code=exited, status=1/FAILURE",
+                       "Unit rngd.service entered failed state",
+                       "rngd.service failed",
+                       "Fast TSC calibration failed"] + WAAGENT_IGNORELIST
 class BaseVM(object):
 
     """
@@ -511,6 +525,7 @@ EOF
     def get_device_name(self, timeout=WAIT_FOR_RETRY_TIMEOUT):
         r = 0
         interval = 10
+        disk = ''
         while (r*10) < timeout:
             disk = self.get_output("ls /dev/sd* | grep -v [1234567890]", sudo=False).split('\n')[-1]
             if disk not in ["/dev/sda", "/dev/sdb"]:
@@ -526,6 +541,19 @@ EOF
 
     def postfix(self):
         return utils_misc.postfix()
+
+    def _check_log(self, logfile, ignore_list):
+        if ignore_list:
+            cmd = "cat {0} | grep -iE 'error|fail' | grep -vE '{1}'".format(logfile, '|'.join(ignore_list))
+        else:
+            cmd = "cat {0} | grep -iE 'error|fail'".format(logfile)
+        return self.get_output(cmd)
+
+    def check_waagent_log(self):
+        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST)
+
+    def check_messages_log(self):
+        return self._check_log("/var/log/messages", MESSAGES_IGNORELIST)
 
 
 
