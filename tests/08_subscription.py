@@ -125,8 +125,9 @@ class SubscriptionTest(Test):
                          "yum install message is wrong.")
         self.assertNotIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
                          "Fail to yum install expect")
-        self.vm_test01.get_output("yum remove expect -y", timeout=1200)
-        time.sleep(30)
+        # This command is usually timeout so just ignore status and reconnect to workaround
+        self.vm_test01.get_output("yum remove expect -y", timeout=120, max_retry=0, ignore_status=True)
+        self.vm_test01.verify_alive()
         self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
                       "Fail to yum remove expect")
         # remove all subscriptions

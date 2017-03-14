@@ -289,7 +289,7 @@ EOF
         return self.login(timeout=timeout, username=username, password=password,
                           authentication=authentication)
 
-    def get_output(self, cmd="", timeout=DEFAULT_TIMEOUT, sudo=True, max_retry=1):
+    def get_output(self, cmd="", timeout=DEFAULT_TIMEOUT, sudo=True, max_retry=1, ignore_status=False):
         """
 
         :param cmd:
@@ -302,7 +302,7 @@ EOF
         if sudo:
             cmd = "sudo sh -c \"%s\"" % cmd
 #            cmd = "echo %s | sudo -S sh -c \"%s\"" % (self.password, cmd)
-        for retry in xrange(1, max_retry+1):
+        for retry in xrange(0, max_retry+1):
             try:
                 if sudo:
                     self.session.cmd_output(sudo_cmd)
@@ -318,7 +318,10 @@ EOF
                 break
         else:
             logging.debug("After retry %d times, run command %s timeout. Exception: %s" % (retry, cmd, e))
-            raise
+            if ignore_status:
+                return None
+            else:
+                raise
         logging.debug(output)
         return output
 
