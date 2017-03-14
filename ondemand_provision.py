@@ -146,8 +146,8 @@ class OndPrep(object):
         sto_dst_params["type"] = "LRS"
         sto_dst_test01 = azure_asm_vm.StorageAccount(name=sto_dst_params["name"],
                                                      params=sto_dst_params)
-        # Check and create storage account
         dst_connection_string = sto_dst_test01.conn_show()
+        # Copy blob to walaautoimages storage account
         blob_params = dict()
         blob_params["name"] = self.osdisk
         blob_params["container"] = "vhds"
