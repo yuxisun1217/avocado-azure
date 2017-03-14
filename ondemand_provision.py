@@ -5,6 +5,7 @@ import sys
 import logging
 from azuretest import utils_misc
 from azuretest import azure_asm_vm
+from azuretest import azure_arm_vm
 from azuretest import azure_cli_common
 from optparse import OptionParser
 REALPATH = os.path.split(os.path.realpath("__file__"))[0]
@@ -28,14 +29,14 @@ class OndPrep(object):
         azure_username = self.params["AzureSub"]["username"]
         azure_password = self.params["AzureSub"]["password"]
         azure_cli_common.login_azure(username=azure_username, password=azure_password)
-        azure_cli_common.set_config_mode("asm")
+        azure_cli_common.set_config_mode("arm")
 
     def make_instance(self):
         # Prepare the vm parameters and create a vm
-        logging.debug("Make Instance")
+        logging.info("Make Instance")
         self.vm_params["username"] = self.params["VMUser"]["username"]
         self.vm_params["password"] = self.params["VMUser"]["password"]
-        self.vm_params["VMSize"] = "Small"
+        self.vm_params["VMSize"] = "Standard_A1"
         self.vm_params["VMName"] = "walaauto{0}ond{1}".format(str(self.project).replace('.', ''),
                                                               str(self.wala_version).replace('.', ''))
 #        self.vm_params["VMName"] += self._postfix()
@@ -43,16 +44,24 @@ class OndPrep(object):
         self.vm_params["region"] = self.vm_params["Location"].replace(" ", "").lower()
         self.vm_params["StorageAccountName"] = self.params["storage_account"]
         self.vm_params["Container"] = self.params["container"]
+        self.vm_params["ResourceGroupName"] = self.params["rg_name"]
 #        self.vm_params["DiskBlobName"] = self.params["DiskBlob"][str(self.project)]
         self.vm_params["PublicPort"] = "22"
-        self.vm_params["Image"] = "wala{0}ondclean".format(str(self.project).replace(".", ""))
-        self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
-        self.vm_instance = azure_asm_vm.VMASM(self.vm_params["VMName"],
-                                              self.vm_params["VMSize"],
-                                              self.vm_params["username"],
-                                              self.vm_params["password"],
-                                              self.vm_params)
-        logging.debug("Finish making instance")
+        self.vm_params["URN"] = "RedHat:RHEL:{0}:latest".format(str(self.project))
+        self.vm_params["NicName"] = self.vm_params["VMName"]
+        self.vm_params["PublicIpName"] = self.vm_params["VMName"]
+        self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
+        self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
+        self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
+        self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
+        self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+        self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
+        self.vm_instance = azure_arm_vm.VMARM(self.vm_params["VMName"],
+                                            self.vm_params["VMSize"],
+                                            self.vm_params["username"],
+                                            self.vm_params["password"],
+                                            self.vm_params)
+        logging.info("Finish making instance")
         logging.debug(self.vm_instance.params)
 
     def create_vm(self):
@@ -88,18 +97,19 @@ class OndPrep(object):
             sys.exit(1)
         # SSH into the VM
         self.vm_instance.vm_update()
-        self.vm_instance.username = "root"
         if not self.vm_instance.verify_alive(timeout=1200):
             sys.exit(1)
         # Copy WALA package into the guest VM
         logging.info("Copy {0} into the Azure VM".format(wala_package_fullpath))
-        self.vm_instance.copy_files_to(wala_package_fullpath, "/root/")
+        self.vm_instance.copy_files_to(wala_package_fullpath, "/tmp/")
+        self.vm_instance.get_output("mv /tmp/{0} /root/".format(wala_package))
         # Install WALA package, enable, configure and deprovision
+        self.vm_instance.get_output("rpm -e WALinuxAgent")
+        time.sleep(5)
         self.vm_instance.get_output("rpm -ivh /root/{0}".format(wala_package))
         self.vm_instance.get_output("waagent register-service")
         self.vm_instance.modify_value("ResourceDisk.EnableSwap", "y")
         self.vm_instance.modify_value("ResourceDisk.SwapSizeMB", "2048")
-        self.vm_instance.modify_value("AutoUpdate.Enabled", "n")
         self.vm_instance.get_output("waagent -deprovision+user -force")
         self.vm_instance.session_close()
 
@@ -109,7 +119,8 @@ class OndPrep(object):
         """
         self.vm_instance.vm_update()
         try:
-            self.osdisk = self.vm_instance.params["OSDisk"]["mediaLink"].split("/")[-1]
+#            self.osdisk = self.vm_instance.params["OSDisk"]["mediaLink"].split("/")[-1]
+            self.osdisk = self.vm_instance.params["storageProfile"]["osDisk"]["vhd"]["uri"].split("/")[-1]
         except Exception as e:
             logging.error("Fail to get osdisk name. Exception: {0}".format(e))
             sys.exit(1)
@@ -117,6 +128,38 @@ class OndPrep(object):
         self.vm_instance.delete()
         self.vm_instance.wait_for_delete()
         logging.info("Finish deleting VM")
+
+    def copy_blob(self):
+        # Source storage account instance
+        sto_src_params = dict()
+        sto_src_params["name"] = self.params["storage_account"]
+        sto_src_params["location"] = self.params["location"]
+        sto_src_params["ResourceGroupName"] = self.params["rg_name"]
+        sto_src_test01 = azure_arm_vm.StorageAccount(name=sto_src_params["name"],
+                                                     params=sto_src_params)
+        src_connection_string = sto_src_test01.conn_show()
+        # Destination storage account instance
+        azure_cli_common.set_config_mode("asm")
+        sto_dst_params = dict()
+        sto_dst_params["name"] = "walaautoimages"
+        sto_dst_params["location"] = "East US"
+        sto_dst_params["type"] = "LRS"
+        sto_dst_test01 = azure_asm_vm.StorageAccount(name=sto_dst_params["name"],
+                                                     params=sto_dst_params)
+        # Check and create storage account
+        dst_connection_string = sto_dst_test01.conn_show()
+        blob_params = dict()
+        blob_params["name"] = self.osdisk
+        blob_params["container"] = "vhds"
+        blob_params["storage_account"] = "walaautoimages"
+        blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
+                                        container=blob_params["container"],
+                                        storage_account=blob_params["storage_account"],
+                                        params=blob_params,
+                                        connection_string=src_connection_string)
+        ret = blob_test01.copy(dst_connection_string)
+        if not ret:
+            logging.error("Fail to copy the blob %s to storage account walaautoimages container vhds" % self.osdisk)
 
 
 def main():
@@ -135,9 +178,11 @@ def main():
     if not project:
         logging.error("No project!")
         sys.exit(1)
-    params.setdefault("storage_account", "walaautoimages")
-    params.setdefault("location", "East US")
+    params.setdefault("rg_name", "walaautoarmwestus")
+    params.setdefault("storage_account", "walaautoarmwestus")
+    params.setdefault("location", "West US")
     params.setdefault("container", "vhds")
+#    params.setdefault("dst", "West US")
 
     ond = OndPrep(project, params)
     ond.azure_login()
@@ -145,6 +190,7 @@ def main():
     ond.create_vm()
     ond.install_wala()
     ond.tear_down()
+    ond.copy_blob()
     logging.info("OSDisk: {0}".format(ond.osdisk))
     with open(OSDISK_PATH, 'w') as f:
         f.write(ond.osdisk)

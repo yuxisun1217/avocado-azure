@@ -692,15 +692,13 @@ def blob_copy_start(params=None, options='', **kwargs):
     if params:
         cmd += add_option("--source-sas", params.get("source_sas", None))
         cmd += add_option("--source-uri", params.get("source_uri", None))
+        cmd += add_option("--connection-string", params.get("connection_string", None))
         cmd += add_option("--source-container", params.get("source_container", None))
         cmd += add_option("--source-blob", params.get("source_blob", None))
         cmd += add_option("--dest-connection-string", params.get("dest_connection_string", None))
         cmd += add_option("--dest-sas", params.get("dest_sas", None))
         cmd += add_option("--dest-container", params.get("dest_container", None))
         cmd += add_option("--dest-blob", params.get("dest_blob", None))
-#        cmd += add_option("--connection-string",
-#                          params.get("connection_string", None))
-#    command("export AZURE_STORAGE_CONNECTION_STRING=\"%s\"" % params.get("connection_string"))
     return command(cmd, azure_json=True, **kwargs)
 
 

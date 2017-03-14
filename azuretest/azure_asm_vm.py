@@ -642,7 +642,8 @@ class Blob(object):
         params["dest_connection_string"] = dest_connection_string
         params.setdefault("source_container", "vhds")
         params.setdefault("dest_container", "vhds")
-        os.environ["AZURE_STORAGE_CONNECTION_STRING"] = self.connection_string
+        params.setdefault("connection_string", self.connection_string)
+#        os.environ["AZURE_STORAGE_CONNECTION_STRING"] = self.connection_string
         azure_cli_asm.blob_copy_start(params, options)
         start_time = time.time()
         end_time = start_time + timeout
@@ -660,7 +661,7 @@ class Blob(object):
             if rt.get("copy").get("status") == "success":
                 return True
             else:
-                time.sleep(10)
+                time.sleep(30)
 #        if rt.get("copy").get("status") == "pending":
         return False
 
