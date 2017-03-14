@@ -107,7 +107,11 @@ class OndPrep(object):
         self.vm_instance.get_output("rpm -e WALinuxAgent")
         time.sleep(5)
         self.vm_instance.get_output("rpm -ivh /root/{0}".format(wala_package))
-        self.vm_instance.get_output("waagent register-service")
+        time.sleep(3)
+        if float(self.project) > 7.0:
+            self.vm_instance.get_output("systemctl enable waagent")
+        else:
+            self.vm_instance.get_output("chkconfig --add waagent")
         self.vm_instance.modify_value("ResourceDisk.EnableSwap", "y")
         self.vm_instance.modify_value("ResourceDisk.SwapSizeMB", "2048")
         self.vm_instance.get_output("waagent -deprovision+user -force")
