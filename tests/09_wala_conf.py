@@ -216,24 +216,7 @@ class WALAConfTest(Test):
                          "Bug 1314734. "
                          "Should not have the delete ssh host key message. Messages:\n%s" % deprovision_output)
         # Check /var/log/messages
-        ignore_list = ["failed to get extended button data",
-                       "Starting kdump: [FAILED]",
-                       "kdump.service: main process exited, code=exited, status=1/FAILURE",
-                       "Failed to start Crash recovery kernel arming.",
-                       "Unit kdump.service entered failed state.",
-                       "kdump.service failed.",
-                       "kdumpctl: Starting kdump: [FAILED]"
-                       "acpi PNP0A03:00: _OSC failed (AE_NOT_FOUND); disabling ASPM",
-                       "acpi PNP0A03:00: fail to add MMCONFIG information, can.t access extended PCI configuration space under this bridge.",
-                       "Dependency failed for Network Manager Wait Online.",
-                       "Job NetworkManager-wait-online.service/start failed with result .dependency.",
-                       "rngd.service: main process exited, code=exited, status=1/FAILURE",
-                       "Unit rngd.service entered failed state",
-                       "rngd.service failed",
-                       "kernel: Fast TSC calibration failed"]
-        ignore_msg = '|'.join(ignore_list)
-        cmd = "cat /var/log/messages | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
-        error_log = self.vm_test01.get_output(cmd)
+        error_log = self.vm_test01.check_messages_log()
         self.assertEqual(error_log, "",
                          "Bug 1365727. "
                          "There's error in the /var/log/messages: \n%s" % error_log)

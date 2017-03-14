@@ -146,11 +146,8 @@ class FuncTest(Test):
         if float(self.project) < 7.0:
             self.assertIn("NUMA has been disabled", self.vm_test01.get_output("cat /var/log/waagent.log"),
                           "There's no disable NUMA log")
-        # The ignore_list must not be empty.
-        ignore_list = ["do not be empty"]
-        ignore_msg = '|'.join(ignore_list)
-        cmd = "cat /var/log/waagent.log | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
-        error_log = self.vm_test01.get_output(cmd)
+        # Check waagent.log
+        error_log = self.vm_test01.check_waagent_log()
         self.assertEqual(error_log, "", "There's error in the /var/log/waagent.log: \n%s" % error_log)
 
     def test_waagent_uninstall(self):
@@ -454,17 +451,7 @@ class FuncTest(Test):
         self.vm_test01.get_output("waagent -daemon &")
         time.sleep(25)
         # Check if there's error messages in the waagent.log
-        ignore_list = ["ERROR:CalledProcessError.  Error Code is 255",
-                       "ERROR:CalledProcessError.  Command string was swapon /mnt/resource/swapfile",
-                       "ERROR:CalledProcessError.  Command result was swapon: /mnt/resource/swapfile: swapon failed: Device or resource busy",
-#                       "ERROR:CalledProcessError.  Command result was swapon: /mnt/resource/swapfile: read swap header failed: Invalid argument",
-                       "ERROR:ActivateResourceDisk: Failed to activate swap at /mnt/resource/swapfile",
-                       "ERROR:CalledProcessError. Error Code is 1$",
-                       "ERROR:CalledProcessError. Command string was pidof dhclient",
-                       "ERROR:CalledProcessError. Command result was $"]
-        ignore_msg = '|'.join(ignore_list)
-        cmd = "cat /var/log/waagent.log | grep -iE 'error|fail' | grep -vE '%s'" % ignore_msg
-        error_log = self.vm_test01.get_output(cmd)
+        error_log = self.vm_test01.check_waagent_log()
         self.assertEqual(error_log, "", "There's error in the /var/log/waagent.log: \n%s" % error_log)
 
     def test_waagent_help(self):
