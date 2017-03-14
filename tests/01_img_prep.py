@@ -174,12 +174,12 @@ class ImgPrepTest(Test):
             self.log.info("Upload %s to Azure Storage %s Container %s successfully" %
                           (self.vhd_file, self.blob_params["storage_account"], self.blob_params["container"]))
         # 2. Copy the vhd to all the specific storage accounts
-        # Get storage_account list
+        # Get destination storage_account list
         azure_cli_common.set_config_mode(self.azure_mode)
         storage_account_list = utils_misc.get_storage_account_list(self.azure_mode)
         self.log.debug(storage_account_list)
         for storage_account in storage_account_list:
-            # Storage account instance
+            # Destination storage account instance
             sto_dst_params = dict()
             sto_dst_params["name"] = storage_account.keys()[0]
             sto_dst_params["location"] = storage_account[sto_dst_params["name"]]
@@ -194,7 +194,7 @@ class ImgPrepTest(Test):
                 sto_dst_params["ResourceGroupName"] = sto_dst_params["name"]
                 sto_dst_test01 = azure_arm_vm.StorageAccount(name=sto_dst_params["name"],
                                                              params=sto_dst_params)
-                # Resource Group Instance
+                # Destination resource Group Instance
                 rg_params = dict()
                 rg_params["location"] = sto_dst_params["location"]
                 rg_test01 = azure_arm_vm.ResourceGroup(name=sto_dst_params["ResourceGroupName"],
@@ -202,11 +202,11 @@ class ImgPrepTest(Test):
                 if not rg_test01.check_exist():
                     self.assertEqual(0, rg_test01.create(),
                                      "Fail to create resource group %s" % sto_dst_params["ResourceGroupName"])
-            # Check and create storage account
+            # Check and create destination storage account
             if not sto_dst_test01.check_exist():
                 sto_dst_test01.create(sto_dst_params)
             dst_connection_string = sto_dst_test01.conn_show()
-            # Container instance
+            # Destination container instance
             container_dst_params = dict()
 #            container_dst_params["name"] = self.params.get('container', '*/Prepare/*')
             container_dst_params["name"] = self.container_src_params["name"]
@@ -220,28 +220,28 @@ class ImgPrepTest(Test):
                 container_dst_test01 = azure_arm_vm.Container(name=container_dst_params["name"],
                                                               storage_account=container_dst_params["storage_account"],
                                                               params=container_dst_params)
-            # Check and create container
+            # Check and create destination container
             if not container_dst_test01.check_exist():
                 container_dst_test01.create(container_dst_params)
-            # Blob instance
+            # Destination blob instance
             blob_params = dict()
             blob_params["name"] = self.blob_params["name"]
             blob_params["container"] = container_dst_params["name"]
             blob_params["storage_account"] = sto_dst_params["name"]
             if self.azure_mode == 'asm':
-                blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
+                dest_blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
                                                 container=blob_params["container"],
                                                 storage_account=blob_params["storage_account"],
                                                 params=blob_params,
                                                 connection_string=dst_connection_string)
 
             else:
-                blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
+                dest_blob_test01 = azure_asm_vm.Blob(name=blob_params["name"],
                                                 container=blob_params["container"],
                                                 storage_account=blob_params["storage_account"],
                                                 params=blob_params,
                                                 connection_string=dst_connection_string)
-            if not blob_test01.check_exist():
+            if not dest_blob_test01.check_exist():
                 self.assertTrue(self.blob_test01.copy(dst_connection_string),
                                 "Fail to copy the VHD file %s to storage account %s container %s" %
                                 (self.blob_params["name"], sto_dst_params["name"], container_dst_params["name"]))
