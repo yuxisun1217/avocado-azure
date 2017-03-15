@@ -57,7 +57,7 @@ class WALAConfTest(Test):
             if "http_proxy" in self.name.name:
                 self.vm_params["DNSName"] = "nay-67-ond-squid.cloudapp.net"
                 options = "--connect"
-            self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
+            self.vm_test01 = azure_asm_vm.VM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
                                                 self.vm_params["password"],
@@ -80,7 +80,7 @@ class WALAConfTest(Test):
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
             self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
-            self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
+            self.vm_test01 = azure_arm_vm.VM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
                                                 self.vm_params["password"],
@@ -529,7 +529,7 @@ class WALAConfTest(Test):
         proxy_param["PublicPort"] = '22'
         if self.azure_mode == "asm":
             proxy_param["DNSName"] = proxy_param["VMName"] + ".cloudapp.net"
-            vm_proxy = azure_asm_vm.VMASM(proxy_param["VMName"],
+            vm_proxy = azure_asm_vm.VM(proxy_param["VMName"],
                                           proxy_param["VMSize"],
                                           proxy_param["username"],
                                           proxy_param["password"],
@@ -539,7 +539,7 @@ class WALAConfTest(Test):
             proxy_param["region"] = self.params.get("region", "*/proxy/*")
             proxy_param["DNSName"] = proxy_param["VMName"] + "." + proxy_param["region"] + ".cloudapp.azure.com"
             proxy_param["ResourceGroupName"] = self.params.get("rg_name", "*/proxy/*")
-            vm_proxy = azure_arm_vm.VMARM(proxy_param["VMName"],
+            vm_proxy = azure_arm_vm.VM(proxy_param["VMName"],
                                           proxy_param["VMSize"],
                                           proxy_param["username"],
                                           proxy_param["password"],
@@ -801,7 +801,7 @@ class WALAConfTest(Test):
         if self.azure_mode == "asm":
             vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
             vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
-            self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
+            self.vm_test01 = azure_asm_vm.VM(vm_params["VMName"],
                                                 vm_params["VMSize"],
                                                 vm_params["username"],
                                                 vm_params["password"],
@@ -819,7 +819,7 @@ class WALAConfTest(Test):
             vm_params["VnetSubnetName"] = vm_params["VMName"]
             vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-            self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
+            self.vm_test01 = azure_arm_vm.VM(vm_params["VMName"],
                                                 vm_params["VMSize"],
                                                 vm_params["username"],
                                                 vm_params["password"],

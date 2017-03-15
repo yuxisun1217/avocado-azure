@@ -28,7 +28,7 @@ from . import data_dir
 from . import utils_misc
 
 
-class VMASM(azure_vm.BaseVM):
+class VM(azure_vm.BaseVM):
 
     """
     This class handles all basic VM operations for ASM.
@@ -110,7 +110,7 @@ class VMASM(azure_vm.BaseVM):
         """
 #        self.size = size
         self.mode = "ASM"
-        super(VMASM, self).__init__(name, size, username, password, params)
+        super(VM, self).__init__(name, size, username, password, params)
         logging.info("Azure VM '%s'", self.name)
 
     def vm_create(self, params, options='', timeout=azure_vm.BaseVM.CREATE_TIMEOUT):

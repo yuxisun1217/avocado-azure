@@ -57,7 +57,7 @@ class StorageTest(Test):
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
             self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
-            self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
+            self.vm_test01 = azure_asm_vm.VM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
                                                 self.vm_params["password"],
@@ -85,7 +85,7 @@ class StorageTest(Test):
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
             self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
-            self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
+            self.vm_test01 = azure_arm_vm.VM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
                                                 self.vm_params["password"],

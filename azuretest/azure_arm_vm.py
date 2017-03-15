@@ -29,7 +29,7 @@ from . import data_dir
 from . import utils_misc
 
 
-class VMARM(azure_vm.BaseVM):
+class VM(azure_vm.BaseVM):
 
     """
     This class handles all basic VM operations for ARM.
@@ -144,7 +144,7 @@ class VMARM(azure_vm.BaseVM):
         self.ssh_port = copy.copy(params.get("PublicPort"))
         self.dns_name = copy.copy(params.get("DNSName"))
         self.mode = "ARM"
-        super(VMARM, self).__init__(name, size, username, password, params)
+        super(VM, self).__init__(name, size, username, password, params)
         logging.debug("Azure VM '%s'", self.name)
 
     def vm_create(self, params, options='', timeout=azure_vm.BaseVM.CREATE_TIMEOUT, dianostic=False):
