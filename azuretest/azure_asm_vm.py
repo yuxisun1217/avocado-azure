@@ -34,7 +34,7 @@ class VMASM(azure_vm.BaseVM):
     This class handles all basic VM operations for ASM.
     """
 
-    def __init__(self, name, size, username, password, params):
+    def __init__(self, name=None, size=None, username=None, password=None, params=None):
         """
         Initialize the object and set a few attributes.
 
@@ -121,7 +121,19 @@ class VMASM(azure_vm.BaseVM):
         :param options: extra options
         :return: Zero if success to create VM
         """
-        return azure_cli_asm.vm_create(params, options, timeout=timeout).exit_status
+        ret = azure_cli_asm.vm_create(params, options, timeout=timeout).exit_status
+        time.sleep(120)
+        return ret
+
+    def vm_list(self, params=None, options='', timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT, **kwargs):
+        """
+        This show the vm list
+        :param params:
+        :param options:
+        :param timeout:
+        :return:
+        """
+        return azure_cli_asm.vm_list(params, options, timeout=timeout, **kwargs).stdout
 
     def vm_update(self, params=None, timeout=azure_vm.BaseVM.DEFAULT_TIMEOUT):
         """
@@ -134,8 +146,9 @@ class VMASM(azure_vm.BaseVM):
             for retry in range(1, self.VM_UPDATE_RETRY_TIMES+1):
                 try:
                     self.params = azure_cli_asm.vm_show(self.name, timeout=timeout).stdout
-                except ValueError, e:
-                    logging.debug("VM update failed. Exception: %s Retry times: %d/%d" %
+#                except ValueError, e:
+                except Exception, e:
+                    logging.debug("azure vm show failed. Exception: %s Retry times: %d/%d" %
                                   (str(e), retry, self.VM_UPDATE_RETRY_TIMES))
                     continue
                 break
@@ -245,16 +258,16 @@ class VMASM(azure_vm.BaseVM):
         return azure_cli_asm.vm_capture(self.name, vm_image_name, cmd_params,
                                         timeout=timeout).exit_status
 
-    def wait_for_running(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT):
+    def wait_for_running(self, times=azure_vm.BaseVM.WAIT_FOR_START_RETRY_TIMES):
         """
 
-        :param timeout:
-        :return:
+        :param times: Retry times of vm_update()
+        :return: True if running.
         """
         logging.debug("Wait for running")
         r = 0
         interval = 10
-        while (r * interval) < timeout:
+        while r < times:
             self.vm_update()
             if self.is_running():
                 return True
@@ -272,7 +285,7 @@ class VMASM(azure_vm.BaseVM):
         """
         logging.debug("Wait for deallocated")
         r = 0
-        interval = 10
+        interval = 30
         while (r * interval) < timeout:
             self.vm_update()
             if self.is_deallocated():
@@ -286,13 +299,13 @@ class VMASM(azure_vm.BaseVM):
     def wait_for_delete(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT, check_cloudservice=False):
         """
         Make sure the VM and Cloud Service are deleted
-        :param times: Retry times of waiting for deleting the VM
+        :param timeout: Retry timeout of waiting for deleting the VM
         :param check_cloudservice: The flag of checking cloud service status
         :return: True if the VM and Cloud Service both do not exist.
         """
         logging.debug("Wait for delete")
         r = 0
-        interval = 10
+        interval = 30
         while (r * interval) < timeout:
             self.vm_update()
             if not self.exists():
@@ -446,7 +459,7 @@ class VMASM(azure_vm.BaseVM):
         """
         logging.debug("Wait for cloud service delete")
         r = 0
-        interval = 10
+        interval = 30
         while (r * interval) < timeout:
             try:
                 self.cloudservice_show()
@@ -467,12 +480,11 @@ class Image(object):
     This class handles all basic Image operations for ASM.
     """
 
-    def __init__(self, name, params):
+    def __init__(self, name=None, params=None):
         """
         Initialize the object and set a few attributes.
 
         :param name: The name of the object
-        :param size: The VM size
         :param params: A dict containing VM params
         params sample:
         """
@@ -481,7 +493,16 @@ class Image(object):
         if params:
             self.params = params
         else:
-            self.update()
+            if name:
+                self.update()
+
+    def list(self, options='', **kwargs):
+        """
+        List vm images
+        :param options: The options of azure vm image list
+        :return: vm image list
+        """
+        return azure_cli_asm.vm_image_list(options, **kwargs).stdout
 
     def show(self, params=None, options=''):
         """
@@ -539,7 +560,7 @@ class Blob(object):
     This class handles all basic storage blob operations for ASM.
     """
     DEFAULT_TIMEOUT = 240
-    COPY_TIMEOUT = 240
+    COPY_TIMEOUT = 3600
     DELETE_TIMEOUT = 240
     BLOB_UPLOAD_TIMEOUT = 10800
 
@@ -621,7 +642,8 @@ class Blob(object):
         params["dest_connection_string"] = dest_connection_string
         params.setdefault("source_container", "vhds")
         params.setdefault("dest_container", "vhds")
-        os.environ["AZURE_STORAGE_CONNECTION_STRING"] = self.connection_string
+        params.setdefault("connection_string", self.connection_string)
+#        os.environ["AZURE_STORAGE_CONNECTION_STRING"] = self.connection_string
         azure_cli_asm.blob_copy_start(params, options)
         start_time = time.time()
         end_time = start_time + timeout
@@ -639,9 +661,47 @@ class Blob(object):
             if rt.get("copy").get("status") == "success":
                 return True
             else:
-                time.sleep(10)
+                time.sleep(30)
 #        if rt.get("copy").get("status") == "pending":
         return False
+
+#    def copy(self, src_connection_string, params=None, options='', timeout=COPY_TIMEOUT):
+#        """
+#        Start to copy the resource to the specified storage blob which
+#        completes asynchronously
+#
+#        :param options: extra options
+#        :param params: A dict containing dest blob params
+#        :param timeout: Copy timeout
+#        :return:
+#        """
+#        if not params:
+#            params = dict()
+#        params["dest_container"] = self.container
+#        params["source_blob"] = self.name
+#        params["connection_string"] = src_connection_string
+#        params["dest_connection_string"] = self.connection_string
+#        params.setdefault("source_container", "vhds")
+#        azure_cli_asm.blob_copy_start(params, options)
+#        start_time = time.time()
+#        end_time = start_time + timeout
+#
+#        dst_params = dict()
+#        dst_params["connection_string"] = self.connection_string
+#        dst_params["container"] = self.container
+#        dst_params["blob"] = self.name
+#        dst_params["sas"] = params.get("dest_sas", None)
+#        #        rt = azure_cli_asm.blob_copy_show(dst_params).stdout
+#        while time.time() < end_time:
+#            rt = azure_cli_asm.blob_copy_show(dst_params).stdout
+#            status = rt.get("copy").get("status")
+#            logging.debug(status)
+#            if rt.get("copy").get("status") == "success":
+#                return True
+#            else:
+#                time.sleep(10)
+#            #        if rt.get("copy").get("status") == "pending":
+#        return False
 
     def check_exist(self, params=None, options=''):
         if not params:
@@ -649,10 +709,11 @@ class Blob(object):
         params.setdefault("connection_string", self.connection_string)
         params.setdefault("container", self.container)
         try:
-            azure_cli_asm.blob_show(self.name, params, options=options)
+            azure_cli_asm.blob_show(self.name, params, options=options, debug=False, error_debug=False)
         except Exception, e:
             logging.debug("No blob %s exists. Exception: %s" % (self.name, str(e)))
             return False
+        logging.debug("Blob %s exists" % self.name)
         return True
 
     def show(self, params=None, options=''):

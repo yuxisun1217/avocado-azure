@@ -297,8 +297,8 @@ def wait_for_login(client, host, port, username, password, prompt,
     :raise: Whatever remote_login() raises
     :return: A ShellSession object.
     """
-    logging.debug("Attempting to login to %s:%s using %s (timeout %ds)",
-                  host, port, client, timeout)
+    logging.debug("Attempting to login to %s@%s:%s using %s (timeout %ds)",
+                  username, host, port, client, timeout)
     end_time = time.time() + timeout
     verbose = False
     while time.time() < end_time:
@@ -349,7 +349,7 @@ def _remote_scp(
     while True:
         try:
             match, text = session.read_until_last_line_matches(
-                [r"[Aa]re you sure", r"[Pp]assword:/s*$", r"lost connection"],
+                [r"[Aa]re you sure", r"[Pp]assword:\s*", r"lost connection"],
                 timeout=timeout, internal_timeout=0.5)
             if match == 0:  # "Are you sure you want to continue connecting"
                 logging.debug("Got 'Are you sure...', sending 'yes'")

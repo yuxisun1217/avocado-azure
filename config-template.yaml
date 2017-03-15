@@ -1,8 +1,46 @@
-project: 7.3
-#rhel_version: RHEL-6.8-20160413.0
-rhel_version: None
-#wala_version: 2.1.4-1
-wala_version: None
+#####################################################################
+# avocado_azure configuration file for users
+# type: The type of the test. (onpremise/ondemand/customize)
+#   If onpremise: Upload image by user and run test.
+#   If ondemand: Use Azure ondemand image to run tests.
+#   If customize: Specify existed image and os_disk and run test.
+# onpremise:(Only when type: onpremise)
+#   rhel_version: The RHEL build number. (e.g. RHEL-6.8-20160414.0)
+#                 If None, get the latest build from base_url.
+# customize: (Only when type: customize)
+#   image: self-define image name.
+#   os_disk: self-define osdisk name.
+# project: The RHEL project. Must be specified before run. (e.g. 7.3)
+# wala_version: The WALinuxAgent version. (e.g. 2.2.0-2)
+#   If None, get the latest version.
+#   If set, first check the local rpm package,
+#   then get from brew(upstream: False) or github(upsteam: True)
+# upstream: Get WALA source code from github. True/False
+# tag: Other tags that will be added into the test run name and vhd name
+# case_group: Choose the test case group.
+#   acceptance: Acceptance Test
+#   function: Function Test Cases.
+#   regression: Regression Test Cases. Can be used for on-demand tests
+#   2016: For WALA-2.0.16 version
+# submit_result: Submit result to polarion. True/False.
+# base_url: The url for downloading RHEL build
+# store_dir: The folder to save RHEL/WALA/VHD/ks files
+# AzureSub: Azure account
+# RedhatSub: Red Hat Subscription account
+# VMUser: The VM user account
+#####################################################################
+type: onpremise
+onpremise:
+    rhel_version: None
+customize:
+    image: walaauto-RHEL-7.2-ondemand-wala-2.2.0-2
+    os_disk: wala72ond2202-os-2016-11-02-139C832A.vhd
+project: 6.9
+wala_version: 2.2.1
+upstream: True
+tag:
+case_group: function
+submit_result: True
 base_url: "http://download.eng.pek2.redhat.com/rel-eng/"
 store_dir: "/home/autotest/"
 AzureSub:

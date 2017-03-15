@@ -27,6 +27,7 @@ import threading
 import platform
 import traceback
 import json
+import yaml
 
 from avocado.core import status
 from avocado.core import exceptions
@@ -196,11 +197,12 @@ def command(cmd, timeout=1200, **kwargs):
     azure_json = kwargs.get('azure_json', False)
     debug = kwargs.get('debug', True)
     ignore_status = kwargs.get('ignore_status', False)
+    error_debug = kwargs.get('error_debug', True)
 #    timeout = kwargs.get('timeout', None)
     if azure_json:
         cmd += " --json"
-#    if debug:
-    logging.debug("command: %s", cmd)
+    if debug:
+        logging.debug("command: %s", cmd)
     if timeout:
         try:
             timeout = int(timeout)
@@ -215,12 +217,16 @@ def command(cmd, timeout=1200, **kwargs):
         ret = process.run(cmd, timeout=timeout, verbose=debug,
                           ignore_status=ignore_status, shell=True)
     except Exception, e:
-        if "azure" in cmd:
+        if "azure" in cmd and error_debug == True:
             azure_err = "/root/.azure/azure.err"
             if os.path.isfile(azure_err):
                 logging.debug(azure_err)
                 with open(azure_err, 'r') as f:
-                    logging.debug(f.read())
+                    azure_error_msg = f.read()
+                logging.debug(azure_error_msg)
+                if "TooManyRequests" in azure_error_msg:
+                    logging.debug("Too many requests. Wait for 300s.")
+                    time.sleep(300)
         logging.debug(str(e))
         raise
     if debug:
@@ -257,3 +263,69 @@ def get_path(base_path, user_path):
         return user_path
     else:
         return os.path.join(base_path, user_path)
+
+
+def check_dns(dns):
+    """
+    Check if the domain name can be visited.
+
+    :return:
+    -1: Wrong domain name
+    0: Running/Stopped/Starting
+    1: Stopped(deallocated)
+    """
+    try:
+        ip = socket.getaddrinfo(dns, None)[0][4][0]
+    except:
+        logging.debug("Wrong Domain Name: %s", dns)
+        raise
+    if ip == '0.0.0.0':
+        logging.debug("Cloud Service is Stopped(deallocated).")
+        return False
+    else:
+        logging.debug("Cloud Service is Running.")
+        return True
+
+
+def host_command(cmd="", ret='stdout', **kwargs):
+    """
+
+    :param ret: stdout: return stdout; exit_status: return exit_status
+    :param cmd:
+    :return:
+    """
+    if ret == 'exit_status':
+        return command(cmd, **kwargs).exit_status
+    elif ret == 'stdout':
+        return command(cmd, **kwargs).stdout
+    else:
+        return command(cmd, **kwargs)
+
+
+def get_sshkey_file():
+    myname = host_command("whoami").strip('\n')
+    if myname == 'root':
+        sshkey_file = "/%s/.ssh/id_rsa.pub" % myname
+    else:
+        sshkey_file = "/home/%s/.ssh/id_rsa.pub" % myname
+    if not os.path.isfile(sshkey_file):
+        host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
+    return sshkey_file
+
+
+def get_storage_account_list(azure_mode):
+    """
+    Get the uniq storage_account list from vm_sizes.yaml
+    :return: storage_account_list, like [{"walaautoasmeastus":"East US"},{"walaautoasmsea":"Southeast Asia"}]
+    """
+    current_path = os.path.split(sys._getframe().f_code.co_filename)[0]
+    with open("%s/../cfg/vm_sizes.yaml" % current_path, 'r') as f:
+        data = yaml.load(f.read().replace("!mux", ""))
+    storage_account_list = []
+    for item in data['azure_mode'][azure_mode]['vm_sizes'].values():
+        st_dict = {item["storage_account"]:item["location"]}
+        if st_dict not in storage_account_list and item["storage_account"]:
+            storage_account_list.append({item["storage_account"]:item["location"]})
+    return storage_account_list
+
+

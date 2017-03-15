@@ -1,0 +1,17 @@
+azure_mode: !mux
+    asm:
+        cases:
+            SettingsTest.test_reset_access_successively
+            SettingsTest.test_reset_pw_after_capture
+            SettingsTest.test_reset_pw_diff_auth
+            FuncTest.test_setup_register_service
+            FuncTest.test_waagent_deprovision
+            FuncTest.test_waagent_depro_user
+            WALAConfTest.test_resource_disk_file_type
+            WALAConfTest.test_http_proxy
+            WALAConfTest.test_disable_provisioning
+            WALAConfTest.test_invoke_specific_program
+    arm:
+        cases:
+            FuncTest.test_waagent_depro_user
+            WALAConfTest.test_http_proxy

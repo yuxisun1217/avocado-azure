@@ -1,0 +1,11 @@
+--- WALinuxAgent-2.2.0/azurelinuxagent/common/conf.py.orig
++++ WALinuxAgent-2.2.0/azurelinuxagent/common/conf.py
+@@ -213,7 +213,7 @@ def get_autoupdate_gafamily(conf=__conf_
+ 
+ 
+ def get_autoupdate_enabled(conf=__conf__):
+-    return conf.get_switch("AutoUpdate.Enabled", True)
++    return conf.get_switch("AutoUpdate.Enabled", False)
+ 
+ 
+ def get_autoupdate_frequency(conf=__conf__):

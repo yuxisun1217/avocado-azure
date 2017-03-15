@@ -12,6 +12,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -48,6 +49,7 @@ class NetworkTest(Test):
         self.vm_params["PublicPort"] = self.params.get('public_port', '*/network/*')
         if self.azure_mode == "asm":
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
+            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
             self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
@@ -55,7 +57,6 @@ class NetworkTest(Test):
                                                 self.vm_params["password"],
                                                 self.vm_params)
         else:
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
                                                                                 self.vm_params["Container"],
@@ -63,10 +64,11 @@ class NetworkTest(Test):
             self.vm_params["NicName"] = self.vm_params["VMName"]
             self.vm_params["PublicIpName"] = self.vm_params["VMName"]
             self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-            self.vm_params["VnetName"] = self.vm_params["VMName"]
-            self.vm_params["VnetSubnetName"] = self.vm_params["VMName"]
+            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
@@ -108,34 +110,39 @@ lo eth0\
         Check the endpoints of the VM
         """
         self.log.info("Check the endpoints of the VM")
+        # Check rpcbind
+        self.assertIn("0.0.0.0:111", self.vm_test01.get_output("netstat -antp"),
+                      "rpcbind is not started and listened to 0.0.0.0")
         # install nmap
         if "command not found" in self.vm_test01.get_output("nmap", timeout=5):
             self.vm_test01.get_output("rpm -ivh /root/RHEL*.rpm")
             self.vm_test01.get_output("yum -y install nmap")
-        # Set postfix, listen to 0.0.0.0
-        self.vm_test01.get_output("sed -i -e \'/inet_interfaces = localhost/s/^/#/g\' "
-                                  "-e \'/inet_interfaces = all/s/^#//g\' "
-                                  "/etc/postfix/main.cf")
-        self.vm_test01.get_output("service postfix restart")
-        self.assertIn("0.0.0.0:25", self.vm_test01.get_output("netstat -antp"),
-                      "Fail to start postfix and listen to 0.0.0.0")
+        # Stop firewall
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("service iptables stop")
+        else:
+            self.vm_test01.get_output("systemctl stop firewalld")
+        time.sleep(5)
         # Check endpoint
         import re
-        inside = re.sub(r'\s+', ' ', self.vm_test01.get_output("nmap 127.0.0.1"))
+        inside = re.sub(r'\s+', ' ', self.vm_test01.get_output("nmap 127.0.0.1 -p 22,111|grep tcp"))
         self.assertIn("22/tcp open ssh", inside,
                       "port 22 is not opened inside")
-        self.assertIn("25/tcp open smtp", inside,
-                      "port 25 is not opened inside")
-        self.assertIn("open", azure_cli_common.host_command("tcping %s %d" % (self.vm_params["DNSName"],
-                                                                              self.vm_params["PublicPort"]),
-                                                            ignore_status=True),
+        self.assertIn("111/tcp open rpcbind", inside,
+                      "port 111 is not opened inside")
+        outside = re.sub(r'\s+', ' ', utils_misc.host_command("nmap %s -p %d,111|grep tcp" %
+                                                              (self.vm_params["DNSName"],
+                                                               self.vm_params["PublicPort"])))
+        self.assertIn("%d/tcp open" % self.vm_params["PublicPort"], outside,
                       "ssh port should be opened outside")
-        self.assertIn("closed", azure_cli_common.host_command("tcping %s 25" % self.vm_params["DNSName"],
-                                                              ignore_status=True),
-                      "port 25 shouldn't be opened outside")
+        self.assertIn("111/tcp filtered", outside,
+                      "port 111 shouldn't be opened outside")
 
     def tearDown(self):
         self.log.debug("Teardown.")
+        # Clean ssh sessions
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9",
+                                ignore_status=True)
 
 if __name__ == "__main__":
     main()

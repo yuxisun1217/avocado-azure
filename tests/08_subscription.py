@@ -12,6 +12,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -50,6 +51,7 @@ class SubscriptionTest(Test):
         self.vm_params["RedhatSubPassword"] = self.params.get('password', '*/RedhatSub/*')
         if self.azure_mode == "asm":
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
+            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
             self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
@@ -57,7 +59,6 @@ class SubscriptionTest(Test):
                                                 self.vm_params["password"],
                                                 self.vm_params)
         else:
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
                                                                                 self.vm_params["Container"],
@@ -65,10 +66,11 @@ class SubscriptionTest(Test):
             self.vm_params["NicName"] = self.vm_params["VMName"]
             self.vm_params["PublicIpName"] = self.vm_params["VMName"]
             self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-            self.vm_params["VnetName"] = self.vm_params["VMName"]
-            self.vm_params["VnetSubnetName"] = self.vm_params["VMName"]
+            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
@@ -118,14 +120,16 @@ class SubscriptionTest(Test):
         self.assertIn(subscription_name, self.vm_test01.get_output("subscription-manager list --consumed"),
                       "Fail to list consumed subscriptions")
         # Check yum install/update
-        self.vm_test01.get_output("yum remove wget -y")
-        self.assertIn("command not found", self.vm_test01.get_output("wget", timeout=1200),
-                      "Fail to yum remove wget")
         self.assertNotIn("This system is not registered to %s" % subscription_name,
-                         self.vm_test01.get_output("yum install wget -y"),
+                         self.vm_test01.get_output("yum install expect -y", timeout=1200),
                          "yum install message is wrong.")
-        self.assertNotIn("command not found", self.vm_test01.get_output("wget", timeout=1200),
-                         "Fail to yum install wget")
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                         "Fail to yum install expect")
+        # This command is usually timeout so just ignore status and reconnect to workaround
+        self.vm_test01.get_output("yum remove expect -y", timeout=120, max_retry=0, ignore_status=True)
+        self.vm_test01.verify_alive()
+        self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                      "Fail to yum remove expect")
         # remove all subscriptions
         self.assertIn("1 local certificate has been deleted",
                       self.vm_test01.get_output("subscription-manager remove --all"),
@@ -144,14 +148,41 @@ class SubscriptionTest(Test):
         Check RHEL Server product certificate
         """
         self.log.info("check RHEL Server product certificate")
-        self.assertNotIn("No such file", self.vm_test01.get_output("ls /etc/pki/product*/69.pem"),
-                         "No product certificate: /etc/pki/product*/69.pem")
+        cert="/etc/pki/product-default/69.pem"
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls %s" % cert),
+                         "No product certificate: %s" % cert)
         self.assertIn("CN=Red Hat Product ID",
-                      self.vm_test01.get_output("openssl x509 -in /etc/pki/product*/69.pem -noout -text"),
-                      "Fail to read product certificate: /etc/pki/product*/69.pem")
+                      self.vm_test01.get_output("openssl x509 -in %s -noout -text" % cert),
+                      "Fail to read product certificate: %s" % cert)
+
+    def test_rhui(self):
+        """
+        Check if can install package from RHUI through yum
+        """
+        self.log.info("Get content from RHUI")
+        # Preparation
+        if "No such file" in self.vm_test01.get_output("ls /etc/yum.repos.d/rh-cloud.repo"):
+            self.vm_test01.get_output("rpm -ivh /root/rhui*.rpm")
+        # Check rhui files
+        rhui_file_list = ["/etc/yum.repos.d/rh-cloud.repo",
+                          "/etc/pki/rhui/product/content.crt"]
+        for rhui_file in rhui_file_list:
+            self.assertNotIn("No such file", self.vm_test01.get_output("ls %s" % rhui_file),
+                             "No file %s" % rhui_file)
+        # Test yum install/remove
+        self.vm_test01.get_output("yum install -y expect")
+        self.assertNotIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                         "yum install expect fail")
+        self.vm_test01.get_output("yum remove -y expect")
+        # Sleep 10s to wait for the remove completed.
+        time.sleep(10)
+        self.assertIn("No such file", self.vm_test01.get_output("ls /usr/bin/expect"),
+                      "yum remove expect fail")
 
     def tearDown(self):
         self.log.debug("tearDown")
+        # Clean ssh sessions
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 if __name__ == "__main__":
     main()

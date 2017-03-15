@@ -87,9 +87,9 @@ for processnum in $Processnum; do
             if [ x"$prot" != x"tcp" ]; then
                 cmdopts=$cmdopts" -u"
                 for len in $RWBufLen; do
-                    cmdopts=$cmdopts" -l $len"
+                    #cmdopts=$cmdopts" -l $len"
                     for p in `seq $processnum`; do
-                        finalcmd="$cmd -p $((8000+p)) $cmdopts "
+                        finalcmd="$cmd -p $((8000+p)) $cmdopts -l $len"
                         echo "$finalcmd > $TMPLOG-p$p"
                         ($finalcmd > $TMPLOG-p$p &)
                     done
@@ -111,12 +111,24 @@ for processnum in $Processnum; do
                         sumbandwidth_r=$(echo "${sumbandwidth_r} + `echo $strtmp|awk -F ',' '{print $10}'`"|bc)
                         sumcpu_s=$(echo "${sumcpu_s} + `echo $strtmp|awk -F ',' '{print $11}'|sed s/\%//g`"|bc)
                         sumcpu_r=$(echo "${sumcpu_r} + `echo $strtmp|awk -F ',' '{print $12}'|sed s/\%//g`"|bc)
-                        sumpacketloss=$(echo "${sumpacketloss} + `echo $strtmp|awk -F ',' '{print $13}'|sed s/\%//g`"|bc)
+                        #sumpacketloss=$(echo "${sumpacketloss} + `echo $strtmp|awk -F ',' '{print $13}'|sed s/\%//g`"|bc)
+			################################
+                        #modify error: (standard_in) 1: syntax error
+                        temp1=`echo $strtmp|awk -F ',' '{print $13}'|sed s/\%//g`
+                        echo ${temp1}
+                        temp2=`echo "1+${temp1}" | bc 2>/dev/null`
+                        if [ "x${temp2}" == "x" ];then
+                                temp1=100
+                        fi
+                        sumpacketloss=$(echo ${sumpacketloss} + ${temp1}|bc)
+			#################################
+
                         sumlatency=$(echo "${sumlatency} + `echo $strtmp|awk -F ',' '{print $14}'|sed s/\%//g`"|bc)
                     done
                     echo "=========="Sum"=================="
                     printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" $VMSize $prot $processnum $parallel $len $ETHMTU "N/A" $time $sumbandwidth_s $sumbandwidth_s $(echo "scale=1;a=$sumcpu_s/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumcpu_r/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumpacketloss/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumlatency/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" 
                     printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" $VMSize $prot $processnum $parallel $len $ETHMTU "N/A" $time $sumbandwidth_s $sumbandwidth_s $(echo "scale=1;a=$sumcpu_s/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumcpu_r/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumpacketloss/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumlatency/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" >> $TESTLOG
+		    echo -e "\n"
                     sleep 5
                 done
             else
@@ -148,6 +160,7 @@ for processnum in $Processnum; do
                             echo "=========="Sum"=================="
                             printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" $VMSize $prot $processnum $parallel $len $mss $window $time $sumbandwidth_s $sumbandwidth_r $(echo "scale=1;a=$sumcpu_s/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumcpu_r/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" "N/A" "N/A" 
                             printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" $VMSize $prot $processnum $parallel $len $mss $window $time $sumbandwidth_s $sumbandwidth_r $(echo "scale=1;a=$sumcpu_s/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" $(echo "scale=1;a=$sumcpu_r/$processnum;if (a<1&&a>0) print 0;print a"|bc)"%" "N/A" "N/A" >> $TESTLOG
+			    echo -e "\n"
                             sleep 5
                         done
                     done

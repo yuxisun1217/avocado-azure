@@ -13,7 +13,14 @@ from . import remote
 from . import data_dir
 from . import utils_misc
 from . import azure_cli_common
-
+from aexpect.exceptions import ExpectError
+from aexpect.exceptions import ExpectProcessTerminatedError
+from aexpect.exceptions import ExpectTimeoutError
+from aexpect.exceptions import ShellCmdError
+from aexpect.exceptions import ShellError
+from aexpect.exceptions import ShellProcessTerminatedError
+from aexpect.exceptions import ShellStatusError
+from aexpect.exceptions import ShellTimeoutError
 
 class VMDeadError(Exception):
     """
@@ -22,7 +29,21 @@ class VMDeadError(Exception):
     def __init__(self):
         self.message = "VM is not alive."
 
-
+WAAGENT_IGNORELIST = ["INFO sfdisk with --part-type failed \[1\], retrying with -c"]
+MESSAGES_IGNORELIST = ["failed to get extended button data",
+                       "kdump.service: main process exited, code=exited, status=1/FAILURE",
+                       "Failed to start Crash recovery kernel arming.",
+                       "Unit kdump.service entered failed state.",
+                       "kdump.service failed.",
+                       "kdumpctl: Starting kdump: \[FAILED\]",
+                       "acpi PNP0A03:00: _OSC failed \(AE_NOT_FOUND\); disabling ASPM",
+                       "acpi PNP0A03:00: fail to add MMCONFIG information, can.t access extended PCI configuration space under this bridge.",
+                       "Dependency failed for Network Manager Wait Online.",
+                       "Job NetworkManager-wait-online.service/start failed with result .dependency.",
+                       "rngd.service: main process exited, code=exited, status=1/FAILURE",
+                       "Unit rngd.service entered failed state",
+                       "rngd.service failed",
+                       "Fast TSC calibration failed"] + WAAGENT_IGNORELIST
 class BaseVM(object):
 
     """
@@ -64,12 +85,15 @@ class BaseVM(object):
     DEFAULT_TIMEOUT = 1200
     LOGIN_TIMEOUT = 30
     LOGIN_WAIT_TIMEOUT = 600
-    COPY_FILES_TIMEOUT = 600
+    COPY_FILES_TIMEOUT = 1200
     CREATE_TIMEOUT = 1200
     START_TIMEOUT = 1200
     RESTART_TIMEOUT = 1200
     DELETE_TIMEOUT = 1200
-    WAIT_FOR_START_TIMEOUT = 1200
+# It's hard to control the timeout because it takes several seconds to update VM status.
+# So use WAIT_FOR_START_RETRY_TIMES instead of WAIT_FOR_START_TIMEOUT
+#    WAIT_FOR_START_TIMEOUT = 1200
+    WAIT_FOR_START_RETRY_TIMES = 30
     WAIT_FOR_RETRY_TIMEOUT = 600
     VM_UPDATE_RETRY_TIMES = 3
 
@@ -128,7 +152,8 @@ class BaseVM(object):
             raise
         return value
 
-    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end=''):
+    def vm_disk_mount(self, disk, mount_point, partition=1, project=None, del_part=True, start='', end='',
+                      sudo=True, reboot=True, authentication="password"):
         logging.debug("DISK: %s", disk)
         if isinstance(project, float) and float(project) >= 7.0:
             u = 'u\n'
@@ -149,7 +174,7 @@ p
 w
 EOF
 """ % (self.password, disk, d, u, partition, str(start), str(end))
-        output = self.get_output(cmd)
+        output = self.get_output(cmd, sudo=sudo)
 #        if del_part:
 #            self.get_output("parted %s rm %d" % (dict, partition))
 #        start, end = self.get_output("parted %s unit s p free|grep Free|tail -1" % disk).split()[0:2]
@@ -158,11 +183,16 @@ EOF
         if disk+str(partition) not in output:
             logging.error("Fail to part disk %s" % disk)
             raise Exception
-        self.get_output("partprobe")
-        self.get_output("mkfs.ext4 %s" % disk+str(partition), timeout=600)
-        self.get_output("mkdir %s" % mount_point)
-        self.get_output("mount %s %s" % (disk+str(partition), mount_point))
-        if self.get_output("mount | grep %s" % mount_point) == "":
+        output = self.get_output("partprobe", sudo=sudo)
+        if "Warning" in output and reboot is True:
+            self.get_output("reboot", sudo=sudo)
+            time.sleep(60)
+            self.verify_alive(authentication=authentication)
+        self.get_output("fdisk -l %s" % disk, sudo=sudo)
+        self.get_output("mkfs.ext4 %s" % disk+str(partition), timeout=300, sudo=sudo)
+        self.get_output("mkdir -p %s" % mount_point, sudo=sudo)
+        self.get_output("mount %s %s" % (disk+str(partition), mount_point), sudo=sudo)
+        if self.get_output("mount | grep %s" % mount_point, sudo=sudo) == "":
             logging.error("Fail to mount %s to %s" % (disk+str(partition), mount_point))
             raise Exception
         return True
@@ -189,31 +219,40 @@ EOF
             cmd += " -force"
         return self.get_output("echo `sudo %s`" % cmd, sudo=False)
 
-    def waagent_service_restart(self):
-        cmd = "service waagent restart"
+    def waagent_service_restart(self, project=6.0):
+        if float(project) < 7.0:
+            cmd = "service waagent restart"
+        else:
+            cmd = "systemctl restart waagent"
         self.get_output(cmd)
         time.sleep(1)
-        if "python /usr/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
+        if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
             return True
         else:
             return False
 
-    def waagent_service_start(self):
-        cmd = "service waagent start"
+    def waagent_service_start(self, project=6.0):
+        if float(project) < 7.0:
+            cmd = "service waagent start"
+        else:
+            cmd = "systemctl start waagent"
         self.get_output(cmd)
         time.sleep(1)
-        if "python /usr/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
+        if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
             return True
         else:
             return False
 
-    def waagent_service_stop(self):
-        service_stop_cmd = "service waagent stop"
+    def waagent_service_stop(self, project=6.0):
+        if float(project) < 7.0:
+            service_stop_cmd = "service waagent stop"
+        else:
+            service_stop_cmd = "systemctl stop waagent"
         kill_process_cmd = "ps aux|grep [w]aagent|awk '{print \$2}'|xargs kill -9"
         self.get_output(service_stop_cmd)
         self.get_output(kill_process_cmd)
         time.sleep(1)
-        if "python /usr/sbin/waagent -daemon" not in self.get_output("ps aux|grep [w]aagent"):
+        if self.get_output("ps aux|grep [w]aagent") == "":
             return True
         else:
             return False
@@ -233,9 +272,11 @@ EOF
         :return: A ShellSession object.
         """
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
+            password = self.password
+#            password = self.params.get("password", "")
         prompt = self.params.get("shell_prompt", "[\#\$]")
 #        linesep = eval("'%s'" % self.params.get("shell_linesep", r"\n"))
         client = self.params.get("shell_client", "ssh")
@@ -262,25 +303,39 @@ EOF
         return self.login(timeout=timeout, username=username, password=password,
                           authentication=authentication)
 
-    def get_output(self, cmd="", timeout=DEFAULT_TIMEOUT, sudo=True):
+    def get_output(self, cmd="", timeout=DEFAULT_TIMEOUT, sudo=True, max_retry=1, ignore_status=False):
         """
 
         :param cmd:
         :param timeout: SSH connection timeout
         :param sudo: If the command need sudo permission
-        :return: None if except
+        :param max_retry: The max retry number
+        :return: raise if exception
         """
         sudo_cmd = "echo %s | sudo -S sh -c \"\"" % self.password
         if sudo:
             cmd = "sudo sh -c \"%s\"" % cmd
 #            cmd = "echo %s | sudo -S sh -c \"%s\"" % (self.password, cmd)
-        try:
-            if sudo:
-                self.session.cmd_output(sudo_cmd)
-            output = self.session.cmd_output(cmd, timeout).rstrip('\n')
-        except Exception, e:
-            logging.debug("Run command %s fail. Exception: %s", cmd, str(e))
-            return ''
+        for retry in xrange(0, max_retry+1):
+            try:
+                if sudo:
+                    self.session.cmd_output(sudo_cmd)
+                output = self.session.cmd_output(cmd, timeout).rstrip('\n')
+            except ShellTimeoutError, e:
+                logging.debug("Run command %s timeout. Retry %d/%d" % (cmd, retry, max_retry))
+                self.verify_alive()
+                continue
+            except Exception, e:
+                logging.debug("Run command %s fail. Exception: %s", cmd, str(e))
+                raise
+            else:
+                break
+        else:
+            logging.debug("After retry %d times, run command %s timeout. Exception: %s" % (retry, cmd, e))
+            if ignore_status:
+                return None
+            else:
+                raise
         logging.debug(output)
         return output
 
@@ -295,26 +350,25 @@ EOF
     def modify_value(self, key, value, conf_file="/etc/waagent.conf", sepr='='):
         """
 
-        :param key:
-        :param value:
-        :param conf_file:
-        :return:
+        :param key: The name of the parameter
+        :param value: The value of the parameter
+        :param conf_file: The file to be modified
+        :param sepr: The separate character
+        :return: True/False of the modify result
         """
-        if self.get_output("grep -R \'%s\' %s" % (key, conf_file)):
-            self.get_output("sed -i -e '/#%s/s/^#//g' -e 's/%s%s.*$/%s%s%s/g' %s" % (key, key, sepr, key, sepr, value, conf_file))
+#        if self.get_output("grep -R \'%s\' %s" % (key, conf_file)):
+#            self.get_output("sed -i -e '/^.*%s/s/^# *//g' -e 's/%s.*$/%s%s%s/g' %s" %
+#                            (key, key, key, sepr, value, conf_file))
+        if self.get_output("grep -R \'^{0}\' {1}".format(key, conf_file)):
+            self.get_output("sed -i 's/{0}.*$/{0}{1}{2}/g' {3}".format(key, sepr, value, conf_file))
         else:
-            self.get_output("echo \'%s%s%s\' >> %s" % (key, sepr, value, conf_file))
+            self.get_output("echo \'{0}{1}{2}\' >> {3}".format(key, sepr, value, conf_file))
         time.sleep(0.5)
-        return self.verify_value(key, value, conf_file)
-#        if not self.get_output("grep -R \"%s=%s\" %s" % (key, value, conf_file)):
-#            logging.error("Fail to modify the %s", conf_file)
-#            return False
-#        else:
-#            return True
+        return self.verify_value(key, value, conf_file, sepr)
 
     def verify_value(self, key, value, conf_file="/etc/waagent.conf", sepr='='):
-        if not self.get_output("grep -R \'^%s%s%s\' %s" % (key, sepr, value, conf_file)):
-            logging.error("Fail to modify to %s%s%s in %s", (key, sepr, value, conf_file))
+        if not self.get_output("grep -R \'^{0}{1}{2}\' {3}".format(key, sepr, value, conf_file)):
+            logging.error("Fail to modify to {0}{1}{2} in {3}".format(key, sepr, value, conf_file))
             return False
         else:
             return True
@@ -329,9 +383,11 @@ EOF
         :return: False if timeout
         """
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
+            password = self.password
+#            password = self.params.get("password", "")
 #        logging.debug(self.params)
         host = self.get_public_address()
         port = self.get_ssh_port()
@@ -363,10 +419,14 @@ EOF
         """
         logging.info("sending file(s) to '%s'", self.name)
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
-        client = self.params.get("file_transfer_client", "ssh")
+            password = self.password
+#            password = self.params.get("password", "")
+        logging.debug(username)
+        logging.debug(password)
+        client = self.params.get("file_transfer_client", "scp")
         address = self.get_public_address()
         port = self.get_ssh_port()
         log_filename = ("transfer-%s-to-%s-%s.log" %
@@ -393,9 +453,11 @@ EOF
         """
         logging.info("receiving file(s) to '%s'", self.name)
         if not username:
-            username = self.params.get("username", "")
+            username = self.username
+#            username = self.params.get("username", "")
         if not password:
-            password = self.params.get("password", "")
+            password = self.password
+#            password = self.params.get("password", "")
         client = self.params.get("file_transfer_client")
         address = self.get_public_address()
         port = self.get_ssh_port()
@@ -441,29 +503,30 @@ EOF
         except:
             pass
 
-    def wait_for_dns(self, dns, timeout=WAIT_FOR_START_TIMEOUT):
+    def wait_for_dns(self, dns, times=WAIT_FOR_START_RETRY_TIMES):
         """
 
         :param dns: VM Domain Name
-        :param timeout: Retry timeout
-        :return: False if timeout
+        :param times: Retry times of checking dns connection.
+        :return: False if ti
         """
         r = 0
         interval = 10
-        while (r * interval) < timeout:
+        while r < times:
 #            logging.debug(dns)
-            if azure_cli_common.check_dns(dns):
-                return
+            if utils_misc.check_dns(dns):
+                return True
             time.sleep(interval)
             r += 1
             logging.debug("Retry %d times.", r)
-        logging.debug("After %ds seconds, the DNS is not available.", timeout)
+        logging.debug("After retry %d times, the DNS is not available.", times)
         return False
 
     def get_device_name(self, timeout=WAIT_FOR_RETRY_TIMEOUT):
         r = 0
         interval = 10
-        while r < timeout:
+        disk = ''
+        while (r*10) < timeout:
             disk = self.get_output("ls /dev/sd* | grep -v [1234567890]", sudo=False).split('\n')[-1]
             if disk not in ["/dev/sda", "/dev/sdb"]:
                 break
@@ -479,7 +542,18 @@ EOF
     def postfix(self):
         return utils_misc.postfix()
 
-#    def get_sshkey_file(self):
-#        azure_cli_common.host_command("cat /dev/zero | ssh-keygen -q -N ''", ignore_status=True)
-#        myname = azure_cli_common.host_command("whoami").strip('\n')
-#        return "/home/%s/.ssh/id_rsa.pub" % myname
+    def _check_log(self, logfile, ignore_list):
+        if ignore_list:
+            cmd = "cat {0} | grep -iE 'error|fail' | grep -vE '{1}'".format(logfile, '|'.join(ignore_list))
+        else:
+            cmd = "cat {0} | grep -iE 'error|fail'".format(logfile)
+        return self.get_output(cmd)
+
+    def check_waagent_log(self):
+        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST)
+
+    def check_messages_log(self):
+        return self._check_log("/var/log/messages", MESSAGES_IGNORELIST)
+
+
+

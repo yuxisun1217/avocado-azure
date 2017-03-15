@@ -12,6 +12,7 @@ from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
+from azuretest import utils_misc
 
 
 def collect_vm_params(params):
@@ -48,6 +49,7 @@ class LifeCycleTest(Test):
         self.vm_params["PublicPort"] = self.params.get('public_port', '*/network/*')
         if self.azure_mode == "asm":
             self.vm_params["Image"] = self.params.get('name', '*/Image/*')
+            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
             self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
             self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
@@ -55,7 +57,6 @@ class LifeCycleTest(Test):
                                                 self.vm_params["password"],
                                                 self.vm_params)
         else:
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
                                                                                 self.vm_params["Container"],
@@ -63,10 +64,11 @@ class LifeCycleTest(Test):
             self.vm_params["NicName"] = self.vm_params["VMName"]
             self.vm_params["PublicIpName"] = self.vm_params["VMName"]
             self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-            self.vm_params["VnetName"] = self.vm_params["VMName"]
-            self.vm_params["VnetSubnetName"] = self.vm_params["VMName"]
+            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
+            self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
             self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
                                                 self.vm_params["VMSize"],
                                                 self.vm_params["username"],
@@ -103,6 +105,7 @@ class LifeCycleTest(Test):
         :return:
         """
         self.log.info("Create a VM through Azure CLI")
+        # Create VM through CLI
         self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
                          "Fail to create vm through CLI: azure cli fail")
         self.assertTrue(self.vm_test01.wait_for_running(),
@@ -110,15 +113,15 @@ class LifeCycleTest(Test):
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Fail to create vm through CLI: cannot login")
         self.log.info("Create a VM through Azure CLI successfully")
+        # Check VM status through CLI
+#        self.assertEqual(self.vm_params["Location"], self.vm_test01.params["Location"],
+#                         "Location property is wrong")
 
     def test_restart_vm(self):
         """
         restart
-
-        :return:
         """
         self.log.info("Restart a VM")
-#        self.vm_test01.verify_alive()
         before = self.vm_test01.get_output("who -b", sudo=False)
 #        self.vm_test01.session_close()
         self.log.debug("Restart the vm %s", self.vm_params["VMName"])
@@ -131,12 +134,44 @@ class LifeCycleTest(Test):
         if after == before:
             self.fail("VM is not restarted.")
         self.log.info("VM restart successfully.")
+        # Check the swap
+        # Disable default swap
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("swapoff /dev/mapper/VolGroup-lv_swap")
+        else:
+            self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        for count in xrange(1, 11):
+            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+            if swapsize == "2047":
+                break
+            else:
+                self.log.info("Swap size is wrong. Retry %d times." % count)
+                time.sleep(30)
+        else:
+            self.fail("Swap is not on after VM restart")
+#        self.assertNotEqual(10, count, "Swap is not on after VM restart")
+
+    def test_reboot_vm_inside_guest(self):
+        """
+        reboot inside guest
+        """
+        self.log.info("Reboot a VM inside guest")
+        before = self.vm_test01.get_output("who -b", sudo=False)
+        self.log.debug("Reboot the vm %s", self.vm_params["VMName"])
+        self.vm_test01.get_output("reboot")
+        # wait for reboot finished
+        time.sleep(20)
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Fail to start the vm after restart: verify_alive")
+        after = self.vm_test01.get_output("who -b", sudo=False)
+        if after == before:
+            self.fail("VM is not rebooted.")
+        self.log.info("VM reboot inside guest successfully.")
 
     def test_shutdown_vm(self):
         """
         Shutdown the VM
-
-        :return:
         """
         self.log.info("Shutdown the VM")
         self.assertEqual(self.vm_test01.shutdown(), 0,
@@ -244,25 +279,23 @@ class LifeCycleTest(Test):
         self.assertEqual(self.vm_test01.capture(capture_vm_name, cmd_params), 0,
                          "Fails to capture the vm: azure cli fail")
         self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
-        old_hostname = copy.copy(self.vm_params["VMName"])
-        old_username = copy.copy(self.vm_test01.username)
+        old_hostname = self.vm_params["VMName"]
+        old_username = self.vm_test01.username
         self.vm_params["VMName"] += "new"
         self.vm_test01.name = self.vm_params["VMName"]
         self.vm_params["Image"] = capture_vm_name
         self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
         self.vm_test01.username = self.params.get('new_username', '*/VMUser/*')
-        self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
+        self.assertEqual(0, self.vm_test01.vm_create(self.vm_params),
                          "Fail to create new VM base on capture image")
-        self.assertTrue(self.vm_test01.wait_for_running())
-        self.assertTrue(self.vm_test01.verify_alive(username=old_username),
+        time.sleep(30)
+        self.vm_test01.vm_update()
+        self.assertTrue(self.vm_test01.verify_alive(username=old_username, timeout=300),
                         "Cannot use the old user account to login")
         self.assertEqual(old_hostname, self.vm_test01.get_output("hostname"),
                          "Hostname should not be changed")
         self.assertFalse(self.vm_test01.verify_alive(timeout=10),
                          "New user account should not work")
-
-    def test_pass(self):
-        self.log.debug("This is a test case")
 
     def tearDown(self):
         self.log.debug("tearDown")
@@ -270,6 +303,8 @@ class LifeCycleTest(Test):
            "capture_vm" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
+        # Clean ssh sessions
+        utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
 if __name__ == "__main__":
     main()
