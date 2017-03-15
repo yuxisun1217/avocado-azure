@@ -16,4 +16,5 @@ nohup.out
 *.pyc
 *~
 *.bak
+test_setup.py
 ~
