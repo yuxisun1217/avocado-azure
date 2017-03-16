@@ -1,6 +1,8 @@
 #!/bin/bash
-PASSWORD_ENCRYPT="password_encrypt"
-PASSWORD_DECRYPT="password.yaml"
+REALPATH=$(cd `dirname $0`; pwd)
+PASSWORD_ENCRYPT="$REALPATH/password_encrypt"
+PASSWORD_DECRYPT="$REALPATH/password.yaml"
+cd $REALPATH
 
 function help {
     echo ""
@@ -17,11 +19,13 @@ function _set_pw {
 function set_azure_pw {
     _set_pw AzureSub ${azure_pw}
     echo "Azure password changed."
+    git commit $PASSWORD_ENCRYPT -m "Update Azure password"
 }
 
 function set_redhat_pw {
     _set_pw RedhatSub ${redhat_pw}
     echo "Redhat password changed."
+    git commit $PASSWORD_ENCRYPT -m "Update RHN password"
 }
 
 function decrypt {
@@ -94,3 +98,6 @@ fi
 
 # Encrypt
 encrypt
+
+# Push
+git push
