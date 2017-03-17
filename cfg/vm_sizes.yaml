@@ -7,115 +7,134 @@ azure_mode: !mux
                 cpu: 1
                 memory: 0.75
                 disk_size: 20
-            Small:
+            A1:
+                name: Small
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 1
                 memory: 1.75
                 disk_size: 70
-            Medium:
+            A2:
+                name: Medium
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 2
                 memory: 3.5
                 disk_size: 135
-            Large:
+            A3:
+                name: Large
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 4
                 memory: 7
                 disk_size: 285
             A11:
+                name: A11
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 16
                 memory: 112
                 disk_size: 382
-            Standard_A1_v2:
+            A1_v2:
+                name: Standard_A1_v2
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 1
                 memory: 2
                 disk_size: 10
-            Standard_A8m_v2:
+            A8m_v2:
+                name: Standard_A8m_v2
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 8
                 memory: 64
                 disk_size: 80
-            Standard_D1:
+            D1:
+                name: Standard_D1
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 50
-            Standard_D1_v2:
+            D1_v2:
+                name: Standard_D1_v2
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 50
-            Standard_D15_v2:
+            D15_v2:
+                name: Standard_D15_v2
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 20
                 memory: 140
                 disk_size: 1000
-            Standard_DS1:
+            DS1:
+                name: Standard_DS1
                 storage_account: walaautoasmeastuspremium
                 location: "East US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 7
-            Standard_DS1_v2:
+            DS1_v2:
+                name: Standard_DS1_v2
                 storage_account: walaautoasmeastuspremium
                 location: "East US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 7
-            Standard_DS15_v2:
+            DS15_v2:
+                name: Standard_DS15_v2
                 storage_account: walaautoasmeastuspremium
                 location: "East US"
                 cpu: 20
                 memory: 140
                 disk_size: 280
-            Standard_G1:
+            G1:
+                name: Standard_G1
                 storage_account: walaautoasmsea
                 location: "Southeast Asia"
                 cpu: 2
                 memory: 28
                 disk_size: 384
-            Standard_G5:
+            G5:
+                name: Standard_G5
                 storage_account: walaautoasmsea
                 location: "Southeast Asia"
                 cpu: 32
                 memory: 448
                 disk_size: 6144
-            Standard_GS5:
+            GS5:
+                name: Standard_GS5
                 storage_account: walaautoasmsea
                 location: "Southeast Asia"
                 cpu: 32
                 memory: 448
                 disk_size: 896
-            Standard_F1:
+            F1:
+                name: Standard_F1
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 1
                 memory: 2
                 disk_size: 16
-            Standard_F16s:
+            F16s:
+                name: Standard_F16s
                 storage_account: walaautoasmeastuspremium
                 location: "East US"
                 cpu: 16
                 memory: 32
                 disk_size: 64
-            Standard_H8:
+            H8:
+                name: Standard_H8
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 8
                 memory: 56
                 disk_size: 1000
-            Standard_H16mr:
+            H16mr:
+                name: Standard_H16mr
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 16
@@ -123,115 +142,134 @@ azure_mode: !mux
                 disk_size: 2000
     arm:
         vm_sizes:
-            Standard_A1:
+            A1:
+                name: Standard_A1
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
                 memory: 1.75
                 disk_size: 70
-            Standard_A2:
+            A2:
+                name: Standard_A2
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 2
                 memory: 3.5
                 disk_size: 135
-            Standard_A3:
+            A3:
+                name: Standard_A3
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 4
                 memory: 7
                 disk_size: 285
-            Standard_A11:
+            A11:
+                name: Standard_A11
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 16
                 memory: 112
                 disk_size: 382
-            Standard_A1_v2:
+            A1_v2:
+                name: Standard_A1_v2
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
                 memory: 2
                 disk_size: 10
-            Standard_A8m_v2:
+            A8m_v2:
+                name: Standard_A8m_v2
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 8
                 memory: 64
                 disk_size: 80
-            Standard_D1:
+            D1:
+                name: Standard_D1
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 50
-            Standard_D1_v2:
+            D1_v2:
+                name: Standard_D1_v2
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 50
-            Standard_D15_v2:
+            D15_v2:
+                name: Standard_D15_v2
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 20
                 memory: 140
                 disk_size: 1000
-            Standard_DS1:
+            DS1:
+                name: Standard_DS1
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 7
-            Standard_DS1_v2:
+            DS1_v2:
+                name: Standard_DS1_v2
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 1
                 memory: 3.5
                 disk_size: 7
-            Standard_DS15_v2:
+            DS15_v2:
+                name: Standard_DS15_v2
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 20
                 memory: 140
                 disk_size: 280
-            Standard_G1:
+            G1:
+                name: Standard_G1
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 2
                 memory: 28
                 disk_size: 384
-            Standard_G5:
+            G5:
+                name: Standard_G5
                 storage_account: walaautoarmwesteurope
                 location: "West Europe"
                 cpu: 32
                 memory: 448
                 disk_size: 6144
-            Standard_GS5:
+            GS5:
+                name: Standard_GS5
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 32
                 memory: 448
                 disk_size: 896
-            Standard_F1:
+            F1:
+                name: Standard_F1
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
                 memory: 2
                 disk_size: 16
-            Standard_F16s:
+            F16s:
+                name: Standard_F16s
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 16
                 memory: 32
                 disk_size: 64
-            Standard_H8:
+            H8:
+                name: Standard_H8
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 8
                 memory: 56
                 disk_size: 1000
-            Standard_H16mr:
+            H16mr:
+                name: Standard_H16mr
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 16

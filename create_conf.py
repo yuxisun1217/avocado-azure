@@ -51,6 +51,9 @@ AzureSub:
 RedhatSub:
     username: %(redhat_username)s
     password: %(redhat_password)s
+VMUser:
+    username: %(vm_username)s
+    password: %(vm_password)s
 Prepare:
     storage_account:
         name: walaautoimages
@@ -64,13 +67,6 @@ azure_mode: !mux
     asm:
         azure_mode: "asm"
         vm_name: walaautos%(vm_name_postfix)s
-        vm_size: Small
-        resourceGroup:
-            region: eastus
-            storage_account: walaautoasmeastus
-            storage_account_type: LRS
-            container: vhds
-            location: "East US"
         Image:
             name: %(image)s
         network:
@@ -83,6 +79,7 @@ azure_mode: !mux
             size: Small
             username: root
             password: %(vm_password)s
+            Location: East US
             proxy_ip: 172.20.0.254
             proxy_port: 3128
     arm:
@@ -106,14 +103,9 @@ azure_mode: !mux
             username: root
             password: %(vm_password)s
             rg_name: walaautoarmwestus
-            region: westus
+            Location: West US
             proxy_ip: 172.20.0.254
             proxy_port: 3128
-VMUser:
-    username: %(vm_username)s
-    password: %(vm_password)s
-    new_username: %(vm_new_username)s
-    new_password: %(vm_new_password)s
 DataDisk:
     container: vhds
     disk_number: 3
@@ -221,14 +213,12 @@ class CreateConfFiles(object):
             "azure_password": self.data.get("AzureSub").get("password"),
             "redhat_username": self.data.get("RedhatSub").get("username"),
             "redhat_password": self.data.get("RedhatSub").get("password"),
+            "vm_username": self.data.get("VMUser").get("username"),
+            "vm_password": self.data.get("VMUser").get("password"),
             "vhd_file_path": self.data.get("store_dir", "/home/autotest/")+"vhd/",
             "os_disk": os_disk,
             "vm_name_postfix": str(self.data.get("project")).replace('.', ''),
-            "image": image,
-            "vm_username": self.data.get("VMUser").get("username"),
-            "vm_password": self.data.get("VMUser").get("password"),
-            "vm_new_username": self.data.get("VMUser").get("new_username"),
-            "vm_new_password": self.data.get("VMUser").get("new_password")
+            "image": image
         }
         _write_file_content(common_yaml,
                             CommonYaml % common_yaml_dict)
