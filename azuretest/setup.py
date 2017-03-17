@@ -33,6 +33,9 @@ class Setup(object):
         # Prepare the vm parameters
         self.vm_size = kargs.get("vm_size", "A1")
         self.vm_params["VMSize"] = self.params.get("name", "*/vm_sizes/%s/*" % self.vm_size)
+        self.vm_params["cpu"] = self.params.get('cpu', '*/vm_sizes/%s/*' % self.vm_size)
+        self.vm_params["memory"] = self.params.get('memory', '*/vm_sizes/%s/*' % self.vm_size)
+        self.vm_params["disk_size"] = self.params.get('disk_size', '*/vm_sizes/%s/*' % self.vm_size)
         vmname_tag = kargs.get("vmname_tag", "")
         self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*') + self.vm_size.lower() + vmname_tag
         self.vm_params["username"] = self.params.get('username', '*/VMUser/*')

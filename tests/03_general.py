@@ -9,10 +9,10 @@ import copy
 
 #sys.path.append(os.path.split(os.path.realpath("__file__"))[0] + "/..")
 sys.path.append(sys.path[0].replace("/tests", ""))
-from azuretest import azure_cli_common
+#from azuretest import azure_cli_common
 from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
-from azuretest import azure_image
+#from azuretest import azure_image
 from azuretest import utils_misc
 from azuretest.setup import Setup
 
@@ -280,63 +280,69 @@ class GeneralTest(Test):
         result_flag = True
         error_log = ""
         warn_log = ""
-        if self.azure_mode == "asm":
-            vm_size_list = ["Small", "A11", "Standard_A1_v2", "Standard_A8m_v2",
-                            "Standard_D1", "Standard_D15_v2", "Standard_DS1", "Standard_DS15_v2",
-                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s"]
-        else:
-            vm_size_list = ["Standard_A1", "Standard_A11", "Standard_A1_v2", "Standard_A8m_v2",
-                            "Standard_D1", "Standard_D15_v2", "Standard_DS1", "Standard_DS15_v2",
-                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s", "Standard_H8"]
-#                            "Standard_H16mr"]
+        vm_size_list = ["A1", "A11", "A1_v2", "A8m_v2",
+                        "D1", "D15_v2", "DS1", "DS15_v2",
+                        "G1", "GS5", "F1", "F16s"]
+#        if self.azure_mode == "asm":
+#            vm_size_list = ["Small", "A11", "Standard_A1_v2", "Standard_A8m_v2",
+#                            "Standard_D1", "Standard_D15_v2", "Standard_DS1", "Standard_DS15_v2",
+#                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s"]
+#        else:
+#            vm_size_list = ["Standard_A1", "Standard_A11", "Standard_A1_v2", "Standard_A8m_v2",
+#                            "Standard_D1", "Standard_D15_v2", "Standard_DS1", "Standard_DS15_v2",
+#                            "Standard_G1", "Standard_GS5", "Standard_F1", "Standard_F16s", "Standard_H8"]
+##                            "Standard_H16mr"]
         for vm_size in vm_size_list:
             # Create VM
-            vm_params = copy.deepcopy(self.vm_params)
-            vm_params["Location"] = self.params.get('location', '*/vm_sizes/%s/*' % vm_size)
-            vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
-            vm_params["StorageAccountName"] = self.params.get('storage_account', '*/vm_sizes/%s/*' % vm_size)
-            vm_params["Container"] = self.params.get('container', '*/Prepare/*')
-            vm_params["DiskBlobName"] = self.params.get('name', '*/DiskBlob/*')
-            vm_params["VMSize"] = vm_size
-            vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-            vm_params["VMName"] += vm_params["VMSize"].replace("Standard_", '').replace("_", '').lower()
-            if self.azure_mode == "asm":
-                vm_params["Image"] = self.params.get('name', '*/Image/*') + '-' + vm_params["StorageAccountName"]
-                vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
-                self.vm_test01 = azure_asm_vm.VM(vm_params["VMName"],
-                                                    vm_params["VMSize"],
-                                                    vm_params["username"],
-                                                    vm_params["password"],
-                                                    vm_params)
-            else:
-                vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
-                vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
-                                                                               vm_params["Container"],
-                                                                               vm_params["DiskBlobName"])
-                vm_params["NicName"] = vm_params["VMName"]
-                vm_params["PublicIpName"] = vm_params["VMName"]
-                vm_params["PublicIpDomainName"] = vm_params["VMName"]
-                vm_params["VnetName"] = vm_params["ResourceGroupName"]
-                vm_params["VnetSubnetName"] = vm_params["ResourceGroupName"]
-                vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-                vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-                vm_params["DNSName"] = vm_params["PublicIpDomainName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
-                self.vm_test01 = azure_arm_vm.VM(vm_params["VMName"],
-                                                    vm_params["VMSize"],
-                                                    vm_params["username"],
-                                                    vm_params["password"],
-                                                    vm_params)
-            self.assertEqual(0, self.vm_test01.vm_create(vm_params),
-                             "Fail to create VM %s" % self.vm_test01.name)
-            self.assertTrue(self.vm_test01.wait_for_running(),
-                            "VM cannot become running")
-            self.assertTrue(self.vm_test01.verify_alive(),
-                            "Cannot login the VM")
-            self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
+            vm = Setup()
+            vm.get_vm_params(vm_size=vm_size)
+            vm.vm_create()
+#            vm_params = copy.deepcopy(self.vm_params)
+#            vm_params["Location"] = self.params.get('location', '*/vm_sizes/%s/*' % vm_size)
+#            vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
+#            vm_params["StorageAccountName"] = self.params.get('storage_account', '*/vm_sizes/%s/*' % vm_size)
+#            vm_params["Container"] = self.params.get('container', '*/Prepare/*')
+#            vm_params["DiskBlobName"] = self.params.get('name', '*/DiskBlob/*')
+#            vm_params["VMSize"] = vm_size
+#            vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
+#            vm_params["VMName"] += vm_params["VMSize"].replace("Standard_", '').replace("_", '').lower()
+#            if self.azure_mode == "asm":
+#                vm_params["Image"] = self.params.get('name', '*/Image/*') + '-' + vm_params["StorageAccountName"]
+#                vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
+#                self.vm_test01 = azure_asm_vm.VM(vm_params["VMName"],
+#                                                    vm_params["VMSize"],
+#                                                    vm_params["username"],
+#                                                    vm_params["password"],
+#                                                    vm_params)
+#            else:
+#                vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
+#                vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
+#                                                                               vm_params["Container"],
+#                                                                               vm_params["DiskBlobName"])
+#                vm_params["NicName"] = vm_params["VMName"]
+#                vm_params["PublicIpName"] = vm_params["VMName"]
+#                vm_params["PublicIpDomainName"] = vm_params["VMName"]
+#                vm_params["VnetName"] = vm_params["ResourceGroupName"]
+#                vm_params["VnetSubnetName"] = vm_params["ResourceGroupName"]
+#                vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
+#                vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
+#                vm_params["DNSName"] = vm_params["PublicIpDomainName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
+#                self.vm_test01 = azure_arm_vm.VM(vm_params["VMName"],
+#                                                    vm_params["VMSize"],
+#                                                    vm_params["username"],
+#                                                    vm_params["password"],
+#                                                    vm_params)
+#            self.assertEqual(0, self.vm_test01.vm_create(vm_params),
+#                             "Fail to create VM %s" % self.vm_test01.name)
+#            self.assertTrue(self.vm_test01.wait_for_running(),
+#                            "VM cannot become running")
+#            self.assertTrue(self.vm_test01.verify_alive(),
+#                            "Cannot login the VM")
+#            self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
             # Check Resources
-            cpu_std = self.params.get('cpu', '*/vm_sizes/%s/*' % vm_size)
-            memory_std = self.params.get('memory', '*/vm_sizes/%s/*' % vm_size)*1024*1024
-            disksize_std = self.params.get('disk_size', '*/vm_sizes/%s/*' % vm_size)*1024*1024*1024
+            cpu_std = vm.vm_params['cpu']
+            memory_std = vm.vm_params['memory']*1024*1024
+            disksize_std = vm.vm_params['disk_size']*1024*1024*1024
             # CPU
             cpu = int(self.vm_test01.get_output("grep -r processor /proc/cpuinfo|wc -l"))
             self.log.debug("%s CPU number: Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std))
@@ -360,7 +366,7 @@ class GeneralTest(Test):
             elif disksize < disksize_std:
                 error_log += "%s: Disk size is wrong. Real: %d. Standard: %d\n" % (vm_size, disksize, disksize_std)
                 result_flag = False
-            self.vm_test01.delete()
+            vm.vm_test01.delete()
         # Record result
         self.log.warn(warn_log)
         self.assertTrue(result_flag, error_log)

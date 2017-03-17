@@ -187,8 +187,8 @@ class WALAConfTest(Test):
             else:
                 self.log.debug("Retry %d/%d times" % (retry, max_retry))
                 time.sleep(10)
-        self.assertNotEqual(retry, max_retry,
-                            "There's no DATALOSS_WARNING_README.txt in the new resource path")
+        else:
+            self.fail("There's no DATALOSS_WARNING_README.txt in the new resource path")
         # 2. ResourceDisk.Format=n
         self.log.info("ResourceDisk.Format=n")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Format", "n", self.conf_file))
@@ -220,8 +220,8 @@ class WALAConfTest(Test):
             else:
                 self.log.info("Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(retry, max_retry,
-                            "Fail to set resource disk file system to ext4")
+        else:
+            self.fail("Fail to set resource disk file system to ext4")
         # Disable default swap
         if float(self.project) < 7.0:
             self.vm_test01.get_output("swapoff /dev/mapper/VolGroup-lv_swap")
@@ -236,8 +236,8 @@ class WALAConfTest(Test):
             else:
                 self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(retry, max_retry,
-                            "Swap is not enabled in ext4 file system.")
+        else:
+            self.fail("After retry %d times, swap is not enabled in ext4 file system." % max_retry)
         # 2. ResourceDisk.Filesystem=ext3
         self.log.info("ResourceDisk.Filesystem=ext3")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Filesystem", "ext3", self.conf_file))
@@ -274,8 +274,8 @@ class WALAConfTest(Test):
             else:
                 self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(retry, max_retry,
-                            "Swap is not enabled in ext3 file system.")
+        else:
+            self.fail("After retry %d times, swap is not enabled in ext3 file system." % max_retry)
         # 3. ResourceDisk.Filesystem=xfs(Only for RHEL-7)
         if float(self.project) < 7.0:
             self.log.info("RHEL-%s doesn't support xfs type. Skip this step." % self.project)
@@ -319,9 +319,9 @@ class WALAConfTest(Test):
                 else:
                     self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                     time.sleep(30)
-            self.assertNotEqual(retry, max_retry,
-                                "Bug 1386494. "
-                                "Swap is not enabled in xfs file system.")
+            else:
+                self.fail("Bug 1386494. "
+                          "After retry %d times, swap is not enabled in xfs file system." % max_retry)
 #            self.assertNotEqual(10, count, "Swap is not enabled in xfs file system.")
 
     def test_resource_disk_swap_check(self):
@@ -366,7 +366,8 @@ class WALAConfTest(Test):
             else:
                 self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(retry, max_retry, "ResourceDisk.SwapSizeMB=2048 doesn't work.")
+        else:
+            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=2048 doesn't work." % max_retry)
 #        self.assertEqual(self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False), "2047",
 #                         "ResourceDisk.SwapSizeMB=2048 doesn't work.")
 
@@ -402,10 +403,8 @@ class WALAConfTest(Test):
             else:
                 self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(10)
-#        self.assertEqual(self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False), "69999",
-#                         "ResourceDisk.SwapSizeMB=70000 doesn't work.")
-        self.assertNotEqual(retry, max_retry,
-                            "ResourceDisk.SwapSizeMB=70000 doesn't work.")
+        else:
+            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=70000 doesn't work." % max_retry)
 
     def test_monitor_hostname(self):
         """
@@ -694,9 +693,9 @@ class WALAConfTest(Test):
                 break
             self.log.info("Wait for updating. Retry %d/%d times" % retry)
             time.sleep(30)
-        self.assertNotEqual(retry, max_retry,
-                            "[RHEL-6]Bug 1371071. "
-                            "Fail to enable AutoUpdate after retry %d times" % max_retry)
+        else:
+            self.fail("[RHEL-6]Bug 1371071. "
+                      "Fail to enable AutoUpdate after retry %d times" % max_retry)
 
     def test_resource_disk_mount_options(self):
         """

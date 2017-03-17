@@ -9,10 +9,10 @@ import copy
 import re
 #sys.path.append(os.path.split(os.path.realpath("__file__"))[0] + "/..")
 sys.path.append(sys.path[0].replace("/tests", ""))
-from azuretest import azure_cli_common
-from azuretest import azure_asm_vm
-from azuretest import azure_arm_vm
-from azuretest import azure_image
+#from azuretest import azure_cli_common
+#from azuretest import azure_asm_vm
+#from azuretest import azure_arm_vm
+#from azuretest import azure_image
 from azuretest import utils_misc
 from azuretest.setup import Setup
 

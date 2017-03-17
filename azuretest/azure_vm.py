@@ -184,7 +184,7 @@ EOF
             logging.error("Fail to part disk %s" % disk)
             raise Exception
         output = self.get_output("partprobe", sudo=sudo)
-        if "Warning" in output and reboot is True:
+        if "the kernel failed to re-read the partition table on %s" % disk in output and reboot is True:
             self.get_output("reboot", sudo=sudo)
             time.sleep(60)
             self.verify_alive(authentication=authentication)

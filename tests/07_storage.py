@@ -30,6 +30,7 @@ class StorageTest(Test):
         else:
             prep.get_vm_params()
         prep.login()
+        self.azure_mode = prep.azure_mode
         self.project = prep.project
         self.wala_version = prep.wala_version
         self.redhat_username = prep.redhat_username
@@ -43,143 +44,6 @@ class StorageTest(Test):
         self.blob_list = prep.blob_list
         self.blob_params = prep.blob_params
 
-
-
-
-#        # Get azure mode and choose test cases
-#        self.azure_mode = self.params.get('azure_mode', '*/azure_mode/*')
-#        self.log.debug("AZURE_MODE: %s", self.azure_mode)
-#        if self.name.name.split(':')[-1] not in self.params.get('cases', '*/azure_mode/*'):
-#            self.skip("Skip case %s in Azure Mode %s" % (self.name.name, self.azure_mode))
-#        # Login Azure and change the mode
-#        self.azure_username = self.params.get('username', '*/AzureSub/*')
-#        self.azure_password = self.params.get('password', '*/AzureSub/*')
-#        azure_cli_common.login_azure(username=self.azure_username,
-#                                     password=self.azure_password)
-#        azure_cli_common.set_config_mode(self.azure_mode)
-#
-#        # Prepare the vm parameters and create a vm
-#        self.vm_params = dict()
-#        self.vm_params["username"] = self.params.get('username', '*/VMUser/*')
-#        self.vm_params["password"] = self.params.get('password', '*/VMUser/*')
-##        self.vm_params["VMSize"] = self.params.get('vm_size', '*/azure_mode/*')
-#        self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-#        self.vm_params["Container"] = self.params.get('container', '*/resourceGroup/*')
-#        self.vm_params["DiskBlobName"] = self.params.get('name', '*/DiskBlob/*')
-#        self.vm_params["PublicPort"] = self.params.get('public_port', '*/network/*')
-#        if self.azure_mode == "asm":
-#            if "disk_attach" in self.name.name:
-#                self.vm_params["VMSize"] = "Medium"
-#            elif "attach_detach_64_disks" in self.name.name:
-#                self.vm_params["VMSize"] = "Standard_G5"
-#            else:
-#                self.vm_params["VMSize"] = "Small"
-#            self.vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
-#            self.vm_params["region"] = self.vm_params["Location"].lower().replace(' ', '')
-#            self.vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
-#            self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
-#            self.vm_params["Image"] = self.params.get('name', '*/Image/*')
-#            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
-#            self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
-#            self.vm_test01 = azure_asm_vm.VM(self.vm_params["VMName"],
-#                                                self.vm_params["VMSize"],
-#                                                self.vm_params["username"],
-#                                                self.vm_params["password"],
-#                                                self.vm_params)
-#        else:
-#            if "disk_attach" in self.name.name:
-#                self.vm_params["VMSize"] = "Standard_A2"
-#            elif "attach_detach_64_disks" in self.name.name:
-#                self.vm_params["VMSize"] = "Standard_G5"
-#            else:
-#                self.vm_params["VMSize"] = "Standard_A1"
-#            self.vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
-#            self.vm_params["region"] = self.vm_params["Location"].lower().replace(' ', '')
-#            self.vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % self.vm_params["VMSize"])
-#            self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
-#            self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
-#            self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
-#                                                                                self.vm_params["Container"],
-#                                                                                self.vm_params["DiskBlobName"])
-#            self.vm_params["NicName"] = self.vm_params["VMName"]
-#            self.vm_params["PublicIpName"] = self.vm_params["VMName"]
-#            self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-#            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
-#            self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
-#            self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-#            self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-#            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
-#            self.vm_test01 = azure_arm_vm.VM(self.vm_params["VMName"],
-#                                                self.vm_params["VMSize"],
-#                                                self.vm_params["username"],
-#                                                self.vm_params["password"],
-#                                                self.vm_params)
-#        self.project = self.params.get("Project", "*/Common/*")
-#        self.conf_file = "/etc/waagent.conf"
-#        # If vm doesn't exist, create it. If it exists, start it.
-#        self.log.debug("Create the vm %s", self.vm_params["VMName"])
-#        self.vm_test01.vm_update()
-#        if self.azure_mode == "arm" and self.vm_test01.exists():
-#            if self.vm_test01.params.get("hardwareProfile").get("vmSize") != self.vm_params["VMSize"]:
-#                self.vm_test01.delete()
-#                self.vm_test01.wait_for_delete()
-#        if not self.vm_test01.exists():
-#            self.vm_test01.vm_create(self.vm_params)
-#            self.vm_test01.wait_for_running()
-#        else:
-#            if not self.vm_test01.is_running():
-#                self.vm_test01.start()
-#                self.vm_test01.wait_for_running()
-#        if not self.vm_test01.verify_alive():
-#            self.error("VM %s is not available. Exit." % self.vm_params["VMName"])
-#        # Increase sudo password timeout
-#        self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
-#
-#        # Prepare the blob parameters
-#        self.blob_list = []
-#        # os disk parameters
-#        self.blob_params = dict()
-#        self.blob_params["name"] = self.params.get('name', '*/DiskBlob/*')
-#        self.blob_params["container"] = self.params.get('container', '*/resourceGroup/*')
-#        self.blob_params["storage_account"] = self.params.get('storage_account', '*/resourceGroup/*')
-#        if self.azure_mode == "asm":
-#            self.blob_test01 = azure_asm_vm.Blob(name=self.blob_params["name"],
-#                                                 container=self.blob_params["container"],
-#                                                 storage_account=self.blob_params["storage_account"],
-#                                                 params=self.blob_params)
-#        else:
-#            self.blob_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
-#            self.blob_test01 = azure_arm_vm.Blob(name=self.blob_params["name"],
-#                                                 container=self.blob_params["container"],
-#                                                 storage_account=self.blob_params["storage_account"],
-#                                                 params=self.blob_params)
-#        self.blob_list.append(copy.deepcopy(self.blob_test01))
-#        self.blob_params["connection_string"] = self.blob_test01.connection_string
-#        # data disk parameters, connection_string is the same with os disk
-#        self.disk_number = self.params.get('disk_number', '*/DataDisk/*')
-#        for dn in range(self.disk_number):
-#            self.blob_params["name"] = self.vm_params["VMName"] + "-disk" + str(dn) + self.vm_test01.postfix()
-#            self.blob_params["container"] = self.params.get('container', '*/DataDisk/*')
-#            self.blob_params["storage_account"] = self.params.get('storage_account', '*/resourceGroup/*')
-#            self.blob_params["size"] = self.params.get('size', '*/disk%s/*' % str(dn + 1))
-#            self.blob_params["host_caching"] = self.params.get('host_caching', '*/disk%s/*' % str(dn + 1))
-#            if self.azure_mode == "asm":
-#                self.blob_test01 = azure_asm_vm.Blob(name=self.blob_params["name"],
-#                                                     container=self.blob_params["container"],
-#                                                     storage_account=self.blob_params["storage_account"],
-#                                                     connection_string=self.blob_params["connection_string"],
-#                                                     params=self.blob_params)
-#            else:
-#                self.blob_params["ResourceGroupName"] = self.params.get('region', '*/resourceGroup/*')
-#                self.blob_test01 = azure_arm_vm.Blob(name=self.blob_params["name"],
-#                                                     container=self.blob_params["container"],
-#                                                     storage_account=self.blob_params["storage_account"],
-#                                                     connection_string=self.blob_params["connection_string"],
-#                                                     params=self.blob_params)
-#            self.blob_list.append(copy.deepcopy(self.blob_test01))
-#        for i in self.blob_list:
-#            self.log.debug(i.params)
-
     def test_disk_attach_new(self):
         """
         Attach a new disk to the VM
@@ -190,7 +54,8 @@ class StorageTest(Test):
         # Attach 3 new disks with different host-caching
         self.assertTrue(self.vm_test01.verify_alive())
         for bn in range(1, 4):
-            self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[bn].params.get("size"), self.blob_list[bn].params), 0,
+            self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[bn].params.get("size"),
+                                                            self.blob_list[bn].params), 0,
                              "Fail to attach new disk %s host-caching: azure cli fail" %
                              self.blob_params.get("host_caching"))
             time.sleep(5)
@@ -215,7 +80,8 @@ class StorageTest(Test):
         self.log.info("Detach a disk from VM")
         # Attach a disk first
         mount_point = "/mnt/newdisk1"
-        self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[1].params.get("size"), self.blob_list[1].params), 0,
+        self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[1].params.get("size"),
+                                                        self.blob_list[1].params), 0,
                          "Fail to attach new disk before detach: azure cli fail")
         time.sleep(5)
         self.vm_test01.wait_for_running()
@@ -241,7 +107,8 @@ class StorageTest(Test):
         self.log.info("Attach an existed disk to VM %s" % self.vm_test01.name)
         mount_point = "/mnt/newdisk1"
         # Attach disk1
-        self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[1].params.get("size"), self.blob_list[1].params), 0,
+        self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[1].params.get("size"),
+                                                        self.blob_list[1].params), 0,
                          "Fail to attach new disk before re-attach: azure cli fail")
         time.sleep(5)
         self.vm_test01.wait_for_running()
@@ -271,15 +138,25 @@ class StorageTest(Test):
                          "Fail to detach disk before re-attach: azure cli fail")
         time.sleep(5)
         self.vm_test01.wait_for_running()
-        retry = 0
-        while retry < 5:
+        max_retry = 5
+        for retry in xrange(1, max_retry+1):
             try:
                 self.vm_test01.disk_attach(disk_name)
-            except Exception:
-                retry += 1
-                self.log.debug("Attach disk retry %d times.", retry)
-                continue
-            break
+            except:
+                self.log.debug("Attach disk retry %d/%d times." % (retry, max_retry))
+            else:
+                break
+        else:
+            self.fail("After retry %d times, fail to attach disk." % max_retry)
+
+#        while retry < 5:
+#            try:
+#                self.vm_test01.disk_attach(disk_name)
+#            except:
+#                retry += 1
+#                self.log.debug("Attach disk retry %d times.", retry)
+#                continue
+#            break
         time.sleep(5)
         self.vm_test01.wait_for_running()
         self.assertTrue(self.vm_test01.vm_has_datadisk(),
