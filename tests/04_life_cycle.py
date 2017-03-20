@@ -97,7 +97,7 @@ class LifeCycleTest(Test):
         self.log.info("Reboot a VM inside guest")
         before = self.vm_test01.get_output("who -b", sudo=False)
         self.log.debug("Reboot the vm %s", self.vm_params["VMName"])
-        self.vm_test01.get_output("reboot")
+        self.vm_test01.get_output("reboot", timeout=1, max_retry=0, ignore_status=True)
         # wait for reboot finished
         time.sleep(20)
         self.assertTrue(self.vm_test01.verify_alive(),

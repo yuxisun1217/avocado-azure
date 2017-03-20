@@ -555,7 +555,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
         new_vm_params = copy.deepcopy(self.vm_params)
         new_vm_params["Image"] = vm_image_name
-        new_vm_params["username"] = self.params.get('new_username', '*/VMUser/*')
+        new_vm_params["username"] = self.vm_params["username"] + "new"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
                          "Fail to create new VM base on the capture image: azure cli fail")
         self.assertTrue(self.vm_test01.wait_for_running(times=15),
@@ -691,7 +691,7 @@ class WALAConfTest(Test):
         for retry in xrange(1, max_retry+1):
             if "egg" in self.vm_test01.get_output("ps aux|grep [W]AL"):
                 break
-            self.log.info("Wait for updating. Retry %d/%d times" % retry)
+            self.log.info("Wait for updating. Retry %d/%d times" % (retry, max_retry))
             time.sleep(30)
         else:
             self.fail("[RHEL-6]Bug 1371071. "
