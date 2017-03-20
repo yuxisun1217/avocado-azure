@@ -85,14 +85,6 @@ azure_mode: !mux
     arm:
         azure_mode: "arm"
         vm_name: walaautor%(vm_name_postfix)s
-        vm_size: Standard_A1
-        resourceGroup:
-            rg_name: walaautoarmwestus
-            region: westus
-            storage_account: walaautoarmwestus
-            storage_account_type: LRS
-            container: vhds
-            location: "West US"
         network:
             public_port: 22
             vnet_address_prefix: 172.16.0.0/24
@@ -102,7 +94,7 @@ azure_mode: !mux
             size: Standard_A1
             username: root
             password: %(vm_password)s
-            rg_name: walaautoarmwestus
+            resource_group: walaautoarmwestus
             Location: West US
             proxy_ip: 172.20.0.254
             proxy_port: 3128

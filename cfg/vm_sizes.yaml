@@ -144,6 +144,7 @@ azure_mode: !mux
         vm_sizes:
             A1:
                 name: Standard_A1
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
@@ -151,6 +152,7 @@ azure_mode: !mux
                 disk_size: 70
             A2:
                 name: Standard_A2
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 2
@@ -158,6 +160,7 @@ azure_mode: !mux
                 disk_size: 135
             A3:
                 name: Standard_A3
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 4
@@ -165,6 +168,7 @@ azure_mode: !mux
                 disk_size: 285
             A11:
                 name: Standard_A11
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 16
@@ -172,6 +176,7 @@ azure_mode: !mux
                 disk_size: 382
             A1_v2:
                 name: Standard_A1_v2
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
@@ -179,6 +184,7 @@ azure_mode: !mux
                 disk_size: 10
             A8m_v2:
                 name: Standard_A8m_v2
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 8
@@ -186,6 +192,7 @@ azure_mode: !mux
                 disk_size: 80
             D1:
                 name: Standard_D1
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
@@ -193,6 +200,7 @@ azure_mode: !mux
                 disk_size: 50
             D1_v2:
                 name: Standard_D1_v2
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
@@ -200,6 +208,7 @@ azure_mode: !mux
                 disk_size: 50
             D15_v2:
                 name: Standard_D15_v2
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 20
@@ -207,6 +216,7 @@ azure_mode: !mux
                 disk_size: 1000
             DS1:
                 name: Standard_DS1
+                resource_group: walaautoarmwestuspremium
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 1
@@ -214,6 +224,7 @@ azure_mode: !mux
                 disk_size: 7
             DS1_v2:
                 name: Standard_DS1_v2
+                resource_group: walaautoarmwestuspremium
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 1
@@ -221,6 +232,7 @@ azure_mode: !mux
                 disk_size: 7
             DS15_v2:
                 name: Standard_DS15_v2
+                resource_group: walaautoarmwestuspremium
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 20
@@ -228,6 +240,7 @@ azure_mode: !mux
                 disk_size: 280
             G1:
                 name: Standard_G1
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 2
@@ -235,6 +248,7 @@ azure_mode: !mux
                 disk_size: 384
             G5:
                 name: Standard_G5
+                resource_group: walaautoarmwesteurope
                 storage_account: walaautoarmwesteurope
                 location: "West Europe"
                 cpu: 32
@@ -242,6 +256,7 @@ azure_mode: !mux
                 disk_size: 6144
             GS5:
                 name: Standard_GS5
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 32
@@ -249,6 +264,7 @@ azure_mode: !mux
                 disk_size: 896
             F1:
                 name: Standard_F1
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 1
@@ -256,6 +272,7 @@ azure_mode: !mux
                 disk_size: 16
             F16s:
                 name: Standard_F16s
+                resource_group: walaautoarmwestuspremium
                 storage_account: walaautoarmwestuspremium
                 location: "West US"
                 cpu: 16
@@ -263,6 +280,7 @@ azure_mode: !mux
                 disk_size: 64
             H8:
                 name: Standard_H8
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 8
@@ -270,6 +288,7 @@ azure_mode: !mux
                 disk_size: 1000
             H16mr:
                 name: Standard_H16mr
+                resource_group: walaautoarmwestus
                 storage_account: walaautoarmwestus
                 location: "West US"
                 cpu: 16

@@ -185,7 +185,7 @@ EOF
             raise Exception
         output = self.get_output("partprobe", sudo=sudo)
         if "the kernel failed to re-read the partition table on %s" % disk in output and reboot is True:
-            self.get_output("reboot", sudo=sudo)
+            self.get_output("reboot", sudo=sudo, max_retry=0, timeout=1, ignore_status=True)
             time.sleep(60)
             self.verify_alive(authentication=authentication)
         self.get_output("fdisk -l %s" % disk, sudo=sudo)

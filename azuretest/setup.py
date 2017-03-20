@@ -48,11 +48,11 @@ class Setup(object):
         self.vm_params["region"] = self.vm_params["Location"].lower().replace(' ', '')
         self.vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % self.vm_size)
         if self.azure_mode == "asm":
-            self.vm_params["Image"] = self.params.get('name', '*/Image/*')
-            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
+            self.vm_params["Image"] = "{0}-{1}".format(self.params.get('name', '*/Image/*'),
+                                                       self.vm_params["StorageAccountName"])
+            self.vm_params["DNSName"] = "{0}.cloudapp.net".format(self.vm_params["VMName"])
         else:
-            self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
+            self.vm_params["ResourceGroupName"] = self.params.get('resource_group', '*/vm_sizes/%s/*' % self.vm_size)
             self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
                                                                                 self.vm_params["Container"],
                                                                                 self.vm_params["DiskBlobName"])
@@ -63,7 +63,8 @@ class Setup(object):
             self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
             self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
+            self.vm_params["DNSName"] = "{0}.{1}.cloudapp.azure.com".format(self.vm_params["PublicIpDomainName"],
+                                                                            self.vm_params["region"])
         self.vm_test01 = self.vm.VM(self.vm_params["VMName"],
                                     self.vm_params["VMSize"],
                                     self.vm_params["username"],
@@ -88,7 +89,7 @@ class Setup(object):
         else:
             proxy_params["DNSName"] = "{0}.{1}.cloudapp.azure.com".format(proxy_params["VMName"],
                                                                           proxy_params["region"])
-            proxy_params["ResourceGroupName"] = self.params.get("rg_name", "*/proxy/*")
+            proxy_params["ResourceGroupName"] = self.params.get("resource_group", "*/proxy/*")
         return proxy_params
 
     def login(self):
@@ -109,7 +110,7 @@ class Setup(object):
                                                  storage_account=self.blob_params["storage_account"],
                                                  params=self.blob_params)
         else:
-            self.blob_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
+            self.blob_params["ResourceGroupName"] = self.params.get('resource_group', '*/vm_sizes/%s/*' % self.vm_size)
             self.blob_test01 = azure_arm_vm.Blob(name=self.blob_params["name"],
                                                  container=self.blob_params["container"],
                                                  storage_account=self.blob_params["storage_account"],
