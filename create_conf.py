@@ -76,7 +76,6 @@ azure_mode: !mux
                     endpoint_port: 56001
         proxy:
             name: nay-67-ond-squid
-            size: Small
             username: root
             password: %(vm_password)s
             Location: East US
@@ -91,7 +90,6 @@ azure_mode: !mux
             vnet_subnet_address_prefix: 172.16.0.0/24
         proxy:
             name: wala-squid
-            size: Standard_A1
             username: root
             password: %(vm_password)s
             resource_group: walaautoarmwestus

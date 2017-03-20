@@ -26,13 +26,32 @@ class WALAConfTest(Test):
             self.skip()
         if "test_http_proxy" in self.name.name:
             self.proxy_params = prep.get_proxy_params()
+            # Check proxy server
+            prep_proxy = Setup(self.params)
+            prep_proxy.get_vm_params(**self.proxy_params)
+#            prep_proxy.get_vm_params()
+            self.vm_proxy = prep_proxy.vm_test01
+            self.vm_proxy.vm_update()
+            self.assertTrue(self.vm_proxy.exists(),
+                            "There's no proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
+            if not self.vm_proxy.is_running():
+                self.assertEqual(self.vm_proxy.start(), 0,
+                                 "Cannot start proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
+                self.assertTrue(self.vm_proxy.wait_for_running(), "Proxy VM cannot be running")
+            self.assertTrue(self.vm_proxy.verify_alive(), "Cannot access to the proxy VM")
+            self.vm_proxy.get_output("service squid start")
+            self.vm_proxy.get_output("service iptables stop")
+            self.assertIn("squid", self.vm_proxy.get_output("netstat -antp"),
+                          "Squid service is not started")
+            # Prepare proxy client VM
             if prep.azure_mode == "asm":
                 prep.get_vm_params(vmname_tag="proxy",
                                    DNSName=self.proxy_params["DNSName"])
                 options += "--connect"
             else:
                 prep.get_vm_params(vmname_tag="proxy",
-                                   VnetName=self.proxy_params["VMName"])
+                                   VnetName=self.proxy_params["VMName"],
+                                   VnetSubnetName=self.proxy_params["VMName"])
         elif "test_gpt_partition" in self.name.name:
             prep.get_vm_params(vm_size="G5")
         else:
@@ -44,6 +63,7 @@ class WALAConfTest(Test):
         self.conf_file = prep.conf_file
         self.host_pubkey_file = prep.host_pubkey_file
         self.vm_test01 = prep.vm_test01
+        self.log.debug("ccccc")
         self.vm_params = prep.vm_params
         self.assertTrue(prep.vm_create(args=args, options=options), "Setup Failed.")
         self.conf_content = self.vm_test01.get_output("cat %s" % self.conf_file)
@@ -469,54 +489,17 @@ class WALAConfTest(Test):
         """
         Check if waagent can work well with proxy
         """
-        # Start the proxy VM
-        proxy_param = dict()
-        http_host = self.params.get("proxy_ip", "*/proxy/*")
-        http_port = self.params.get("proxy_port", "*/proxy/*")
-        proxy_param["VMName"] = self.params.get("name", "*/proxy/*")
-        proxy_param["VMSize"] = self.params.get("size", "*/proxy/*")
-        proxy_param["username"] = self.params.get("username", "*/proxy/*")
-        proxy_param["password"] = self.params.get("password", "*/proxy/*")
-        proxy_param["PublicPort"] = '22'
-        if self.azure_mode == "asm":
-            proxy_param["DNSName"] = proxy_param["VMName"] + ".cloudapp.net"
-            vm_proxy = azure_asm_vm.VM(proxy_param["VMName"],
-                                          proxy_param["VMSize"],
-                                          proxy_param["username"],
-                                          proxy_param["password"],
-                                          proxy_param)
-        else:
-            proxy_param["VnetName"] = proxy_param["VMName"]
-            proxy_param["region"] = self.params.get("region", "*/proxy/*")
-            proxy_param["DNSName"] = proxy_param["VMName"] + "." + proxy_param["region"] + ".cloudapp.azure.com"
-            proxy_param["ResourceGroupName"] = self.params.get("rg_name", "*/proxy/*")
-            vm_proxy = azure_arm_vm.VM(proxy_param["VMName"],
-                                          proxy_param["VMSize"],
-                                          proxy_param["username"],
-                                          proxy_param["password"],
-                                          proxy_param)
-        vm_proxy.vm_update()
-        self.assertTrue(vm_proxy.exists(),
-                        "There's no proxy VM %s. Cannot run this case." % proxy_param["VMName"])
-        if not vm_proxy.is_running():
-            self.assertEqual(vm_proxy.start(), 0,
-                             "Cannot start proxy VM %s. Cannot run this case." % proxy_param["VMName"])
-            self.assertTrue(vm_proxy.wait_for_running(), "Proxy VM cannot be running")
-        self.assertTrue(vm_proxy.verify_alive(), "Cannot access to the proxy VM")
-        vm_proxy.get_output("service squid start")
-        vm_proxy.get_output("service iptables stop")
-        self.assertIn("squid", vm_proxy.get_output("netstat -antp"),
-                      "Squid service is not started")
         # 1. Check http proxy host and port
         if float(self.project) < 7.0:
-            vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ addr|awk '\"'{print $2}'\"'|tr -d addr:")
+            vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ addr"
+                                                      "|awk '\"'{print $2}'\"'|tr -d addr:")
         else:
             vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ |awk '\"'{print $2}'\"'|tr -d addr:")
-        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Host", http_host, self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Port", http_port, self.conf_file))
-        self.assertTrue(self.vm_test01.waagent_service_restart())
-        output = vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip)
-        vm_proxy.shutdown()
+        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Host", self.proxy_params["proxy_ip"], self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Port", self.proxy_params["proxy_port"], self.conf_file))
+        self.assertTrue(self.vm_test01.waagent_service_restart(),
+                        "Fail to restart waagent service.")
+        output = self.vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip)
         self.assertIn("10 packets captured", output,
                       "Bug 1368002. "
                       "waagent doesn't use http proxy")
@@ -742,46 +725,6 @@ class WALAConfTest(Test):
         Resource disk GPT partition
         """
         self.log.info("WALA conf: Resource disk GPT partition")
-        # Preparation: Create G5 VM
-#        vm_params = copy.deepcopy(self.vm_params)
-#        vm_params["VMSize"] = "Standard_G5"
-#        vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-#        vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
-#        vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-#        vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
-#        vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-#        if self.azure_mode == "asm":
-#            vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
-#            vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
-#            self.vm_test01 = azure_asm_vm.VM(vm_params["VMName"],
-#                                                vm_params["VMSize"],
-#                                                vm_params["username"],
-#                                                vm_params["password"],
-#                                                vm_params)
-#        else:
-#            vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
-#            vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
-#            vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
-#                                                                           vm_params["Container"],
-#                                                                           vm_params["DiskBlobName"])
-#            vm_params["NicName"] = vm_params["VMName"]
-#            vm_params["PublicIpName"] = vm_params["VMName"]
-#            vm_params["PublicIpDomainName"] = vm_params["VMName"]
-#            vm_params["VnetName"] = vm_params["VMName"]
-#            vm_params["VnetSubnetName"] = vm_params["VMName"]
-#            vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-#            vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-#            self.vm_test01 = azure_arm_vm.VM(vm_params["VMName"],
-#                                                vm_params["VMSize"],
-#                                                vm_params["username"],
-#                                                vm_params["password"],
-#                                                vm_params)
-#        self.assertEqual(0, self.vm_test01.vm_create(vm_params),
-#                         "Fail to create VM %s" % self.vm_test01.name)
-#        self.assertTrue(self.vm_test01.wait_for_running(),
-#                        "VM cannot become running")
-#        self.assertTrue(self.vm_test01.verify_alive(),
-#                        "Cannot login the VM")
         # Set resource disk
         swapsize_std = "5242880"
         self.log.info("ResourceDisk.SwapSizeMB=5242880")
@@ -865,6 +808,8 @@ class WALAConfTest(Test):
                     self.vm_test01.get_output("hostnamectl set-hostname %s" % self.vm_test01.name)
             if "enable_verbose_logging" in case_name:
                 self.vm_test01.get_output("mv -f /var/log/waagent.log.bak /var/log/waagent.log")
+        if self.name.name == "test_http_proxy":
+            self.vm_proxy.shutdown()
 #            if "reset_system_account" in case_name:
 #                # Recover uid
 #                if not self.vm_test01.verify_alive(username=self.vm_params["username"],

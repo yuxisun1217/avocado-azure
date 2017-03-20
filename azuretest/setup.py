@@ -65,14 +65,15 @@ class Setup(object):
             self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
             self.vm_params["DNSName"] = "{0}.{1}.cloudapp.azure.com".format(self.vm_params["PublicIpDomainName"],
                                                                             self.vm_params["region"])
+        for param in kargs:
+            if param in self.vm_params:
+                self.vm_params[param] = kargs.get(param)
+        logging.debug(str(self.vm_params))
         self.vm_test01 = self.vm.VM(self.vm_params["VMName"],
                                     self.vm_params["VMSize"],
                                     self.vm_params["username"],
                                     self.vm_params["password"],
                                     self.vm_params)
-        for param in kargs:
-            if param in self.vm_params:
-                self.vm_params[param] = kargs.get(param)
 
     def get_proxy_params(self):
         # Get proxy params
@@ -82,6 +83,7 @@ class Setup(object):
         proxy_params["region"] = proxy_params["Location"].lower().replace(' ', '')
         proxy_params["username"] = self.params.get("username", "*/proxy/*")
         proxy_params["password"] = self.params.get("password", "*/proxy/*")
+        proxy_params["PublicPort"] = '22'
         proxy_params["proxy_ip"] = self.params.get("proxy_ip", "*/proxy/*")
         proxy_params["proxy_port"] = self.params.get("proxy_port", "*/proxy/*")
         if self.azure_mode == "asm":
@@ -185,6 +187,8 @@ class Setup(object):
         if self.vm_test01.exists():
             self.vm_test01.delete()
             return self.vm_test01.wait_for_delete()
+        else:
+            return True
 
     def selected_case(self, case):
         case_name = case.name.split(':')[-1]
