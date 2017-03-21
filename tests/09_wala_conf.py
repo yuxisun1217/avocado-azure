@@ -52,7 +52,7 @@ class WALAConfTest(Test):
                 prep.get_vm_params(vmname_tag="proxy",
                                    VnetName=self.proxy_params["VMName"],
                                    VnetSubnetName=self.proxy_params["VMName"])
-        elif "test_gpt_partition" in self.name.name:
+        elif "test_resource_disk_gpt_partition" in self.name.name:
             prep.get_vm_params(vm_size="G5")
         else:
             prep.get_vm_params()
@@ -63,7 +63,6 @@ class WALAConfTest(Test):
         self.conf_file = prep.conf_file
         self.host_pubkey_file = prep.host_pubkey_file
         self.vm_test01 = prep.vm_test01
-        self.log.debug("ccccc")
         self.vm_params = prep.vm_params
         self.assertTrue(prep.vm_create(args=args, options=options), "Setup Failed.")
         self.conf_content = self.vm_test01.get_output("cat %s" % self.conf_file)
@@ -608,7 +607,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
         new_vm_params = copy.deepcopy(self.vm_params)
         new_vm_params["Image"] = vm_image_name
-        new_vm_params["password"] = self.params.get('new_password', '*/VMUser/*')
+        new_vm_params["password"] = self.vm_params["password"]+"new"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
                          "Fail to create new VM base on the capture image: azure cli fail")
         # Check if change the password
@@ -635,7 +634,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
         new_vm_params = copy.deepcopy(self.vm_params)
         new_vm_params["Image"] = vm_image_name
-        new_vm_params["password"] = self.params.get('new_password', '*/VMUser/*')
+        new_vm_params["password"] = self.vm_params["password"] + "new"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
                          "Fail to create new VM base on the capture image: azure cli fail")
         self.vm_test01.vm_update()
