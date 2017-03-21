@@ -92,7 +92,7 @@ class ImgPrepTest(Test):
         # Delete VMs
         azure_cli_common.set_config_mode(self.azure_mode)
         if self.azure_mode == 'asm':
-            vm_ins = azure_asm_vm.VMASM()
+            vm_ins = azure_asm_vm.VM()
             vm_list = vm_ins.vm_list(debug=False)
             for vm_dict in vm_list:
                 if self.vm_basename in vm_dict["VMName"]:
@@ -106,7 +106,7 @@ class ImgPrepTest(Test):
                     continue
                 params = dict()
                 params["ResourceGroupName"] = storage_account_name
-                vm_ins = azure_arm_vm.VMARM(params=params)
+                vm_ins = azure_arm_vm.VM(params=params)
                 vm_list = vm_ins.vm_list(debug=False)
                 for vm_dict in vm_list:
                     if self.vm_basename in vm_dict["name"]:

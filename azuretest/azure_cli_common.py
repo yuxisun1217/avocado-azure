@@ -128,7 +128,7 @@ def set_config_mode(mode="asm"):
 #        return True
     ret = command(cmd, timeout=60)
     if ret.exit_status == 0:
-        logging.debug("Success to change the azure config mode: %s", mode)
+        logging.debug("Succeed in changing azure config mode: %s", mode)
         return ret.exit_status
     else:
         logging.error("Fail to change the azure config mode: %s", mode)

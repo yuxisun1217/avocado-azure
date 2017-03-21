@@ -13,98 +13,59 @@ from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
 from azuretest import utils_misc
-
-
-def collect_vm_params(params):
-    return
+from azuretest.setup import Setup
 
 
 class WALAConfTest(Test):
 
     def setUp(self):
-        # Get azure mode and choose test cases
-        self.azure_mode = self.params.get('azure_mode', '*/azure_mode/*')
-        self.log.debug("AZURE_MODE: %s", self.azure_mode)
-        if self.name.name.split(':')[-1] not in self.params.get('cases', '*/azure_mode/*'):
-            self.skip("Skip case %s in Azure Mode %s" % (self.name.name, self.azure_mode))
-        # Login Azure and change the mode
-        self.azure_username = self.params.get('username', '*/AzureSub/*')
-        self.azure_password = self.params.get('password', '*/AzureSub/*')
-        azure_cli_common.login_azure(username=self.azure_username,
-                                     password=self.azure_password)
-        azure_cli_common.set_config_mode(self.azure_mode)
-
-        # Prepare the vm parameters and create a vm
-        self.vm_params = dict()
-        self.vm_params["username"] = self.params.get('username', '*/VMUser/*')
-        self.vm_params["password"] = self.params.get('password', '*/VMUser/*')
-        self.vm_params["VMSize"] = self.params.get('vm_size', '*/azure_mode/*')
-        self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-        self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
+        args = []
+        options = ''
+        prep = Setup(self.params)
+        if not prep.selected_case(self.name):
+            self.skip()
         if "test_http_proxy" in self.name.name:
-            self.vm_params["VMName"] += "-proxy"
-        self.vm_params["Location"] = self.params.get('location', '*/resourceGroup/*')
-        self.vm_params["region"] = self.params.get('region', '*/resourceGroup/*')
-        self.vm_params["StorageAccountName"] = self.params.get('storage_account', '*/resourceGroup/*')
-        self.vm_params["Container"] = self.params.get('container', '*/resourceGroup/*')
-        self.vm_params["DiskBlobName"] = self.params.get('name', '*/DiskBlob/*')
-        self.vm_params["PublicPort"] = self.params.get('public_port', '*/network/*')
-        options = ""
-        if self.azure_mode == "asm":
-            self.vm_params["Image"] = self.params.get('name', '*/Image/*')
-            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
-            if "http_proxy" in self.name.name:
-                self.vm_params["DNSName"] = "nay-67-ond-squid.cloudapp.net"
-                options = "--connect"
-            self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
-                                                self.vm_params["VMSize"],
-                                                self.vm_params["username"],
-                                                self.vm_params["password"],
-                                                self.vm_params)
+            self.proxy_params = prep.get_proxy_params()
+            # Check proxy server
+            prep_proxy = Setup(self.params)
+            prep_proxy.get_vm_params(**self.proxy_params)
+#            prep_proxy.get_vm_params()
+            self.vm_proxy = prep_proxy.vm_test01
+            self.vm_proxy.vm_update()
+            self.assertTrue(self.vm_proxy.exists(),
+                            "There's no proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
+            if not self.vm_proxy.is_running():
+                self.assertEqual(self.vm_proxy.start(), 0,
+                                 "Cannot start proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
+                self.assertTrue(self.vm_proxy.wait_for_running(), "Proxy VM cannot be running")
+            self.assertTrue(self.vm_proxy.verify_alive(), "Cannot access to the proxy VM")
+            self.vm_proxy.get_output("service squid start")
+            self.vm_proxy.get_output("service iptables stop")
+            self.assertIn("squid", self.vm_proxy.get_output("netstat -antp"),
+                          "Squid service is not started")
+            # Prepare proxy client VM
+            if prep.azure_mode == "asm":
+                prep.get_vm_params(vmname_tag="proxy",
+                                   DNSName=self.proxy_params["DNSName"])
+                options += "--connect"
+            else:
+                prep.get_vm_params(vmname_tag="proxy",
+                                   VnetName=self.proxy_params["VMName"],
+                                   VnetSubnetName=self.proxy_params["VMName"])
+        elif "test_resource_disk_gpt_partition" in self.name.name:
+            prep.get_vm_params(vm_size="G5")
         else:
-#            if "test_http_proxy" in self.name.name:
-#                self.vm_params["DNSName"] = "nay-67-ond-squid.eastus2.cloudapp.azure.com"
-#                options = "--connect"
-            self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
-            self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
-                                                                                self.vm_params["Container"],
-                                                                                self.vm_params["DiskBlobName"])
-            self.vm_params["NicName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
-            if "http_proxy" in self.name.name:
-                self.vm_params["VnetName"] = self.params.get("name", "*/proxy/*")
-            self.vm_params["VnetSubnetName"] = self.vm_params["VnetName"]
-            self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-            self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
-            self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
-                                                self.vm_params["VMSize"],
-                                                self.vm_params["username"],
-                                                self.vm_params["password"],
-                                                self.vm_params)
-        self.log.debug("Create the vm %s", self.vm_params["VMName"])
-        self.project = self.params.get('Project', '*/Common/*')
-        self.conf_file = "/etc/waagent.conf"
-        # If vm doesn't exist, create it. If it exists, start it.
-        if "gpt_partition" in self.name.name:
-            return
-        self.vm_test01.vm_update()
-        if not self.vm_test01.exists():
-            self.vm_test01.vm_create(self.vm_params, options)
-            self.vm_test01.wait_for_running()
-        else:
-            if not self.vm_test01.is_running():
-                self.vm_test01.start()
-                self.vm_test01.wait_for_running()
-        if not self.vm_test01.verify_alive():
-            self.error("VM %s is not available. Exit." % self.vm_params["VMName"])
-        # Increase sudo password timeout
-        self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
-        # Backup waagent.conf and waagent.log
-        self.waagent_conf = self.vm_test01.get_output("cat %s" % self.conf_file)
+            prep.get_vm_params()
+        prep.login()
+        self.azure_mode = prep.azure_mode
+        self.project = prep.project
+        self.wala_version = prep.wala_version
+        self.conf_file = prep.conf_file
+        self.host_pubkey_file = prep.host_pubkey_file
+        self.vm_test01 = prep.vm_test01
+        self.vm_params = prep.vm_params
+        self.assertTrue(prep.vm_create(args=args, options=options), "Setup Failed.")
+        self.conf_content = self.vm_test01.get_output("cat %s" % self.conf_file)
 
     def test_delete_root_passwd(self):
         """
@@ -200,7 +161,8 @@ class WALAConfTest(Test):
         cmd_params["os_state"] = "Generalized"
         self.assertEqual(self.vm_test01.capture(vm_image_name, cmd_params), 0,
                          "Fails to capture the vm: azure cli fail")
-        self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
+        self.assertTrue(self.vm_test01.wait_for_delete(),
+                        "Fail to delete the old VM.")
         self.vm_params["Image"] = vm_image_name
         self.assertEqual(self.vm_test01.vm_create(self.vm_params), 0,
                          "Fail to create new VM base on capture image")
@@ -236,15 +198,16 @@ class WALAConfTest(Test):
                          "Fail to restart the VM")
         self.assertTrue(self.vm_test01.wait_for_running())
         self.assertTrue(self.vm_test01.verify_alive())
-        for retry_times in range(1, 11):
+        max_retry = 10
+        for retry in range(1, max_retry+1):
             if "No such file or directory" not in \
                     self.vm_test01.get_output("ls /mnt/resource-new/DATALOSS_WARNING_README.txt"):
                 break
             else:
-                self.log.debug("Retry %d times" % retry_times)
+                self.log.debug("Retry %d/%d times" % (retry, max_retry))
                 time.sleep(10)
-        self.assertNotEqual(10, retry_times,
-                            "There's no DATALOSS_WARNING_README.txt in the new resource path")
+        else:
+            self.fail("There's no DATALOSS_WARNING_README.txt in the new resource path")
         # 2. ResourceDisk.Format=n
         self.log.info("ResourceDisk.Format=n")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Format", "n", self.conf_file))
@@ -269,29 +232,31 @@ class WALAConfTest(Test):
             self.assertEqual(0, self.vm_test01.restart())
             self.assertTrue(self.vm_test01.wait_for_running())
             self.assertTrue(self.vm_test01.verify_alive())
-        for retry_times in xrange(1, 11):
+        max_retry = 10
+        for retry in xrange(1, max_retry+1):
             if "ext4" in self.vm_test01.get_output("mount|grep /mnt/resource"):
                 break
             else:
-                self.log.info("Retry %d times." % retry_times)
+                self.log.info("Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(10, retry_times,
-                            "Fail to set resource disk file system to ext4")
+        else:
+            self.fail("Fail to set resource disk file system to ext4")
         # Disable default swap
         if float(self.project) < 7.0:
             self.vm_test01.get_output("swapoff /dev/mapper/VolGroup-lv_swap")
         else:
             self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for retry_times in xrange(1, 11):
+        max_retry = 10
+        for retry in xrange(1, max_retry+1):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "2047":
                 break
             else:
-                self.log.info("Swap size is wrong. Retry %d times." % retry_times)
+                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(10, retry_times,
-                            "Swap is not enabled in ext4 file system.")
+        else:
+            self.fail("After retry %d times, swap is not enabled in ext4 file system." % max_retry)
         # 2. ResourceDisk.Filesystem=ext3
         self.log.info("ResourceDisk.Filesystem=ext3")
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.Filesystem", "ext3", self.conf_file))
@@ -320,14 +285,16 @@ class WALAConfTest(Test):
         else:
             self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in xrange(1, 11):
+        max_retry = 10
+        for retry in xrange(1, max_retry+1):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "2047":
                 break
             else:
-                self.log.info("Swap size is wrong. Retry %d times." % count)
+                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(10, count, "Swap is not enabled in ext3 file system.")
+        else:
+            self.fail("After retry %d times, swap is not enabled in ext3 file system." % max_retry)
         # 3. ResourceDisk.Filesystem=xfs(Only for RHEL-7)
         if float(self.project) < 7.0:
             self.log.info("RHEL-%s doesn't support xfs type. Skip this step." % self.project)
@@ -363,16 +330,17 @@ class WALAConfTest(Test):
         else:
             self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
             # Retry 10 times (300s in total) to wait for the swap file created.
-            for count in xrange(1, 11):
+            max_retry = 10
+            for retry in xrange(1, max_retry+1):
                 swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
                 if swapsize == "2047":
                     break
                 else:
-                    self.log.info("Swap size is wrong. Retry %d times." % count)
+                    self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                     time.sleep(30)
             else:
                 self.fail("Bug 1386494. "
-                          "Swap is not enabled in xfs file system.")
+                          "After retry %d times, swap is not enabled in xfs file system." % max_retry)
 #            self.assertNotEqual(10, count, "Swap is not enabled in xfs file system.")
 
     def test_resource_disk_swap_check(self):
@@ -409,14 +377,16 @@ class WALAConfTest(Test):
                         "Cannot login the VM")
         time.sleep(30)
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in range(1, 11):
+        max_retry = 10
+        for retry in range(1, max_retry+1):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "2047":
                 break
             else:
-                self.log.info("Swap size is wrong. Retry %d times." % count)
+                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(30)
-        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=2048 doesn't work.")
+        else:
+            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=2048 doesn't work." % max_retry)
 #        self.assertEqual(self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False), "2047",
 #                         "ResourceDisk.SwapSizeMB=2048 doesn't work.")
 
@@ -444,16 +414,16 @@ class WALAConfTest(Test):
                         "Cannot login the VM")
         time.sleep(30)
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in range(1, 11):
+        max_retry = 10
+        for retry in range(1, max_retry+1):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "69999":
                 break
             else:
-                self.log.info("Swap size is wrong. Retry %d times." % count)
+                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
                 time.sleep(10)
-#        self.assertEqual(self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False), "69999",
-#                         "ResourceDisk.SwapSizeMB=70000 doesn't work.")
-        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=70000 doesn't work.")
+        else:
+            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=70000 doesn't work." % max_retry)
 
     def test_monitor_hostname(self):
         """
@@ -518,54 +488,17 @@ class WALAConfTest(Test):
         """
         Check if waagent can work well with proxy
         """
-        # Start the proxy VM
-        proxy_param = dict()
-        http_host = self.params.get("proxy_ip", "*/proxy/*")
-        http_port = self.params.get("proxy_port", "*/proxy/*")
-        proxy_param["VMName"] = self.params.get("name", "*/proxy/*")
-        proxy_param["VMSize"] = self.params.get("size", "*/proxy/*")
-        proxy_param["username"] = self.params.get("username", "*/proxy/*")
-        proxy_param["password"] = self.params.get("password", "*/proxy/*")
-        proxy_param["PublicPort"] = '22'
-        if self.azure_mode == "asm":
-            proxy_param["DNSName"] = proxy_param["VMName"] + ".cloudapp.net"
-            vm_proxy = azure_asm_vm.VMASM(proxy_param["VMName"],
-                                          proxy_param["VMSize"],
-                                          proxy_param["username"],
-                                          proxy_param["password"],
-                                          proxy_param)
-        else:
-            proxy_param["VnetName"] = proxy_param["VMName"]
-            proxy_param["region"] = self.params.get("region", "*/proxy/*")
-            proxy_param["DNSName"] = proxy_param["VMName"] + "." + proxy_param["region"] + ".cloudapp.azure.com"
-            proxy_param["ResourceGroupName"] = self.params.get("rg_name", "*/proxy/*")
-            vm_proxy = azure_arm_vm.VMARM(proxy_param["VMName"],
-                                          proxy_param["VMSize"],
-                                          proxy_param["username"],
-                                          proxy_param["password"],
-                                          proxy_param)
-        vm_proxy.vm_update()
-        self.assertTrue(vm_proxy.exists(),
-                        "There's no proxy VM %s. Cannot run this case." % proxy_param["VMName"])
-        if not vm_proxy.is_running():
-            self.assertEqual(vm_proxy.start(), 0,
-                             "Cannot start proxy VM %s. Cannot run this case." % proxy_param["VMName"])
-            self.assertTrue(vm_proxy.wait_for_running(), "Proxy VM cannot be running")
-        self.assertTrue(vm_proxy.verify_alive(), "Cannot access to the proxy VM")
-        vm_proxy.get_output("service squid start")
-        vm_proxy.get_output("service iptables stop")
-        self.assertIn("squid", vm_proxy.get_output("netstat -antp"),
-                      "Squid service is not started")
         # 1. Check http proxy host and port
         if float(self.project) < 7.0:
-            vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ addr|awk '\"'{print $2}'\"'|tr -d addr:")
+            vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ addr"
+                                                      "|awk '\"'{print $2}'\"'|tr -d addr:")
         else:
             vm_private_ip = self.vm_test01.get_output("ifconfig eth0|grep inet\ |awk '\"'{print $2}'\"'|tr -d addr:")
-        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Host", http_host, self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Port", http_port, self.conf_file))
-        self.assertTrue(self.vm_test01.waagent_service_restart())
-        output = vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip)
-        vm_proxy.shutdown()
+        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Host", self.proxy_params["proxy_ip"], self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("HttpProxy.Port", self.proxy_params["proxy_port"], self.conf_file))
+        self.assertTrue(self.vm_test01.waagent_service_restart(),
+                        "Fail to restart waagent service.")
+        output = self.vm_proxy.get_output("timeout 30 tcpdump host %s and tcp -iany -nnn -s 0 -c 10" % vm_private_ip)
         self.assertIn("10 packets captured", output,
                       "Bug 1368002. "
                       "waagent doesn't use http proxy")
@@ -604,7 +537,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
         new_vm_params = copy.deepcopy(self.vm_params)
         new_vm_params["Image"] = vm_image_name
-        new_vm_params["username"] = self.params.get('new_username', '*/VMUser/*')
+        new_vm_params["username"] = self.vm_params["username"] + "new"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
                          "Fail to create new VM base on the capture image: azure cli fail")
         self.assertTrue(self.vm_test01.wait_for_running(times=15),
@@ -674,7 +607,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
         new_vm_params = copy.deepcopy(self.vm_params)
         new_vm_params["Image"] = vm_image_name
-        new_vm_params["password"] = self.params.get('new_password', '*/VMUser/*')
+        new_vm_params["password"] = self.vm_params["password"]+"new"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
                          "Fail to create new VM base on the capture image: azure cli fail")
         # Check if change the password
@@ -701,7 +634,7 @@ class WALAConfTest(Test):
         self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
         new_vm_params = copy.deepcopy(self.vm_params)
         new_vm_params["Image"] = vm_image_name
-        new_vm_params["password"] = self.params.get('new_password', '*/VMUser/*')
+        new_vm_params["password"] = self.vm_params["password"] + "new"
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
                          "Fail to create new VM base on the capture image: azure cli fail")
         self.vm_test01.vm_update()
@@ -736,14 +669,15 @@ class WALAConfTest(Test):
         self.vm_test01.waagent_service_restart(self.project)
         # Check feature
         time.sleep(30)
-        for retry in xrange(1, 11):
+        max_retry = 10
+        for retry in xrange(1, max_retry+1):
             if "egg" in self.vm_test01.get_output("ps aux|grep [W]AL"):
                 break
-            self.log.info("Wait for updating. Retry %d times" % retry)
+            self.log.info("Wait for updating. Retry %d/%d times" % (retry, max_retry))
             time.sleep(30)
         else:
             self.fail("[RHEL-6]Bug 1371071. "
-                      "Fail to enable AutoUpdate after retry %d times" % retry)
+                      "Fail to enable AutoUpdate after retry %d times" % max_retry)
 
     def test_resource_disk_mount_options(self):
         """
@@ -790,46 +724,6 @@ class WALAConfTest(Test):
         Resource disk GPT partition
         """
         self.log.info("WALA conf: Resource disk GPT partition")
-        # Preparation: Create G5 VM
-        vm_params = copy.deepcopy(self.vm_params)
-        vm_params["VMSize"] = "Standard_G5"
-        vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-        vm_params["VMName"] += vm_params["VMSize"].split('_')[-1].lower()
-        vm_params["Location"] = self.params.get("location", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-        vm_params["region"] = vm_params["Location"].lower().replace(' ', '')
-        vm_params["StorageAccountName"] = self.params.get("storage_account", "*/vm_sizes/%s/*" % vm_params["VMSize"])
-        if self.azure_mode == "asm":
-            vm_params["Image"] = self.params.get('name', '*/Image/*') + "-" + vm_params["StorageAccountName"]
-            vm_params["DNSName"] = vm_params["VMName"] + ".cloudapp.net"
-            self.vm_test01 = azure_asm_vm.VMASM(vm_params["VMName"],
-                                                vm_params["VMSize"],
-                                                vm_params["username"],
-                                                vm_params["password"],
-                                                vm_params)
-        else:
-            vm_params["DNSName"] = vm_params["VMName"] + "." + vm_params["region"] + ".cloudapp.azure.com"
-            vm_params["ResourceGroupName"] = vm_params["StorageAccountName"]
-            vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (vm_params["StorageAccountName"],
-                                                                           vm_params["Container"],
-                                                                           vm_params["DiskBlobName"])
-            vm_params["NicName"] = vm_params["VMName"]
-            vm_params["PublicIpName"] = vm_params["VMName"]
-            vm_params["PublicIpDomainName"] = vm_params["VMName"]
-            vm_params["VnetName"] = vm_params["VMName"]
-            vm_params["VnetSubnetName"] = vm_params["VMName"]
-            vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-            vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-            self.vm_test01 = azure_arm_vm.VMARM(vm_params["VMName"],
-                                                vm_params["VMSize"],
-                                                vm_params["username"],
-                                                vm_params["password"],
-                                                vm_params)
-        self.assertEqual(0, self.vm_test01.vm_create(vm_params),
-                         "Fail to create VM %s" % self.vm_test01.name)
-        self.assertTrue(self.vm_test01.wait_for_running(),
-                        "VM cannot become running")
-        self.assertTrue(self.vm_test01.verify_alive(),
-                        "Cannot login the VM")
         # Set resource disk
         swapsize_std = "5242880"
         self.log.info("ResourceDisk.SwapSizeMB=5242880")
@@ -897,15 +791,15 @@ class WALAConfTest(Test):
                 self.vm_test01.delete()
                 self.vm_test01.wait_for_delete()
             elif case_name in reboot_list:
-                self.vm_test01.get_output("echo \'%s\' > /etc/waagent.conf" % self.waagent_conf)
+                self.vm_test01.get_output("echo \'%s\' > %s" % (self.conf_content, self.conf_file))
                 self.vm_test01.restart()
                 self.vm_test01.wait_for_running()
             elif case_name in restart_service_list:
-                self.vm_test01.get_output("echo \'%s\' > /etc/waagent.conf" % self.waagent_conf)
+                self.vm_test01.get_output("echo \'%s\' > %s" % (self.conf_content, self.conf_file))
                 self.vm_test01.waagent_service_restart()
                 time.sleep(5)
             else:
-                self.vm_test01.get_output("echo \'%s\' > /etc/waagent.conf" % self.waagent_conf)
+                self.vm_test01.get_output("echo \'%s\' > %s" % (self.conf_content, self.conf_file))
             if "monitor_hostname" in case_name:
                 if float(self.project) < 7.0:
                     self.vm_test01.get_output("hostname %s" % self.vm_test01.name)
@@ -913,6 +807,8 @@ class WALAConfTest(Test):
                     self.vm_test01.get_output("hostnamectl set-hostname %s" % self.vm_test01.name)
             if "enable_verbose_logging" in case_name:
                 self.vm_test01.get_output("mv -f /var/log/waagent.log.bak /var/log/waagent.log")
+        if self.name.name == "test_http_proxy":
+            self.vm_proxy.shutdown()
 #            if "reset_system_account" in case_name:
 #                # Recover uid
 #                if not self.vm_test01.verify_alive(username=self.vm_params["username"],
