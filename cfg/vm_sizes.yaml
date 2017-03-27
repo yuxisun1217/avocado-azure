@@ -1,7 +1,8 @@
 azure_mode: !mux
     asm:
         vm_sizes:
-            ExtraSmall:
+            A0:
+                name: ExtraSmall
                 storage_account: walaautoasmeastus
                 location: "East US"
                 cpu: 1

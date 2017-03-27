@@ -331,10 +331,10 @@ EOF
             else:
                 break
         else:
-            logging.debug("After retry %d times, run command %s timeout. Exception: %s" % (retry, cmd, e))
             if ignore_status:
                 return None
             else:
+                logging.debug("After retry %d times, run command %s timeout. Exception: %s" % (retry, cmd, e))
                 raise
         logging.debug(output)
         return output
