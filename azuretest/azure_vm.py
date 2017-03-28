@@ -321,7 +321,7 @@ EOF
                 if sudo:
                     self.session.cmd_output(sudo_cmd)
                 output = self.session.cmd_output(cmd, timeout).rstrip('\n')
-            except ShellTimeoutError, e:
+            except (ShellTimeoutError, ShellProcessTerminatedError) as e:
                 logging.debug("Run command %s timeout. Retry %d/%d" % (cmd, retry, max_retry))
                 self.verify_alive()
                 continue
