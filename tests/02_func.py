@@ -580,6 +580,14 @@ class FuncTest(Test):
         self.assertEqual("", output,
                          "There's error logs in waagent.log: \n%s" % output)
 
+    def test_run_waagent_command_under_waagent_folder(self):
+        """
+        Run waagent command under /var/lib/waagent/events
+        """
+        self.log.info("Run waagent command under /var/lib/waagent/events")
+        self.assertIn("Goal state agent",
+                      self.vm_test01.get_output("cd /var/lib/waagent/events;waagent -version"),
+                      "Run waagent command under /var/lib/waagent/events is failed")
 
     def tearDown(self):
         self.log.debug("tearDown")
@@ -593,17 +601,17 @@ class FuncTest(Test):
         elif "verbose" in self.name.name or \
              "conf" in self.name.name or \
              "daemon" in self.name.name or \
-             "waagent_run_exthandlers" in self.name.name:
-            self.vm_test01.waagent_service_stop(project=self.project)
-            self.vm_test01.get_output("rm -f /var/log/waagent*.log")
-            if not self.vm_test01.waagent_service_start(project=self.project):
+             "waagent_run_exthandlers" in self.name.name or \
+             "waagent_start" in self.name.name:
+            try:
+                self.vm_test01.verify_alive()
+                self.vm_test01.waagent_service_stop(project=self.project)
+                self.vm_test01.get_output("rm -f /var/log/waagent*.log")
+                self.vm_test01.waagent_service_start(project=self.project)
+            except Exception as e:
+                self.log.error("Teardown failed. {0}".format(e))
                 self.vm_test01.delete()
                 self.vm_test01.wait_for_delete()
-        elif "waagent_start" in self.name.name:
-            self.vm_test01.verify_alive()
-            self.vm_test01.waagent_service_stop(project=self.project)
-            self.vm_test01.waagent_service_start(project=self.project)
-
         # Clean ssh sessions
         utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
