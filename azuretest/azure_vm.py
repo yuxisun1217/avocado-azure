@@ -21,6 +21,11 @@ from aexpect.exceptions import ShellError
 from aexpect.exceptions import ShellProcessTerminatedError
 from aexpect.exceptions import ShellStatusError
 from aexpect.exceptions import ShellTimeoutError
+from exceptions import WaagentStopError
+from exceptions import WaagentStartError
+from exceptions import WaagentServiceError
+
+
 
 class VMDeadError(Exception):
     """
@@ -220,16 +225,26 @@ EOF
         return self.get_output("echo `sudo %s`" % cmd, sudo=False)
 
     def waagent_service_restart(self, project=6.0):
+        try:
+            old_pid = self.get_output("ps aux|grep \"[w]aagent -daemon\"").split()[1]
+        except Exception as e:
+            logging.warn("waagent service is not running before restart. {0}".format(e))
+            old_pid = None
         if float(project) < 7.0:
             cmd = "service waagent restart"
         else:
             cmd = "systemctl restart waagent"
         self.get_output(cmd)
         time.sleep(1)
-        if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
-            return True
+        daemon_process = self.get_output("ps aux|grep \"[w]aagent -daemon\"")
+        if "/sbin/waagent -daemon" in daemon_process:
+            new_pid = daemon_process.split()[1]
+            if new_pid != old_pid:
+                return True
+            else:
+                raise WaagentServiceError("waagent service is not restarted. Pid isn't changed.")
         else:
-            return False
+            raise WaagentStartError
 
     def waagent_service_start(self, project=6.0):
         if float(project) < 7.0:
@@ -241,7 +256,7 @@ EOF
         if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
             return True
         else:
-            return False
+            raise WaagentStartError
 
     def waagent_service_stop(self, project=6.0):
         if float(project) < 7.0:
@@ -255,7 +270,7 @@ EOF
         if self.get_output("ps aux|grep [w]aagent") == "":
             return True
         else:
-            return False
+            raise WaagentStopError
 
     def login(self, timeout=LOGIN_TIMEOUT,
               username=None, password=None, authentication="password"):
