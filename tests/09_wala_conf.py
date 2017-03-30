@@ -14,6 +14,7 @@ from azuretest import azure_arm_vm
 from azuretest import azure_image
 from azuretest import utils_misc
 from azuretest.setup import Setup
+from azuretest.flexible_version import FlexibleVersion
 
 
 class WALAConfTest(Test):
@@ -651,33 +652,81 @@ class WALAConfTest(Test):
         AutoUpdate.Enabled
         """
         self.log.info("WALA conf: self-update")
-        # Modify local version to 2.1.5
-        old_version = "2.1.5"
+        x, y, z = self.wala_version.split('.')
+        low_version = "2.0.0"
+        high_version = "{0}.{1}.{2}".format(int(x)+10, y, z)
+        self.log.debug(low_version)
+        self.log.debug(high_version)
         if float(self.project) < 7.0:
             version_file = "/usr/lib/python2.6/site-packages/azurelinuxagent/common/version.py"
         else:
             version_file = "/usr/lib/python2.7/site-packages/azurelinuxagent/common/version.py"
-        self.vm_test01.get_output("sudo sed -i \"s/^AGENT_VERSION.*$/AGENT_VERSION = '{0}'/g\" {1}"
-                                  .format(old_version, version_file),
-                                  sudo=False)
-        self.assertEqual("AGENT_VERSION = '%s'" % old_version,
-                         self.vm_test01.get_output("grep -R '^AGENT_VERSION' %s" % version_file),
-                         "Fail to modify local version to %s" % old_version)
-        # Enable AutoUpdate
+        # 1. AutoUpdate.Enabled=y
         self.assertTrue(self.vm_test01.modify_value("AutoUpdate.Enabled", "y"),
                         "Fail to set AutoUpdate.Enabled=y")
-        self.vm_test01.waagent_service_restart(self.project)
+        # 1.1 local version is lower than new version
+        self.log.info("1.1 local version is lower than new version")
+        self.vm_test01.get_output("sudo sed -i \"s/^AGENT_VERSION.*$/AGENT_VERSION = '{0}'/g\" {1}"
+                                  .format(low_version, version_file),
+                                  sudo=False)
+        self.assertEqual("AGENT_VERSION = '%s'" % low_version,
+                         self.vm_test01.get_output("grep -R '^AGENT_VERSION' %s" % version_file),
+                         "Fail to modify local version to %s" % low_version)
+        self.vm_test01.waagent_service_restart(project=self.project)
         # Check feature
         time.sleep(30)
         max_retry = 10
         for retry in xrange(1, max_retry+1):
-            if "egg" in self.vm_test01.get_output("ps aux|grep [W]AL"):
+            if "egg" in self.vm_test01.get_output("ps aux|grep [-]run-exthandlers"):
                 break
             self.log.info("Wait for updating. Retry %d/%d times" % (retry, max_retry))
             time.sleep(30)
         else:
             self.fail("[RHEL-6]Bug 1371071. "
                       "Fail to enable AutoUpdate after retry %d times" % max_retry)
+        # 1.2 local version is higher than new version
+        self.log.info("1.2 local version is higher than new version")
+        self.vm_test01.get_output("sudo sed -i \"s/^AGENT_VERSION.*$/AGENT_VERSION = '{0}'/g\" {1}"
+                                  .format(high_version, version_file),
+                                  sudo=False)
+        self.assertEqual("AGENT_VERSION = '%s'" % high_version,
+                         self.vm_test01.get_output("grep -R '^AGENT_VERSION' %s" % version_file),
+                         "Fail to modify local version to %s" % high_version)
+        self.vm_test01.waagent_service_restart(project=self.project)
+        time.sleep(10)
+        # Check feature
+        self.assertIn("/usr/sbin/waagent -run-exthandlers",
+                      self.vm_test01.get_output("ps aux|grep [-]run-exthandlers"),
+                      "Should not use new version if local version is higher")
+        # 1.3 restart again
+        self.log.info("1.3 Restart waagent service again and check")
+        self.vm_test01.waagent_service_restart(self.project)
+        time.sleep(10)
+        self.assertIn("/usr/sbin/waagent -run-exthandlers",
+                      self.vm_test01.get_output("ps aux|grep [-]run-exthandlers"),
+                      "Should not use new version if local version is higher")
+        # 2. AutoUpdate.Enabled=n
+        self.log.info("2. AutoUpdate.Enabled=n")
+        self.assertTrue(self.vm_test01.modify_value("AutoUpdate.Enabled", "n"),
+                        "Fail to set AutoUpdate.Enabled=n")
+        self.vm_test01.waagent_service_restart(project=self.project)
+        time.sleep(10)
+        # Check feature
+        self.assertIn("/usr/sbin/waagent -run-exthandlers",
+                      self.vm_test01.get_output("ps aux|grep [-]run-exthandlers"),
+                      "Fail to disable AutoUpdate")
+        # 3. Remove AutoUpdate.enabled parameter and check the default value
+        self.log.info("3. Remove AutoUpdate.enabled parameter and check the default value")
+        self.vm_test01.get_output("sed -i '/AutoUpdate\.Enabled/d' {0}".format(self.conf_file))
+        self.assertEqual("",
+                         self.vm_test01.get_output("grep AutoUpdate\.Enabled {0}".format(self.conf_file)),
+                         "Fail to remove AutoUpdate.Enabled line")
+        self.vm_test01.waagent_service_restart(project=self.project)
+        time.sleep(10)
+        # Check feature
+        self.assertIn("/usr/sbin/waagent -run-exthandlers",
+                      self.vm_test01.get_output("ps aux|grep [-]run-exthandlers"),
+                      "The AutoUpdate.enabled is not False by default.")
 
     def test_resource_disk_mount_options(self):
         """
