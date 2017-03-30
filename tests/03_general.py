@@ -270,9 +270,6 @@ class GeneralTest(Test):
         self.assertEqual(test_str, self.vm_test01.get_output("grep -R %s %s" % (test_str, rotate_log[:-3])),
                          "The rotated log doesn't contain the old logs")
 
-    def test_verify_autoupdate_disable(self):
-        self.fail("Case doesn't exist")
-
     def test_check_cpu_mem_disk(self):
         """
         Check the resource disk size, cpu number and memory
