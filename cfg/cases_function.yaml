@@ -67,6 +67,8 @@ azure_mode: !mux
             NetworkTest.test_endpoint_check
             GeneralTest.test_check_cpu_mem_disk
             StorageTest.test_attach_detach_64_disks
+            FuncTest.test_run_waagent_command_under_waagent_folder
+            GeneralTest.test_verify_autoupdate_disabled
     arm:
         cases:
             ImgPrepTest.test_00_preparation
