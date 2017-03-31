@@ -78,6 +78,13 @@ azure_mode: !mux
                 cpu: 1
                 memory: 3.5
                 disk_size: 7
+            DS2:
+                name: Standard_DS2
+                storage_account: walaautoasmeastuspremium
+                location: "East US"
+                cpu: 2
+                memory: 7
+                disk_size: 14
             DS1_v2:
                 name: Standard_DS1_v2
                 storage_account: walaautoasmeastuspremium
@@ -223,6 +230,14 @@ azure_mode: !mux
                 cpu: 1
                 memory: 3.5
                 disk_size: 7
+            DS2:
+                name: Standard_DS2
+                resource_group: walaautoarmwestuspremium
+                storage_account: walaautoarmwestuspremium
+                location: "West US"
+                cpu: 2
+                memory: 7
+                disk_size: 14
             DS1_v2:
                 name: Standard_DS1_v2
                 resource_group: walaautoarmwestuspremium
