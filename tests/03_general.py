@@ -327,6 +327,37 @@ class GeneralTest(Test):
         self.assertTrue(self.vm_test01.verify_value("AutoUpdate\.Enabled", 'n'),
                         "The AutoUpdate.enabled is not 'n' after installing WALA rpm package.")
 
+    def _check_file_permission(self, filename, std_permission):
+        """
+        Check file permission
+        """
+        self.log.info("Check {0} permission".format(filename))
+        real_permission = self.vm_test01.get_output("stat -c %a {0}".format(filename))
+        self.assertEqual(str(real_permission), str(std_permission),
+                         "The {0} permission is wrong. Standard: {1}, Real: {2}"
+                         .format(filename, std_permission, real_permission))
+
+    def test_check_shadow_permission(self):
+        """
+        Check /etc/shadow permission
+        """
+        self._check_file_permission("/etc/shadow", 0)
+
+    def test_check_sshdconfig_permission(self):
+        """
+        Check /etc/ssh/sshd_config permission
+        """
+        self._check_file_permission("/etc/ssh/sshd_config", 600)
+
+    def test_check_selinux_status(self):
+        """
+        Check on-demand RHEL image selinux status. Should be Enforcing.
+        """
+        self.log.info("Check selinux status")
+        selinux = self.vm_test01.get_output("getenforce")
+        self.assertEqual(selinux, "Enforcing",
+                         "SELinux status is wrong. Standard: Enforcing. Real: {0}".format(selinux))
+
     def tearDown(self):
         self.log.debug("tearDown")
         if "check_sshkey" in self.name.name or \

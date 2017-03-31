@@ -68,6 +68,9 @@ azure_mode: !mux
             GeneralTest.test_verify_autoupdate_disabled
             StorageTest.test_disk_attach_detach_standard
             StorageTest.test_disk_attach_detach_premium
+            GeneralTest.test_check_sshdconfig_permission
+            GeneralTest.test_check_shadow_permission
+            GeneralTest.test_check_selinux_status
     arm:
         cases:
             ImgPrepTest.test_00_preparation
