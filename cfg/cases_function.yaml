@@ -13,9 +13,6 @@ azure_mode: !mux
             LifeCycleTest.test_delete_vm
             LifeCycleTest.test_capture_vm
             LifeCycleTest.test_create_without_deprovision
-            StorageTest.test_disk_attach_new
-            StorageTest.test_disk_detach
-            StorageTest.test_disk_attach_exist
             SettingsTest.test_reset_existing_password
             SettingsTest.test_add_new_user
             SettingsTest.test_reset_remote_access
@@ -67,8 +64,10 @@ azure_mode: !mux
             NetworkTest.test_endpoint_check
             GeneralTest.test_check_cpu_mem_disk
             StorageTest.test_attach_detach_64_disks
-            FuncTest.test_run_waagent_command_under_waagent_folder
+            FuncTest.test_run_waagent_command_under_events_folder
             GeneralTest.test_verify_autoupdate_disabled
+            StorageTest.test_disk_attach_detach_standard
+            StorageTest.test_disk_attach_detach_premium
     arm:
         cases:
             ImgPrepTest.test_00_preparation
@@ -81,9 +80,8 @@ azure_mode: !mux
             LifeCycleTest.test_shutdown_vm
             LifeCycleTest.test_start_vm
             LifeCycleTest.test_delete_vm
-            StorageTest.test_disk_attach_new
-            StorageTest.test_disk_detach
-            StorageTest.test_disk_attach_exist
+            StorageTest.test_disk_attach_detach_standard
+            StorageTest.test_disk_attach_detach_premium
             StorageTest.test_change_os_disk_size
             SettingsTest.test_resize_vm
             SettingsTest.test_reset_existing_password
