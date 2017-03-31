@@ -580,7 +580,7 @@ class FuncTest(Test):
         self.assertEqual("", output,
                          "There's error logs in waagent.log: \n%s" % output)
 
-    def test_run_waagent_command_under_waagent_folder(self):
+    def test_run_waagent_command_under_events_folder(self):
         """
         Run waagent command under /var/lib/waagent/events
         """
