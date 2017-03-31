@@ -23,8 +23,11 @@ class StorageTest(Test):
         prep = Setup(self.params)
         if not prep.selected_case(self.name):
             self.skip()
-        if "disk_attach" in self.name.name:
+        print self.name.name
+        if "disk_attach_detach_standard" in self.name.name:
             prep.get_vm_params(vm_size="A2")
+        elif "disk_attach_detach_premium" in self.name.name:
+            prep.get_vm_params(vm_size="DS2")
         elif "attach_detach_64_disks" in self.name.name:
             prep.get_vm_params(vm_size="G5")
         else:
@@ -39,7 +42,8 @@ class StorageTest(Test):
         self.host_pubkey_file = prep.host_pubkey_file
         self.vm_test01 = prep.vm_test01
         self.vm_params = prep.vm_params
-        self.assertTrue(prep.vm_create(args=args), "Setup Failed.")
+        self.assertTrue(prep.vm_delete(), "Cannot delete VM. Setup Failed.")
+        self.assertTrue(prep.vm_create(args=args), "Cannot create VM. Setup Failed.")
         prep.get_blob_params()
         self.blob_list = prep.blob_list
         self.blob_params = prep.blob_params
@@ -148,15 +152,6 @@ class StorageTest(Test):
                 break
         else:
             self.fail("After retry %d times, fail to attach disk." % max_retry)
-
-#        while retry < 5:
-#            try:
-#                self.vm_test01.disk_attach(disk_name)
-#            except:
-#                retry += 1
-#                self.log.debug("Attach disk retry %d times.", retry)
-#                continue
-#            break
         time.sleep(5)
         self.vm_test01.wait_for_running()
         self.assertTrue(self.vm_test01.vm_has_datadisk(),
@@ -170,6 +165,117 @@ class StorageTest(Test):
                          "The previous data on the disk is destroyed.")
         self.assertTrue(self.vm_test01.vm_disk_check(mount_point), 
                         "The disk cannot work well.")
+
+    def _disk_attach_detach(self):
+        """
+        Attach new, detach, attach existed disk to the VM
+        """
+        # 1. Attach 3 new disks with different host-caching
+        self.log.info("1. Attach new disks to the vm %s", self.vm_params["VMName"])
+        self.assertTrue(self.vm_test01.verify_alive())
+        for bn in range(1, 4):
+            self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[bn].params.get("size"),
+                                                            self.blob_list[bn].params), 0,
+                             "Fail to attach new disk %s host-caching: azure cli fail" %
+                             self.blob_params.get("host_caching"))
+            time.sleep(5)
+            self.vm_test01.wait_for_running()
+            # parted, mkfs, mount, test
+            self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
+            disk = self.vm_test01.get_device_name()
+            self.assertIsNotNone(disk,
+                                 "Fail to attach new disk %s host-caching: no device name" %
+                                 self.blob_params.get("host_caching"))
+            mount_point = "/mnt/newdisk%d" % bn
+            self.assertTrue(self.vm_test01.vm_disk_mount(disk, mount_point, project=float(self.project), end=1000),
+                            "Fail to mount disk")
+            self.assertTrue(self.vm_test01.vm_disk_check(mount_point),
+                            "Fail to check disk")
+        # 2. Detach the first disk
+        self.log.info("2. Detach a disk from VM")
+        mount_point = "/mnt/newdisk1"
+        disk = "/dev/sdc"
+#        disk = self.vm_test01.get_device_name()
+#        self.assertIsNotNone(disk,
+#                             "Fail to attach new disk before detach: no device name")
+#        self.assertTrue(self.vm_test01.vm_disk_mount(disk, mount_point, project=float(self.project), end=1000))
+        self.vm_test01.get_output("echo \"test\" > %s/file0" % mount_point)
+        self.vm_test01.get_output("umount %s" % mount_point)
+        self.vm_test01.vm_update()
+        try:
+            if self.azure_mode == "asm":
+                disk_name = copy.deepcopy(self.vm_test01.params.get("DataDisks")[0].get("name"))
+            else:
+                disk_name = copy.deepcopy(self.vm_test01.params.get("storageProfile").get("dataDisks")[0].get("name"))
+                disk_name = "https://%s.blob.core.windows.net/%s/%s.vhd" % (self.vm_params["StorageAccountName"],
+                                                                            self.vm_params["Container"],
+                                                                            disk_name)
+        except IndexError, e:
+            self.fail("Fail to get datadisk name. Exception: %s" % str(e))
+        self.log.debug("DISKNAME: %s", disk_name)
+        self.assertEqual(self.vm_test01.disk_detach(disk_lun=0), 0,
+                         "Fail to detach disk: azure cli fail")
+        time.sleep(5)
+        self.vm_test01.wait_for_running()
+        self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
+        self.assertIn("No such file",
+                      self.vm_test01.get_output("ls %s" % disk),
+                      "After detach, disk still exists")
+        # 3. Attach an existed disk
+        self.log.info("3. Attach an existed disk to VM %s" % self.vm_test01.name)
+#        # Attach disk1
+#        self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[1].params.get("size"),
+#                                                        self.blob_list[1].params), 0,
+#                         "Fail to attach new disk before re-attach: azure cli fail")
+#        time.sleep(5)
+#        self.vm_test01.wait_for_running()
+#        self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
+#        # Get the volume in VM
+#        disk = self.vm_test01.get_device_name()
+#        self.assertIsNotNone(disk,
+#                             "Fail to attach new disk before re-attach: no device name")
+#        self.assertTrue(self.vm_test01.vm_disk_mount(disk, mount_point, project=float(self.project), end=1000),
+#                        "Cannot mount the disk before detach the disk.")
+        # Detach disk
+#        self.assertEqual(self.vm_test01.disk_detach(disk_lun=0), 0,
+#                         "Fail to detach disk before re-attach: azure cli fail")
+#        time.sleep(5)
+#        self.vm_test01.wait_for_running()
+        max_retry = 5
+        for retry in xrange(1, max_retry+1):
+            try:
+                self.vm_test01.disk_attach(disk_name)
+            except:
+                self.log.debug("Attach disk retry %d/%d times." % (retry, max_retry))
+            else:
+                break
+        else:
+            self.fail("After retry %d times, fail to attach disk." % max_retry)
+        time.sleep(5)
+        self.vm_test01.wait_for_running()
+        self.assertTrue(self.vm_test01.vm_has_datadisk(),
+                        "Fail to re-attached the disk: cannot get datadisk params")
+        self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
+#        disk = self.vm_test01.get_device_name()
+        self.assertIsNotNone(disk,
+                             "Fail to re-attach the disk: no device name")
+        self.vm_test01.get_output("mount %s %s" % (disk+"1", mount_point))
+        self.assertEqual(self.vm_test01.get_output("cat %s/file0" % mount_point).strip('\n'), "test",
+                         "The previous data in the disk is destroyed.")
+        self.assertTrue(self.vm_test01.vm_disk_check(mount_point),
+                        "The disk cannot work well.")
+
+    def test_disk_attach_detach_standard(self):
+        """
+        Attach new, detach, attach existed disk to the VM in standard storage account
+        """
+        self._disk_attach_detach()
+
+    def test_disk_attach_detach_premium(self):
+        """
+        Attach new, detach, attach existed disk to the VM in premium storage account
+        """
+        self._disk_attach_detach()
 
     def test_attach_detach_64_disks(self):
         """
