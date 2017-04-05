@@ -576,5 +576,20 @@ EOF
             ignore_list += additional_ignore_list
         return self._check_log("/var/log/messages", ignore_list)
 
+    def get_pid(self, process_key):
+        """
+        Return process pid according to the process_key string
+        :param process_key: The process key string
+        :return: pid
+        """
+        pid = self.get_output("ps aux|grep \\\"{0}\\\"|grep -v grep|tr -s ' '".format(process_key))
+        if pid == "":
+            return None
+        else:
+            pid = pid.split(' ')[1]
+            logging.debug("PID: {0}".format(pid))
+            return pid
+
+
 
 
