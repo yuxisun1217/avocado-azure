@@ -35,6 +35,7 @@ class LifeCycleTest(Test):
             self.assertTrue(prep.vm_delete(), "Delete VM failed.")
             return
         elif "test_start_vm" in self.name.name:
+#             "test_shutdown_capture_specialized_image" in self.name.name:
             args.append("stop")
         self.assertTrue(prep.vm_create(args=args), "Setup Failed.")
 
@@ -235,10 +236,151 @@ class LifeCycleTest(Test):
         self.assertFalse(self.vm_test01.verify_alive(timeout=10),
                          "New user account should not work")
 
+    def test_live_capture_specialized_image(self):
+        """
+        Live capture specialized image and create VM. (VM is running. VM will not be deleted.)
+        """
+        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+        # 1. Capture specialized image
+        self.log.debug("Live capture the vm %s -- Specialized", self.vm_params["VMName"])
+        capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
+        capture_image = azure_image.VMImage(name=capture_vm_name)
+
+        cmd_params = dict()
+        cmd_params["os_state"] = "Specialized"
+        self.assertEqual(self.vm_test01.capture(capture_image.name, cmd_params),
+                         0, "Fail to capture the vm: azure cli fail")
+        self.vm_test01.get_output("touch /var/lib/waagent/provisioned")
+        self.assertEqual(capture_image.verify_exist(), 0,
+                         "Fail to get the captured vm image: verify_exist")
+        capture_image.vm_image_update()
+        self.assertEqual(capture_image.params["oSDiskConfiguration"]["oSState"], "Specialized",
+                         "The VM image state is not Specialized.")
+        self.vm_test01.vm_update()
+        self.assertTrue(self.vm_test01.exists(),
+                        "Original VM should not be deleted.")
+        self.log.info("Success to capture the vm as image %s -- Specialized" % capture_image.name)
+        # 2. Create a VM base on this image
+        old_hostname = self.vm_params["VMName"]
+        old_username = self.vm_test01.username
+        new_username = old_username + "new"
+        prep = Setup(self.params)
+        prep.get_vm_params(Image=capture_image.name,
+                           vmname_tag="spe",
+                           username=new_username)
+        self.vm_test01 = prep.vm_test01
+        self.assertTrue(prep.vm_create("not_alive"),
+                        "Fail to create VM base on the Specialized image")
+        # Verify old/new user account and hostname
+        self.assertTrue(self.vm_test01.verify_alive(username=old_username),
+                        "Fail to login with old username")
+        self.assertEqual(old_hostname, self.vm_test01.get_output("hostname", sudo=False),
+                         "Hostname should not be changed")
+        self.assertEqual(prep.vm_test01.check_waagent_log(additional_ignore_list=["did not terminate cleanly",
+                                                                                  "Failed to get dvd device"]), "",
+                         "There're error logs in waagent.log")
+        self.assertFalse(self.vm_test01.verify_alive(username=new_username, timeout=10),
+                         "New username should not work")
+
+    def test_shutdown_capture_specialized_image(self):
+        """
+        Shutdown and capture specialized image and create VM. (VM is stopped(deallocated). VM will not be deleted.)
+        """
+        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+        self.vm_test01.shutdown()
+        self.assertTrue(self.vm_test01.wait_for_deallocated(),
+                        "Fail to stop VM before capturing")
+        # 1. Capture specialized image
+        self.log.debug("Shutdown and capture the vm %s -- Specialized", self.vm_params["VMName"])
+        capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
+        capture_image = azure_image.VMImage(name=capture_vm_name)
+
+        cmd_params = dict()
+        cmd_params["os_state"] = "Specialized"
+        self.assertEqual(self.vm_test01.capture(capture_image.name, cmd_params),
+                         0, "Fail to capture the vm: azure cli fail")
+        self.assertEqual(capture_image.verify_exist(), 0,
+                         "Fail to get the captured vm image: verify_exist")
+        capture_image.vm_image_update()
+        self.assertEqual(capture_image.params["oSDiskConfiguration"]["oSState"], "Specialized",
+                         "The VM image state is not Specialized.")
+        self.vm_test01.vm_update()
+        self.assertTrue(self.vm_test01.exists(),
+                        "Original VM should not be deleted.")
+        self.log.info("Success to capture the vm as image %s -- Specialized" % capture_image.name)
+        # 2. Create a VM base on this image
+        old_hostname = self.vm_params["VMName"]
+        old_username = self.vm_test01.username
+        new_username = old_username + "new"
+        prep = Setup(self.params)
+        prep.get_vm_params(Image=capture_image.name,
+                           vmname_tag="spe",
+                           username=new_username)
+        self.vm_test01 = prep.vm_test01
+        self.assertTrue(prep.vm_create("not_alive"),
+                        "Fail to create VM base on the Specialized image")
+        # Verify old/new user account and hostname
+        self.assertTrue(self.vm_test01.verify_alive(username=old_username),
+                        "Fail to login with old username")
+        self.assertEqual(old_hostname, self.vm_test01.get_output("hostname", sudo=False),
+                         "Hostname should not be changed")
+        self.assertEqual(prep.vm_test01.check_waagent_log(additional_ignore_list=["did not terminate cleanly",
+                                                                                  "Failed to get dvd device"]),
+                         "",
+                         "There're error logs in waagent.log")
+        self.assertFalse(self.vm_test01.verify_alive(username=new_username, timeout=10),
+                           "New username should not work")
+
+    def test_capture_generalized_image(self):
+        """
+        Capture a VM to generalized image (VM is stopped(deallocated). VM will be deleted.)
+        """
+        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+        self.vm_test01.shutdown()
+        self.assertTrue(self.vm_test01.wait_for_deallocated(),
+                        "Fail to stop VM before capturing")
+        # 1. Capture generalized image
+        self.log.debug("Capture the vm %s -- Generalized", self.vm_params["VMName"])
+        capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Generalized"
+        capture_image = azure_image.VMImage(name=capture_vm_name)
+
+        cmd_params = dict()
+        cmd_params["os_state"] = "Generalized"
+        self.assertEqual(self.vm_test01.capture(capture_image.name, cmd_params),
+                         0, "Fail to capture the vm: azure cli fail")
+        self.assertEqual(capture_image.verify_exist(), 0,
+                         "Fail to get the captured vm image: verify_exist")
+        capture_image.vm_image_update()
+        self.assertEqual(capture_image.params["oSDiskConfiguration"]["oSState"], "Generalized",
+                         "The VM image state is not Generalized.")
+        self.vm_test01.vm_update()
+        self.assertFalse(self.vm_test01.exists(),
+                           "Original VM should be deleted.")
+        self.log.info("Success to capture the vm as image %s -- Generalized" % capture_image.name)
+        # 2. Create a VM base on this image
+        old_hostname = self.vm_params["VMName"]
+        old_username = self.vm_test01.username
+        new_username = old_username + "new"
+        prep = Setup(self.params)
+        prep.get_vm_params(Image=capture_image.name,
+                           vmname_tag="gen",
+                           username=new_username)
+        new_hostname = prep.vm_params["VMName"]
+        self.vm_test01 = prep.vm_test01
+        self.assertTrue(prep.vm_create("not_alive"),
+                        "Fail to create VM base on the Generalized image")
+        # Verify old/new user account and hostname
+        self.assertTrue(self.vm_test01.verify_alive(username=new_username),
+                        "Fail to login with new username")
+        self.assertEqual(new_hostname, self.vm_test01.get_output("hostname", sudo=False),
+                         "Hostname is not changed")
+        self.assertEqual(prep.vm_test01.check_waagent_log(additional_ignore_list=["did not terminate cleanly"]), "",
+                         "There're error logs in waagent.log")
+
     def tearDown(self):
         self.log.debug("tearDown")
         if "create_without_deprovision" in self.name.name or \
-           "capture_vm" in self.name.name:
+           "capture" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
         # Clean ssh sessions
