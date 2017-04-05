@@ -76,6 +76,10 @@ azure_mode: !mux
             LifeCycleTest.test_capture_generalized_image
             NetworkTest.test_check_dns
             NetworkTest.test_change_hostname_check_dns
+            NetworkTest.test_nmcli_change_hostname
+            NetworkTest.test_kill_exthandler_change_hostname
+            NetworkTest.test_check_dhclient
+            NetworkTest.test_change_hostname_several_times
     arm:
         cases:
             ImgPrepTest.test_00_preparation

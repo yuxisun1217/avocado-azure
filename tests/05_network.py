@@ -24,8 +24,11 @@ class NetworkTest(Test):
         if not prep.selected_case(self.name):
             self.skip()
         prep.get_vm_params()
-        prep.login()
         self.project = prep.project
+        if "test_nmcli_change_hostname" in self.name.name and \
+                self.project < 7.0:
+            self.skip("RHEL-7 only")
+        prep.login()
         self.wala_version = prep.wala_version
         self.conf_file = prep.conf_file
         self.host_pubkey_file = prep.host_pubkey_file
@@ -98,10 +101,10 @@ lo eth0\
         Check if change hostname can change DNS
         """
         self.log.info("Check if change hostname can change DNS")
-        # Confirm teh MonitorHostName is enabled
+        # Confirm the MonitorHostName is enabled
         if not self.vm_test01.verify_value("Provisioning.MonitorHostName", 'y'):
             self.vm_test01.modify_value("Provisioning.MonitorHostName", 'y')
-            self.vm_test01.waagent_restart()
+            self.vm_test01.waagent_service_restart()
         # Change hostname
         old_hostname = self.vm_test01.name
         new_hostname = self.vm_test01.name + "new"
@@ -115,7 +118,105 @@ lo eth0\
         self.assertIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(old_hostname)),
                       "New hostname {0} should not be in DNS list".format(old_hostname))
 
+    def test_nmcli_change_hostname(self):
+        """
+        Check if change hostname can change DNS
+        """
+        self.log.info("Check if change hostname can change DNS")
+        # Confirm the MonitorHostName is enabled
+        if not self.vm_test01.verify_value("Provisioning.MonitorHostName", 'y'):
+            self.vm_test01.modify_value("Provisioning.MonitorHostName", 'y')
+            self.vm_test01.waagent_service_restart()
+        # Change hostname
+        old_hostname = self.vm_test01.name
+        new_hostname = self.vm_test01.name + "new"
+        self.vm_test01.get_output("nmcli gen hostname {0}".format(new_hostname))
+        time.sleep(10)
+        # Check DNS
+        self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(new_hostname)),
+                         "New hostname {0} is not in DNS list".format(new_hostname))
+        self.assertIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(old_hostname)),
+                      "New hostname {0} should not be in DNS list".format(old_hostname))
 
+    def test_kill_exthandler_change_hostname(self):
+        """
+        Kill exthandler and change hostname, check DNS
+        """
+        self.log.info("Kill exthandler and change hostname, check DNS")
+        # Confirm the MonitorHostName is enabled
+        if not self.vm_test01.verify_value("Provisioning.MonitorHostName", 'y'):
+            self.vm_test01.modify_value("Provisioning.MonitorHostName", 'y')
+            self.vm_test01.waagent_service_restart()
+        # Kill -run-exthandlers process
+        pid = self.vm_test01.get_pid("-run-exthandlers")
+        self.vm_test01.get_output("kill -9 {0}".format(pid))
+        if self.vm_test01.get_pid("-run-exthandlers"):
+            self.vm_test01.get_output("kill -9 {0}".format(self.vm_test01.get_pid("-run-exthandlers")))
+        # Change hostname
+        old_hostname = self.vm_test01.name
+        new_hostname = self.vm_test01.name + "new"
+        self.vm_test01.get_output("nmcli gen hostname {0}".format(new_hostname))
+        # Wait for the -run-exthandlers process running
+        max_retry = 10
+        for retry in xrange(0, max_retry):
+            time.sleep(10)
+            if self.vm_test01.get_pid("-run-exthandlers"):
+                break
+        else:
+            self.fail("After retry {0} times, fail to start waagent -run-exthandlers process")
+        # Sleep 10s to wait for waagent publishing hostname
+        time.sleep(10)
+        # Check DNS
+        self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(new_hostname)),
+                         "New hostname {0} is not in DNS list".format(new_hostname))
+        self.assertIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(old_hostname)),
+                      "New hostname {0} should not be in DNS list".format(old_hostname))
+
+    def test_check_dhclient(self):
+        """
+        Check dhclient status
+        """
+        self.log.info("Check dhclient status")
+        # Check dhclient status
+        old_pid = self.vm_test01.get_pid("dhclient")
+        self.assertIsNotNone(old_pid,
+                             "The dhclient process is not running")
+        # Restart waagent check dhclient pid
+        self.vm_test01.waagent_service_restart()
+        self.assertEqual(self.vm_test01.get_pid("dhclient"), old_pid,
+                         "After restarting waagent service, dhclient pid should not be changed")
+        if float(self.project >= 7.0):
+            # Restart NetworkManager check dhclient pid (RHEL-7 only)
+            self.vm_test01.get_output("systemctl restart NetworkManager")
+            time.sleep(5)
+            self.assertEqual(self.vm_test01.get_pid("dhclient"), old_pid,
+                             "After restarting NetworkAgent, dhclient pid should not be changed")
+        # Restart network check dhclient pid
+        self.vm_test01.get_output("service network restart", ignore_status=True)
+        time.sleep(5)
+        self.vm_test01.verify_alive()
+        self.assertNotEqual(self.vm_test01.get_pid("dhclient"), old_pid,
+                            "After restarting network service, dhclient pid is not changed")
+
+    def test_change_hostname_several_times(self):
+        """
+        Change hostname several times and check DNS
+        """
+        self.log.info("Change hostname several times and check DNS")
+        old_hostname = self.vm_test01.name
+        for num in xrange(1, 6):
+            new_hostname = self.vm_params["VMName"] + str(num)
+            if float(self.project < 7.0):
+                self.vm_test01.get_output("hostname {0}".format(new_hostname))
+            else:
+                self.vm_test01.get_output("hostnamectl set-hostname {0}".format(new_hostname))
+            time.sleep(10)
+            # Check DNS
+            self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(new_hostname)),
+                             "New hostname {0} is not in DNS list".format(new_hostname))
+            self.assertIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(old_hostname)),
+                          "New hostname {0} should not be in DNS list".format(old_hostname))
+            old_hostname = new_hostname
 
     def tearDown(self):
         self.log.debug("Teardown.")
@@ -124,6 +225,11 @@ lo eth0\
                 self.vm_test01.get_output("service iptables start")
             else:
                 self.vm_test01.get_output("systemctl start firewalld")
+        elif "change_hostname" in self.name.name:
+            if float(self.project < 7.0):
+                self.vm_test01.get_output("hostname {0}".format(self.vm_params["VMName"]))
+            else:
+                self.vm_test01.get_output("hostnamectl set-hostname {0}".format(self.vm_params["VMName"]))
         # Clean ssh sessions
         utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9",
                                 ignore_status=True)
