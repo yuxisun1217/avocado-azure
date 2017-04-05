@@ -564,11 +564,17 @@ EOF
             cmd = "cat {0} | grep -iE 'error|fail'".format(logfile)
         return self.get_output(cmd)
 
-    def check_waagent_log(self):
-        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST)
+    def check_waagent_log(self, additional_ignore_list=None):
+        ignore_list = WAAGENT_IGNORELIST
+        if additional_ignore_list:
+            ignore_list += additional_ignore_list
+        return self._check_log("/var/log/waagent.log", ignore_list)
 
-    def check_messages_log(self):
-        return self._check_log("/var/log/messages", MESSAGES_IGNORELIST)
+    def check_messages_log(self, additional_ignore_list=None):
+        ignore_list = MESSAGES_IGNORELIST
+        if additional_ignore_list:
+            ignore_list += additional_ignore_list
+        return self._check_log("/var/log/messages", ignore_list)
 
 
 
