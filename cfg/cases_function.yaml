@@ -71,6 +71,11 @@ azure_mode: !mux
             GeneralTest.test_check_sshdconfig_permission
             GeneralTest.test_check_shadow_permission
             GeneralTest.test_check_selinux_status
+            LifeCycleTest.test_live_capture_specialized_image
+            LifeCycleTest.test_shutdown_capture_specialized_image
+            LifeCycleTest.test_capture_generalized_image
+            NetworkTest.test_check_dns
+            NetworkTest.test_change_hostname_check_dns
     arm:
         cases:
             ImgPrepTest.test_00_preparation

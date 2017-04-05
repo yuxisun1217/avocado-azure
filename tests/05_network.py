@@ -31,6 +31,8 @@ class NetworkTest(Test):
         self.host_pubkey_file = prep.host_pubkey_file
         self.vm_test01 = prep.vm_test01
         self.vm_params = prep.vm_params
+        if "test_check_dns" in self.name.name:
+            self.assertTrue(prep.vm_delete(), "Fail to delete VM before creating.")
         self.assertTrue(prep.vm_create(args=args), "Setup Failed.")
 
     def test_connectivity_check(self):
@@ -80,6 +82,40 @@ lo eth0\
                       "ssh port should be opened outside")
         self.assertIn("111/tcp filtered", outside,
                       "port 111 shouldn't be opened outside")
+
+    def test_check_dns(self):
+        """
+        Check DNS
+        """
+        self.log.info("Check DNS")
+        self.assertIn(".internal.cloudapp.net", self.vm_test01.get_output("hostname -f"),
+                      "Cannot get whole FQDN")
+        self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(self.vm_test01.name)),
+                         "Fail to publish hostname to DNS")
+
+    def test_change_hostname_check_dns(self):
+        """
+        Check if change hostname can change DNS
+        """
+        self.log.info("Check if change hostname can change DNS")
+        # Confirm teh MonitorHostName is enabled
+        if not self.vm_test01.verify_value("Provisioning.MonitorHostName", 'y'):
+            self.vm_test01.modify_value("Provisioning.MonitorHostName", 'y')
+            self.vm_test01.waagent_restart()
+        # Change hostname
+        old_hostname = self.vm_test01.name
+        new_hostname = self.vm_test01.name + "new"
+        if float(self.project < 7.0):
+            self.vm_test01.get_output("hostname {0}".format(new_hostname))
+        else:
+            self.vm_test01.get_output("hostnamectl set-hostname {0}".format(new_hostname))
+        time.sleep(10)
+        self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(new_hostname)),
+                         "New hostname {0} is not in DNS list".format(new_hostname))
+        self.assertIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(old_hostname)),
+                      "New hostname {0} should not be in DNS list".format(old_hostname))
+
+
 
     def tearDown(self):
         self.log.debug("Teardown.")
