@@ -80,6 +80,8 @@ azure_mode: !mux
             NetworkTest.test_kill_exthandler_change_hostname
             NetworkTest.test_check_dhclient
             NetworkTest.test_change_hostname_several_times
+            SettingsTest.test_reset_existing_sshkey
+            SettingsTest.test_check_python_version_requirement
     arm:
         cases:
             ImgPrepTest.test_00_preparation

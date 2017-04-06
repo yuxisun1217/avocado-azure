@@ -23,7 +23,15 @@ class SettingsTest(Test):
         prep = Setup(self.params)
         if not prep.selected_case(self.name):
             self.skip()
-        prep.get_vm_params()
+        if "test_reset_existing_sshkey" in self.name.name:
+            prep.get_vm_params(vmname_tag="key",
+                               password=None,
+                               ssh_key=prep.host_pubkey_file)
+        else:
+            prep.get_vm_params()
+        if "test_resize_vm" in self.name.name and prep.azure_mode == "asm":
+            self.skip("ASM mode CLI doesn't this feature. Skip.")
+
         prep.login()
         self.azure_mode = prep.azure_mode
         self.project = prep.project
@@ -32,6 +40,8 @@ class SettingsTest(Test):
         self.host_pubkey_file = prep.host_pubkey_file
         self.vm_test01 = prep.vm_test01
         self.vm_params = prep.vm_params
+        if "test_reset_existing_sshkey" in self.name.name:
+            args.append("ssh_key")
         self.assertTrue(prep.vm_create(args=args), "Setup Failed.")
 
     def test_reset_existing_password(self):
@@ -40,24 +50,33 @@ class SettingsTest(Test):
         """
         self.log.info("Reset an existing user's password")
         # Reset password
-        self.log.info("Reset to password")
         new_password = self.vm_params["password"] + "new"
         self.assertEqual(self.vm_test01.reset_password(username=self.vm_params["username"],
                                                        password=new_password,
                                                        method="password"), 0,
                          "Fail to reset password: azure cli fail")
-#        self.vm_test01.password = new_password
         self.assertTrue(self.vm_test01.verify_alive(password=new_password, timeout=100),
                         "Fail to reset password: cannot login with new password")
         self.log.info("Reset password successfully")
-#        # 2. Reset ssh key
-#        self.log.info("Reset to ssh_key")
-#        self.assertEqual(self.vm_test01.reset_password(self.vm_params["username"],
-#                                                       self.ssh_key_string, "ssh_key"), 0,
-#                         "Fail to reset ssh key: azure cli fail")
-#        self.assertTrue(self.vm_test01.verify_alive(timeout=100, authentication="publickey"),
-#                        "Fail to reset ssh key: cannot login with ssh key")
-#        self.log.info("Reset ssh key successfully")
+
+    def test_reset_existing_sshkey(self):
+        """
+        Reset an existing user ssh key
+        """
+        self.log.info("Reset an existing user ssh key")
+        # Reset ssh key
+        newkey = "/tmp/newkey"
+        if not os.path.isfile(newkey):
+            utils_misc.host_command("ssh-keygen -t rsa -P \"\" -f {0}".format(newkey))
+        with open(newkey+".pub", 'r') as f:
+            newkey_string = f.read().strip('\n')
+        self.assertEqual(self.vm_test01.reset_password(self.vm_params["username"],
+                                                       newkey_string, "ssh_key"), 0,
+                         "Fail to reset ssh key: azure cli fail")
+        self.assertTrue(self.vm_test01.verify_alive(timeout=100, authentication="publickey",
+                                                    options="-i {0}".format(newkey)),
+                        "Fail to reset ssh key: cannot login with new ssh key")
+        self.log.info("Reset ssh key successfully")
 
     def test_add_new_user(self):
         """
@@ -150,7 +169,7 @@ class SettingsTest(Test):
         """
         Reset password after capture
         """
-        self.log.debug("Reset password after capture")
+        self.log.info("Reset password after capture")
         # 1. Prepare environment
         old_username = self.vm_params["username"]
         old_password = self.vm_params["password"]
@@ -196,7 +215,7 @@ class SettingsTest(Test):
         """
         Reset password to different authenticate method
         """
-        self.log.debug("Reset password to different authenticate method")
+        self.log.info("Reset password to different authenticate method")
         username = self.vm_params["username"]
         password = self.vm_params["password"]
         with open(self.host_pubkey_file, 'r') as hf:
@@ -239,60 +258,69 @@ class SettingsTest(Test):
         """
         Resize the VM
         """
-        self.log.debug("Resize the VM")
-        if self.azure_mode == "asm":
-            pass
-        else:
-            new_size = "A3"
-            new_sizename = self.params.get("name", "*/vm_sizes/%s/*" % "A3")
-            goal_cpu = str(self.params.get("cpu", "*/vm_sizes/%s/*" % new_size))
-            goal_memory = int(self.params.get("memory", "*/vm_sizes/%s/*" % new_size)) * 1024
-            goal_disk_size = self.params.get("disk_size", "*/%s/*" % new_size)
-            self.assertEqual(self.vm_test01.vm_resize(new_sizename), 0,
-                             "Fail to resize the VM: azure cli fail")
-            self.assertTrue(self.vm_test01.wait_for_running(),
-                            "Fail to resize the VM: cannot start")
-            self.assertTrue(self.vm_test01.verify_alive(),
-                            "Fail to resize the VM: cannot login")
-            real_cpu = self.vm_test01.get_output("cat /proc/cpuinfo| grep processor| wc -l")
-            self.assertEqual(goal_cpu, real_cpu,
-                             "Fail to resize the VM: cpu number is wrong. Goal: %s Real: %s" % (goal_cpu, real_cpu))
-            real_memory = int(self.vm_test01.get_output("free -m | grep Mem | awk '\"'{print $2}'\"'"))
-            delta = int(goal_memory * 0.10)
-            self.log.debug(delta)
-            self.assertAlmostEqual(goal_memory, real_memory, delta=delta,
-                                   msg="Fail to resize the VM: memory is wrong. Goal: %sM Real: %sM" %
-                                       (goal_memory*1024, real_memory))
-            real_disk_size = int(self.vm_test01.get_output("fdisk -l|grep sdb:|awk '\"'{print $5}'\"'"))/1024/1024/1024
-            self.assertEqual(goal_disk_size, real_disk_size,
-                             "Fail to resize the VM: disk size is wrong. Goal: %sG Real: %sG" %
-                             (goal_disk_size, real_disk_size))
-            self.log.debug("Resize the VM successfully")
+        self.log.info("Resize the VM")
+        new_size = "A3"
+        new_sizename = self.params.get("name", "*/vm_sizes/%s/*" % "A3")
+        goal_cpu = str(self.params.get("cpu", "*/vm_sizes/%s/*" % new_size))
+        goal_memory = int(self.params.get("memory", "*/vm_sizes/%s/*" % new_size)) * 1024
+        goal_disk_size = self.params.get("disk_size", "*/%s/*" % new_size)
+        self.assertEqual(self.vm_test01.vm_resize(new_sizename), 0,
+                         "Fail to resize the VM: azure cli fail")
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "Fail to resize the VM: cannot start")
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Fail to resize the VM: cannot login")
+        real_cpu = self.vm_test01.get_output("cat /proc/cpuinfo| grep processor| wc -l")
+        self.assertEqual(goal_cpu, real_cpu,
+                         "Fail to resize the VM: cpu number is wrong. Goal: %s Real: %s" % (goal_cpu, real_cpu))
+        real_memory = int(self.vm_test01.get_output("free -m | grep Mem | awk '\"'{print $2}'\"'"))
+        delta = int(goal_memory * 0.10)
+        self.log.debug(delta)
+        self.assertAlmostEqual(goal_memory, real_memory, delta=delta,
+                               msg="Fail to resize the VM: memory is wrong. Goal: %sM Real: %sM" %
+                                   (goal_memory*1024, real_memory))
+        real_disk_size = int(self.vm_test01.get_output("fdisk -l|grep sdb:|awk '\"'{print $5}'\"'"))/1024/1024/1024
+        self.assertEqual(goal_disk_size, real_disk_size,
+                         "Fail to resize the VM: disk size is wrong. Goal: %sG Real: %sG" %
+                         (goal_disk_size, real_disk_size))
+        self.log.debug("Resize the VM successfully")
+
+    def test_check_python_version_requirement(self):
+        """
+        Check python version requirement
+        """
+        self.log.info("Check python version requirement")
+        # Reset remote access
+        self.assertEqual(self.vm_test01.reset_remote_access(version="1.4"), 0,
+                         "Fail to reset remote access: azure cli fail")
+        self.assertTrue(self.vm_test01.verify_alive(timeout=50),
+                        "Fail to reset remote access: cannot login to the vm")
+        # Check python version requirement
+        output = self.vm_test01.get_output("grep python /var/lib/waagent/"
+                                           "Microsoft.OSTCExtensions.VMAccessForLinux-*/vmaccess.py")
+        for version in ["2.7", "2.8", "2.9", "3"]:
+            self.assertNotIn(version, output,
+                             "The python version requirement is higher than 2.6")
 
     def tearDown(self):
         self.log.debug("tearDown")
-#        self.vm_test01.delete()
-#        self.vm_test01.wait_for_delete()
-        if self.vm_test01.verify_alive(timeout=10):
-            if "reset_remote_access" in self.name.name or \
-               "reset_pw_diff_auth" in self.name.name or \
-               "add_new_user" in self.name.name or \
-               "resize_vm" in self.name.name or \
-               "reset_access_successively" in self.name.name:
-                self.vm_test01.delete()
-                self.vm_test01.wait_for_delete()
-            else:
-                self.vm_test01.get_output("rm -f /home/%s/.ssh/authorized_keys" % self.vm_params["username"])
-                ### Workaround of extension sequence number issue
-#                mrseq_path = self.vm_test01.get_output("ls /var/lib/waagent/*/mrseq")
-    #            self.vm_test01.get_output("echo '0' > %s" % mrseq_path)
-#                self.vm_test01.get_output("rm -f %s" % mrseq_path)
-                ### Recover password
-                self.vm_test01.get_output("echo %s | passwd --stdin %s" % (self.vm_params["password"],
-                                                                           self.vm_params["username"]))
-        else:
+        if "reset_remote_access" in self.name.name or \
+           "reset_pw_diff_auth" in self.name.name or \
+           "add_new_user" in self.name.name or \
+           "resize_vm" in self.name.name or \
+           "reset_access_successively" in self.name.name or \
+           "test_reset_existing_sshkey" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
+        else:
+            if self.vm_test01.verify_alive(timeout=10):
+                # Recover password and remove authorized_keys
+                self.vm_test01.get_output("rm -f /home/%s/.ssh/authorized_keys" % self.vm_params["username"])
+                self.vm_test01.get_output("echo %s | passwd --stdin %s" % (self.vm_params["password"],
+                                                                           self.vm_params["username"]))
+            else:
+                self.vm_test01.delete()
+                self.vm_test01.wait_for_delete()
         # Clean ssh sessions
         utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 
