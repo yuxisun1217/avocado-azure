@@ -388,7 +388,7 @@ EOF
         else:
             return True
 
-    def wait_for_login(self, username=None, password=None, timeout=10, authentication="password"):
+    def wait_for_login(self, username=None, password=None, timeout=10, authentication="password", options=''):
         """
 
         :param username: VM username
@@ -412,7 +412,8 @@ EOF
             session = remote.wait_for_login(client="ssh", host=host, port=port,
                                             username=username, password=password,
                                             prompt=prompt, timeout=timeout,
-                                            authentication=authentication)
+                                            authentication=authentication,
+                                            options=options)
         except Exception, e:
             logging.debug("Timeout. Cannot login VM. Exception: %s", str(e))
             raise
@@ -485,13 +486,14 @@ EOF
         utils_misc.close_log_file(log_filename)
 
     def verify_alive(self, username=None, password=None, timeout=LOGIN_WAIT_TIMEOUT,
-                     authentication="password"):
+                     authentication="password", options=''):
         """
 
         :param username: VM username
         :param password: VM password
         :param timeout: Retry timeout
-        :param authentication: Authentication PreferredAuthentications. (password|ssh_key)
+        :param authentication: Authentication PreferredAuthentications. (password|publickey)
+        :param options: Other options of ssh
         :return: False if timeout.
         """
         if username is None:
@@ -499,7 +501,7 @@ EOF
         if password is None:
             password = self.password
         try:
-            session = self.wait_for_login(username, password, timeout, authentication)
+            session = self.wait_for_login(username, password, timeout, authentication, options)
         except Exception, e:
             logging.error("VM is not alive. Exception: %s", str(e))
             return False

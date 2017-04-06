@@ -174,7 +174,11 @@ class Setup(object):
             # If don't need to verify alive, return True.
             logging.info("Skip verifying alive.")
             return True
-        if not self.vm_test01.verify_alive():
+        if "ssh_key" in args:
+            authentication = "publickey"
+        else:
+            authentication = "password"
+        if not self.vm_test01.verify_alive(authentication=authentication):
             logging.error("VM %s is not available. Exit." % self.vm_params["VMName"])
             return False
         # Increase sudo password timeout
