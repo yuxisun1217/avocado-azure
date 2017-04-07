@@ -559,7 +559,9 @@ EOF
     def postfix(self):
         return utils_misc.postfix()
 
-    def _check_log(self, logfile, ignore_list):
+    def _check_log(self, logfile, ignore_list, additional_ignore_list=None):
+        if additional_ignore_list:
+            ignore_list += additional_ignore_list
         if ignore_list:
             cmd = "cat {0} | grep -iE 'error|fail' | grep -vE '{1}'".format(logfile, '|'.join(ignore_list))
         else:
@@ -567,16 +569,10 @@ EOF
         return self.get_output(cmd)
 
     def check_waagent_log(self, additional_ignore_list=None):
-        ignore_list = WAAGENT_IGNORELIST
-        if additional_ignore_list:
-            ignore_list += additional_ignore_list
-        return self._check_log("/var/log/waagent.log", ignore_list)
+        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST, additional_ignore_list)
 
     def check_messages_log(self, additional_ignore_list=None):
-        ignore_list = MESSAGES_IGNORELIST
-        if additional_ignore_list:
-            ignore_list += additional_ignore_list
-        return self._check_log("/var/log/messages", ignore_list)
+        return self._check_log("/var/log/messages", MESSAGES_IGNORELIST, additional_ignore_list)
 
     def get_pid(self, process_key):
         """

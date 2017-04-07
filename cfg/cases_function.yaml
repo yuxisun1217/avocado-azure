@@ -82,6 +82,9 @@ azure_mode: !mux
             NetworkTest.test_change_hostname_several_times
             SettingsTest.test_reset_existing_sshkey
             SettingsTest.test_check_python_version_requirement
+            WALAConfTest.test_ssh_host_key_pair_type
+            WALAConfTest.test_attach_disk_check_device_timeout
+            WALAConfTest.test_autorecover_device_timeout
     arm:
         cases:
             ImgPrepTest.test_00_preparation

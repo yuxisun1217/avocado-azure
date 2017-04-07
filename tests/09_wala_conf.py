@@ -66,6 +66,10 @@ class WALAConfTest(Test):
         self.vm_params = prep.vm_params
         self.assertTrue(prep.vm_create(args=args, options=options), "Setup Failed.")
         self.conf_content = self.vm_test01.get_output("cat %s" % self.conf_file)
+        if "attach_disk" in self.name.name:
+            prep.get_blob_params()
+            self.blob_list = prep.blob_list
+            self.blob_params = prep.blob_params
 
     def test_delete_root_passwd(self):
         """
@@ -807,8 +811,61 @@ class WALAConfTest(Test):
         """
         Ssh host key pair type
         """
-        self.fail("No such automation test case")
-        #
+        self.log.info("ssh host key pair type")
+
+        def _key_pair_check(key_type):
+            self.log.info("Key type: {0}".format(key_type))
+            # Provisioning.SshHostKeyPairType
+            self.assertTrue(self.vm_test01.verify_value("Provisioning\.RegenerateSshHostKeyPair", "y"))
+            self.assertTrue(self.vm_test01.modify_value("Provisioning\.SshHostKeyPairType", key_type))
+            self.vm_test01.waagent_deprovision(user=False)
+            # Generate all key files by sshd
+            self.vm_test01.get_output("service sshd restart")
+            old_md5 = self.vm_test01.get_output("md5sum /etc/ssh/ssh_host_{0}_key".format(key_type))
+            # Capture VM and create new
+            vm_image_name = self.vm_test01.name + "-deprovision" + self.vm_test01.postfix()
+            self.assertEqual(self.vm_test01.shutdown(), 0,
+                             "Fail to shutdown VM")
+            self.assertTrue(self.vm_test01.wait_for_deallocated(),
+                            "Fail to deallocate VM")
+            cmd_params = dict()
+            cmd_params["os_state"] = "Generalized"
+            self.assertEqual(self.vm_test01.capture(vm_image_name, cmd_params), 0,
+                             "Fails to capture the vm: azure cli fail")
+            self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
+            prep = Setup(self.params)
+            prep.get_vm_params(Image=vm_image_name)
+            self.assertTrue(prep.vm_create(), "Fail to create VM")
+            self.vm_test01 = prep.vm_test01
+            # Check if regenerate the ssh host key pair
+            new_md5 = self.vm_test01.get_output("md5sum /etc/ssh/ssh_host_{0}_key".format(key_type))
+            self.assertNotEqual(old_md5, new_md5,
+                                "The {0} key pair is not regenerated.".format(key_type))
+        _key_pair_check("rsa")
+        _key_pair_check("dsa")
+        # Check /var/log/messages
+        error_log = self.vm_test01.check_messages_log()
+        self.assertEqual(error_log, "",
+                         "There's error in the /var/log/messages: \n%s" % error_log)
+
+    def test_attach_disk_check_device_timeout(self):
+        """
+        Attach new disk and check root device timeout
+        """
+        self.log.info("Attach new disk and check root device timeout")
+        # Ensure the default root device timeout is 300
+        self.assertTrue(self.vm_test01.modify_value("OS.RootDeviceScsiTimeout", "300"),
+                        "Fail to set OS.RootDeviceScsiTimeout=300")
+        # Attach a new data disk
+        self.assertEqual(self.vm_test01.disk_attach_new(self.blob_list[1].params.get("size"),
+                                                        self.blob_list[1].params), 0,
+                         "Fail to attach new disk before re-attach: azure cli fail")
+        time.sleep(5)
+        self.vm_test01.wait_for_running()
+        self.assertTrue(self.vm_test01.verify_alive(), "Cannot login")
+        # Check the new device timeout
+        self.assertEqual("300", self.vm_test01.get_output("cat /sys/block/sdc/device/timeout"),
+                         "Fail to set the new data disk timeout to 300")
 
     def tearDown(self):
         self.log.debug("tearDown")
@@ -824,7 +881,9 @@ class WALAConfTest(Test):
                            "disable_provisioning",
                            "resource_disk_file_type",
                            "reset_system_account",
-                           "resource_disk_gpt_partition"]
+                           "resource_disk_gpt_partition",
+                           "test_ssh_host_key_pair_type",
+                           "test_attach_disk_check_device_timeout"]
             reboot_list = ["resource_disk_mount_point",
                            "resource_disk_swap_check",
                            "resource_disk_large_swap_file"]
