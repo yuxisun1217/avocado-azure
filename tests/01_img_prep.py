@@ -241,8 +241,8 @@ class ImgPrepTest(Test):
                                                 storage_account=blob_params["storage_account"],
                                                 params=blob_params,
                                                 connection_string=dst_connection_string)
-            if not dest_blob_test01.check_exist():
-                self.assertTrue(self.blob_test01.copy(dst_connection_string),
+#            if not dest_blob_test01.check_exist():
+            self.assertTrue(self.blob_test01.copy(dst_connection_string),
                                 "Fail to copy the VHD file %s to storage account %s container %s" %
                                 (self.blob_params["name"], sto_dst_params["name"], container_dst_params["name"]))
             # 3. Create images in each storage account base on the vhd (only for asm mode)
