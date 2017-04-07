@@ -14,7 +14,6 @@ from azuretest import azure_arm_vm
 from azuretest import azure_image
 from azuretest import utils_misc
 from azuretest.setup import Setup
-from azuretest.flexible_version import FlexibleVersion
 
 
 class WALAConfTest(Test):
@@ -809,6 +808,7 @@ class WALAConfTest(Test):
         Ssh host key pair type
         """
         self.fail("No such automation test case")
+        #
 
     def tearDown(self):
         self.log.debug("tearDown")
