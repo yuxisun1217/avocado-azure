@@ -261,7 +261,9 @@ class GeneralTest(Test):
         # Rotate log
         self.vm_test01.get_output("logrotate -vf /etc/logrotate.conf")
         # Check rotated log
-        rotate_log = "/var/log/waagent.log%s.gz" % self.vm_test01.postfix()[:9]
+        postfix = self.vm_test01.get_output("date '+%Y%m%d'")
+        rotate_log = "/var/log/waagent.log-%s.gz" % postfix
+#        rotate_log = "/var/log/waagent.log%s.gz" % self.vm_test01.postfix()[:9]
         self.assertEqual(rotate_log, self.vm_test01.get_output("ls %s" % rotate_log),
                          "Fail to rotate waagent log")
         self.assertEqual("", self.vm_test01.get_output("grep -R %s /var/log/waagent.log" % test_str),
