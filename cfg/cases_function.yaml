@@ -85,6 +85,8 @@ azure_mode: !mux
             WALAConfTest.test_ssh_host_key_pair_type
             WALAConfTest.test_attach_disk_check_device_timeout
             WALAConfTest.test_autorecover_device_timeout
+            WALAConfTest.test_check_useless_parameters
+            WALAConfTest.test_resource_disk_noninteger_swapsize
     arm:
         cases:
             ImgPrepTest.test_00_preparation

@@ -347,6 +347,37 @@ class WALAConfTest(Test):
                           "After retry %d times, swap is not enabled in xfs file system." % max_retry)
 #            self.assertNotEqual(10, count, "Swap is not enabled in xfs file system.")
 
+    def _swapsize_check(self, swapsize):
+        # Disable the default swap
+        if float(self.project) < 7.0:
+            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/VolGroup-lv_swap/s/^/#/' /etc/fstab")
+        else:
+            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/rhel-swap/s/^/#/' /etc/fstab")
+        # 1. ResourceDisk.Enable=y
+        #    ResourceDisk.SwapSizeMB=swapsize
+        self.log.debug("ResourceDisk.SwapSizeMB={0}".format(swapsize))
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", swapsize, self.conf_file))
+        self.vm_test01.session_close()
+        self.assertEqual(self.vm_test01.restart(), 0,
+                         "Fail to restart the VM")
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "Cannot start the VM")
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Cannot login the VM")
+        time.sleep(30)
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        max_retry = 10
+        for retry in range(1, max_retry+1):
+            real_swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+            if real_swapsize == str(int(swapsize)-1):
+                break
+            else:
+                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
+                time.sleep(10)
+        else:
+            self.fail("After retry {0} times, ResourceDisk.SwapSizeMB={1} doesn't work.".format(max_retry, swapsize))
+
     def test_resource_disk_swap_check(self):
         """
         Check ResourceDisk.SwapSizeMB=1024 or ResourceDisk.Enable=n
@@ -369,30 +400,31 @@ class WALAConfTest(Test):
                          "Fail to disable ResourceDisk swap.")
         # 2. ResourceDisk.Enable=y
         #    ResourceDisk.SwapSizeMB=2048
-        self.log.info("ResourceDisk.SwapSizeMB=2048")
-        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "2048", self.conf_file))
-        self.vm_test01.session_close()
-        self.assertEqual(self.vm_test01.restart(), 0,
-                         "Fail to restart the VM")
-        self.assertTrue(self.vm_test01.wait_for_running(),
-                        "Cannot start the VM")
-        self.assertTrue(self.vm_test01.verify_alive(),
-                        "Cannot login the VM")
-        time.sleep(30)
-        # Retry 10 times (300s in total) to wait for the swap file created.
-        max_retry = 10
-        for retry in range(1, max_retry+1):
-            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
-            if swapsize == "2047":
-                break
-            else:
-                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
-                time.sleep(30)
-        else:
-            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=2048 doesn't work." % max_retry)
-#        self.assertEqual(self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False), "2047",
-#                         "ResourceDisk.SwapSizeMB=2048 doesn't work.")
+        self._swapsize_check(swapsize="2048")
+#        self.log.info("ResourceDisk.SwapSizeMB=2048")
+#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
+#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "2048", self.conf_file))
+#        self.vm_test01.session_close()
+#        self.assertEqual(self.vm_test01.restart(), 0,
+#                         "Fail to restart the VM")
+#        self.assertTrue(self.vm_test01.wait_for_running(),
+#                        "Cannot start the VM")
+#        self.assertTrue(self.vm_test01.verify_alive(),
+#                        "Cannot login the VM")
+#        time.sleep(30)
+#        # Retry 10 times (300s in total) to wait for the swap file created.
+#        max_retry = 10
+#        for retry in range(1, max_retry+1):
+#            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+#            if swapsize == "2047":
+#                break
+#            else:
+#                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
+#                time.sleep(30)
+#        else:
+#            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=2048 doesn't work." % max_retry)
+##        self.assertEqual(self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False), "2047",
+##                         "ResourceDisk.SwapSizeMB=2048 doesn't work.")
 
     def test_resource_disk_large_swap_file(self):
         """
@@ -400,34 +432,42 @@ class WALAConfTest(Test):
         """
         self.log.info("WALA conf: Resource disk - large swap file")
         # Disable the default swap
-        if float(self.project) < 7.0:
-            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/VolGroup-lv_swap/s/^/#/' /etc/fstab")
-        else:
-            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/rhel-swap/s/^/#/' /etc/fstab")
-        # 1. ResourceDisk.Enable=y
-        #    ResourceDisk.SwapSizeMB=70000
-        self.log.info("ResourceDisk.SwapSizeMB=70000")
-        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "70000", self.conf_file))
-        self.vm_test01.session_close()
-        self.assertEqual(self.vm_test01.restart(), 0,
-                         "Fail to restart the VM")
-        self.assertTrue(self.vm_test01.wait_for_running(),
-                        "Cannot start the VM")
-        self.assertTrue(self.vm_test01.verify_alive(),
-                        "Cannot login the VM")
-        time.sleep(30)
-        # Retry 10 times (300s in total) to wait for the swap file created.
-        max_retry = 10
-        for retry in range(1, max_retry+1):
-            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
-            if swapsize == "69999":
-                break
-            else:
-                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
-                time.sleep(10)
-        else:
-            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=70000 doesn't work." % max_retry)
+        self._swapsize_check(swapsize="70000")
+#        if float(self.project) < 7.0:
+#            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/VolGroup-lv_swap/s/^/#/' /etc/fstab")
+#        else:
+#            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/rhel-swap/s/^/#/' /etc/fstab")
+#        # 1. ResourceDisk.Enable=y
+#        #    ResourceDisk.SwapSizeMB=70000
+#        self.log.info("ResourceDisk.SwapSizeMB=70000")
+#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
+#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "70000", self.conf_file))
+#        self.vm_test01.session_close()
+#        self.assertEqual(self.vm_test01.restart(), 0,
+#                         "Fail to restart the VM")
+#        self.assertTrue(self.vm_test01.wait_for_running(),
+#                        "Cannot start the VM")
+#        self.assertTrue(self.vm_test01.verify_alive(),
+#                        "Cannot login the VM")
+#        time.sleep(30)
+#        # Retry 10 times (300s in total) to wait for the swap file created.
+#        max_retry = 10
+#        for retry in range(1, max_retry+1):
+#            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
+#            if swapsize == "69999":
+#                break
+#            else:
+#                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
+#                time.sleep(10)
+#        else:
+#            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=70000 doesn't work." % max_retry)
+
+    def test_resource_disk_noninteger_swapsize(self):
+        """
+        Resource disk - swap size - non-integer multiple of 64M'
+        """
+        self.log.info("Resource disk - swap size - non-integer multiple of 64M'")
+        self._swapsize_check(swapsize="1025")
 
     def test_monitor_hostname(self):
         """
@@ -866,6 +906,53 @@ class WALAConfTest(Test):
         # Check the new device timeout
         self.assertEqual("300", self.vm_test01.get_output("cat /sys/block/sdc/device/timeout"),
                          "Fail to set the new data disk timeout to 300")
+
+    def test_autorecover_device_timeout(self):
+        """
+        Auto-recover root device timeout
+        """
+        self.log.info("Auto-recover root device timeout")
+        # Ensure the timeout is 300
+        self.assertEqual(self.vm_test01.get_output("cat /sys/block/sda/device/timeout"), "300",
+                         "Original timeout is not 300")
+        self.assertEqual(self.vm_test01.get_output("cat /sys/block/sdb/device/timeout"), "300",
+                         "Original timeout is not 300")
+        # Modify device timeout to 100
+        self.vm_test01.get_output("echo 100 | tee /sys/block/sd*/device/timeout")
+        self.assertEqual(self.vm_test01.get_output("cat /sys/block/sda/device/timeout"), "100",
+                         "Device timeout is not changed to 100")
+        # Wait for 5s, check device timeout
+        time.sleep(5)
+        self.assertEqual(self.vm_test01.get_output("cat /sys/block/sda/device/timeout"), "300",
+                         "Device timeout is not recovered to 300")
+        self.assertEqual(self.vm_test01.get_output("cat /sys/block/sdb/device/timeout"), "300",
+                         "Device timeout is not recovered to 300")
+
+    def test_check_useless_parameters(self):
+        """
+        Check useless parameters
+        """
+        self.log.info("Check useless parameters")
+        useless_param_list = ["Role.StateConsumer",
+                              "Role.ConfigurationConsumer",
+                              "Role.TopologyConsumer"]
+        output = self.vm_test01.get_output("grep -E \\\"{0}\\\" /etc/waagent.conf".format('|'.join(useless_param_list)))
+        self.assertEqual(output, "",
+                         "There're useless parameters: {0}".format(output))
+
+    def test_execute_custom_data(self):
+        """
+        execute custom data
+        """
+        self.log.info("execute custom data")
+        # Prepare custom script
+        script = """\
+#!/bin/bash
+echo 'teststring' >> /root/test.log
+"""
+        with open("/tmp/customdata.sh", 'w') as f:
+            f.write(script)
+
 
     def tearDown(self):
         self.log.debug("tearDown")
