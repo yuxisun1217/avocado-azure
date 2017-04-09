@@ -11,7 +11,6 @@ azure_mode: !mux
             LifeCycleTest.test_shutdown_vm
             LifeCycleTest.test_start_vm
             LifeCycleTest.test_delete_vm
-            LifeCycleTest.test_capture_vm
             LifeCycleTest.test_create_without_deprovision
             SettingsTest.test_reset_existing_password
             SettingsTest.test_add_new_user
@@ -19,7 +18,6 @@ azure_mode: !mux
             SettingsTest.test_reset_access_successively
             SettingsTest.test_reset_pw_after_capture
             SettingsTest.test_reset_pw_diff_auth
-            FuncTest.test_setup_install
             FuncTest.test_setup_register_service
             FuncTest.test_waagent_register_service
             FuncTest.test_waagent_run_exthandlers
@@ -128,3 +126,4 @@ azure_mode: !mux
             SubscriptionTest.test_rhui
             NetworkTest.test_connectivity_check
             GeneralTest.test_check_cpu_mem_disk
+            NetworkTest.test_check_dns
