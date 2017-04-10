@@ -78,7 +78,7 @@ azure_mode: !mux
             name: nay-67-ond-squid
             username: root
             password: %(vm_password)s
-            Location: East US
+            location: East US
             proxy_ip: 172.20.0.254
             proxy_port: 3128
     arm:
@@ -93,7 +93,7 @@ azure_mode: !mux
             username: root
             password: %(vm_password)s
             resource_group: walaautoarmwestus
-            Location: West US
+            location: West US
             proxy_ip: 172.20.0.254
             proxy_port: 3128
 DataDisk:
