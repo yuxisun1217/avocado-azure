@@ -285,7 +285,7 @@ class GeneralTest(Test):
                         "G1", "GS5", "F1", "F16s"]
         for vm_size in vm_size_list:
             # Create VM
-            vm = Setup()
+            vm = Setup(self.params)
             vm.get_vm_params(vm_size=vm_size)
             vm.vm_create()
             # Check Resources
@@ -293,13 +293,13 @@ class GeneralTest(Test):
             memory_std = vm.vm_params['memory']*1024*1024
             disksize_std = vm.vm_params['disk_size']*1024*1024*1024
             # CPU
-            cpu = int(self.vm_test01.get_output("grep -r processor /proc/cpuinfo|wc -l"))
+            cpu = int(vm.vm_test01.get_output("grep -r processor /proc/cpuinfo|wc -l"))
             self.log.debug("%s CPU number: Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std))
             if cpu != cpu_std:
                 error_log += "%s: CPU number is wrong. Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std)
                 result_flag = False
             # memory
-            memory = int(self.vm_test01.get_output("grep -R MemTotal /proc/meminfo |awk '{print $2}'", sudo=False))
+            memory = int(vm.vm_test01.get_output("grep -R MemTotal /proc/meminfo |awk '{print $2}'", sudo=False))
             delta = float(memory_std - memory)/memory_std
             self.log.debug("%s Memory: Real: %d, Standard: %d, Delta: %0.1f%%" % (vm_size, memory, memory_std, delta*100))
             if delta > 0.1:
@@ -307,7 +307,7 @@ class GeneralTest(Test):
                              (vm_size, memory, memory_std, delta*100)
                 result_flag = False
             # disk_size
-            disksize = int(self.vm_test01.get_output("sudo fdisk -l /dev/sdb|grep -m1 /dev/sdb|awk '{print $5}'", sudo=False))
+            disksize = int(vm.vm_test01.get_output("sudo fdisk -l /dev/sdb|grep -m1 /dev/sdb|awk '{print $5}'", sudo=False))
             self.log.debug("%s Disk Size: Real: %d. Standard: %d\n" % (vm_size, disksize, disksize_std))
             if disksize > disksize_std:
                 warn_log += "%s: Real disk size is larger than Standard. Real: %d. Standard: %d\n" % \
@@ -368,8 +368,8 @@ class GeneralTest(Test):
            "password_sshkey" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
-        if "start_waagent_repeatedly" in self.name.name or \
-           "check_waagent_service" in self.name.name:
+        elif "start_waagent_repeatedly" in self.name.name or \
+             "check_waagent_service" in self.name.name:
             try:
                 self.vm_test01.waagent_service_restart()
             except Exception as e:
