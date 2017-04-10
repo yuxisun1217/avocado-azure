@@ -96,11 +96,13 @@ class LifeCycleTest(Test):
         reboot inside guest
         """
         self.log.info("Reboot a VM inside guest")
+        # sleep 60s to prevent the 2 boots in the same minute
+        time.sleep(60)
         before = self.vm_test01.get_output("who -b", sudo=False)
         self.log.debug("Reboot the vm %s", self.vm_params["VMName"])
         self.vm_test01.get_output("reboot", timeout=1, max_retry=0, ignore_status=True)
         # wait for reboot finished
-        time.sleep(20)
+        time.sleep(30)
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Fail to start the vm after restart: verify_alive")
         after = self.vm_test01.get_output("who -b", sudo=False)
