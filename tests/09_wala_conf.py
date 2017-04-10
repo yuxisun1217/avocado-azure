@@ -26,23 +26,6 @@ class WALAConfTest(Test):
             self.skip()
         if "test_http_proxy" in self.name.name:
             self.proxy_params = prep.get_proxy_params()
-            # Check proxy server
-            prep_proxy = Setup(self.params)
-            prep_proxy.get_vm_params(**self.proxy_params)
-#            prep_proxy.get_vm_params()
-            self.vm_proxy = prep_proxy.vm_test01
-            self.vm_proxy.vm_update()
-            self.assertTrue(self.vm_proxy.exists(),
-                            "There's no proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
-            if not self.vm_proxy.is_running():
-                self.assertEqual(self.vm_proxy.start(), 0,
-                                 "Cannot start proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
-                self.assertTrue(self.vm_proxy.wait_for_running(), "Proxy VM cannot be running")
-            self.assertTrue(self.vm_proxy.verify_alive(), "Cannot access to the proxy VM")
-            self.vm_proxy.get_output("service squid start")
-            self.vm_proxy.get_output("service iptables stop")
-            self.assertIn("squid", self.vm_proxy.get_output("netstat -antp"),
-                          "Squid service is not started")
             # Prepare proxy client VM
             if prep.azure_mode == "asm":
                 prep.get_vm_params(vmname_tag="proxy",
@@ -70,6 +53,25 @@ class WALAConfTest(Test):
             prep.get_blob_params()
             self.blob_list = prep.blob_list
             self.blob_params = prep.blob_params
+        elif "test_http_proxy" in self.name.name:
+            # Check proxy server
+            prep_proxy = Setup(self.params)
+            prep_proxy.get_vm_params(**self.proxy_params)
+            self.vm_proxy = prep_proxy.vm_test01
+            self.vm_proxy.vm_update()
+            self.assertTrue(self.vm_proxy.exists(),
+                            "There's no proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
+            if not self.vm_proxy.is_running():
+                self.assertEqual(self.vm_proxy.start(), 0,
+                                 "Cannot start proxy VM %s. Cannot run this case." % self.proxy_params["VMName"])
+                self.assertTrue(self.vm_proxy.wait_for_running(), "Proxy VM cannot be running")
+            self.assertTrue(self.vm_proxy.verify_alive(), "Cannot access to the proxy VM")
+            self.vm_proxy.get_output("service squid start")
+            self.vm_proxy.get_output("service iptables stop")
+            self.assertIn("squid", self.vm_proxy.get_output("netstat -antp"),
+                          "Squid service is not started")
+        else:
+            return
 
     def test_delete_root_passwd(self):
         """
