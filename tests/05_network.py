@@ -112,7 +112,7 @@ lo eth0\
             self.vm_test01.get_output("hostname {0}".format(new_hostname))
         else:
             self.vm_test01.get_output("hostnamectl set-hostname {0}".format(new_hostname))
-        time.sleep(10)
+        time.sleep(15)
         self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(new_hostname)),
                          "New hostname {0} is not in DNS list".format(new_hostname))
         self.assertIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(old_hostname)),
@@ -131,7 +131,7 @@ lo eth0\
         old_hostname = self.vm_test01.name
         new_hostname = self.vm_test01.name + "new"
         self.vm_test01.get_output("nmcli gen hostname {0}".format(new_hostname))
-        time.sleep(10)
+        time.sleep(15)
         # Check DNS
         self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(new_hostname)),
                          "New hostname {0} is not in DNS list".format(new_hostname))
@@ -210,7 +210,7 @@ lo eth0\
                 self.vm_test01.get_output("hostname {0}".format(new_hostname))
             else:
                 self.vm_test01.get_output("hostnamectl set-hostname {0}".format(new_hostname))
-            time.sleep(10)
+            time.sleep(15)
             # Check DNS
             self.assertNotIn("NXDOMAIN", self.vm_test01.get_output("nslookup {0}".format(new_hostname)),
                              "New hostname {0} is not in DNS list".format(new_hostname))
