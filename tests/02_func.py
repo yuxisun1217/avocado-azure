@@ -307,6 +307,8 @@ class FuncTest(Test):
         self.vm_test01.session_close()
         self.vm_test01.delete()
         self.assertTrue(self.vm_test01.wait_for_delete())
+        # Wait for 10s to prevent conflict
+        time.sleep(10)
         self.vm_test01.vm_create(self.vm_params)
         self.assertTrue(self.vm_test01.wait_for_running())
         self.assertTrue(self.vm_test01.verify_alive())
