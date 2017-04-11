@@ -150,6 +150,14 @@ azure_mode: !mux
                 disk_size: 2000
     arm:
         vm_sizes:
+            A0:
+                name: Standard_A0
+                resource_group: walaautoarmwestus
+                storage_account: walaautoarmwestus
+                location: "West US"
+                cpu: 1
+                memory: 0.75
+                disk_size: 20
             A1:
                 name: Standard_A1
                 resource_group: walaautoarmwestus
