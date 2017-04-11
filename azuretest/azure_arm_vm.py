@@ -478,7 +478,8 @@ class VM(azure_vm.BaseVM):
 
         :return:
         """
-        return self.dns_name
+        return utils_misc.host_command("host %s|awk \'{print $NF}\'" % self.dns_name).strip('\n')
+#        return self.dns_name
 
     def get_ssh_port(self):
         """
