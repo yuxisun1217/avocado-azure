@@ -56,11 +56,11 @@ class OndPrep(object):
         self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
         self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
         self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
-        self.vm_instance = azure_arm_vm.VMARM(self.vm_params["VMName"],
-                                            self.vm_params["VMSize"],
-                                            self.vm_params["username"],
-                                            self.vm_params["password"],
-                                            self.vm_params)
+        self.vm_instance = azure_arm_vm.VM(self.vm_params["VMName"],
+                                           self.vm_params["VMSize"],
+                                           self.vm_params["username"],
+                                           self.vm_params["password"],
+                                           self.vm_params)
         logging.info("Finish making instance")
         logging.debug(self.vm_instance.params)
 
