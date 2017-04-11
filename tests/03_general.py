@@ -280,7 +280,7 @@ class GeneralTest(Test):
         result_flag = True
         error_log = ""
         warn_log = ""
-        vm_size_list = ["A1", "A11", "A1_v2", "A8m_v2",
+        vm_size_list = ["A0", "A1", "A11", "A1_v2", "A8m_v2",
                         "D1", "D15_v2", "DS1", "DS15_v2",
                         "G1", "GS5", "F1", "F16s"]
         for vm_size in vm_size_list:
@@ -298,11 +298,17 @@ class GeneralTest(Test):
             if cpu != cpu_std:
                 error_log += "%s: CPU number is wrong. Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std)
                 result_flag = False
-            # memory
+            # memory = /proc/meminfo/MemTotal + kdump_size
             memory = int(vm.vm_test01.get_output("grep -R MemTotal /proc/meminfo |awk '{print $2}'", sudo=False))
+            kdump_size = int(vm.vm_test01.get_output("cat /sys/kernel/kexec_crash_size"))/1024
+            memory += kdump_size
             delta = float(memory_std - memory)/memory_std
             self.log.debug("%s Memory: Real: %d, Standard: %d, Delta: %0.1f%%" % (vm_size, memory, memory_std, delta*100))
-            if delta > 0.1:
+            if vm_size == "A0":
+                delta_std = 0.15
+            else:
+                delta_std = 0.1
+            if delta > delta_std:
                 error_log += "%s: Memory is wrong. Real: %d. Standard: %d. Delta: %0.1f%%\n" % \
                              (vm_size, memory, memory_std, delta*100)
                 result_flag = False
@@ -317,7 +323,9 @@ class GeneralTest(Test):
                 result_flag = False
             vm.vm_test01.delete()
         # Record result
-        self.log.warn(warn_log)
+        if warn_log:
+            self.log.warn("Warning message".center(10, '-'))
+            self.log.warn(warn_log)
         self.assertTrue(result_flag, error_log)
 
     def test_verify_autoupdate_disabled(self):
