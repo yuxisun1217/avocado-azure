@@ -36,8 +36,10 @@ class Setup(object):
         self.vm_params["cpu"] = self.params.get('cpu', '*/vm_sizes/%s/*' % self.vm_size)
         self.vm_params["memory"] = self.params.get('memory', '*/vm_sizes/%s/*' % self.vm_size)
         self.vm_params["disk_size"] = self.params.get('disk_size', '*/vm_sizes/%s/*' % self.vm_size)
-        vmname_tag = kargs.get("vmname_tag", "")
-        self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*') + self.vm_size.lower() + vmname_tag
+        vmname_tag = kargs.get("vmname_tag", "").replace("_", "")
+        self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*') + \
+                                   self.vm_size.lower().replace("_", "") + \
+                                   vmname_tag
         self.vm_params["username"] = self.params.get('username', '*/VMUser/*')
         self.vm_params["password"] = self.params.get('password', '*/VMUser/*')
         self.vm_params["ssh_key"] = self.params.get('ssh_key', '*/VMUser/*')
@@ -169,7 +171,9 @@ class Setup(object):
         # If need running VM, start it
         if not self.vm_test01.is_running():
             self.vm_test01.start()
-            self.vm_test01.wait_for_running()
+            if not self.vm_test01.wait_for_running():
+                logging.error("Fail to create VM.")
+                return False
         if "not_alive" in args:
             # If don't need to verify alive, return True.
             logging.info("Skip verifying alive.")
