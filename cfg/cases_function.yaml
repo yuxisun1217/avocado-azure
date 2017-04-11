@@ -102,6 +102,7 @@ azure_mode: !mux
             StorageTest.test_change_os_disk_size
             SettingsTest.test_resize_vm
             SettingsTest.test_reset_existing_password
+            SettingsTest.test_reset_existing_sshkey
             SettingsTest.test_add_new_user
             SettingsTest.test_reset_remote_access
             SettingsTest.test_reset_access_successively

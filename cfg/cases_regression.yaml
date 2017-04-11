@@ -9,18 +9,13 @@ azure_mode: !mux
             LifeCycleTest.test_shutdown_vm
             LifeCycleTest.test_start_vm
             LifeCycleTest.test_delete_vm
-            LifeCycleTest.test_capture_vm
             LifeCycleTest.test_create_without_deprovision
-            StorageTest.test_disk_attach_new
-            StorageTest.test_disk_detach
-            StorageTest.test_disk_attach_exist
             SettingsTest.test_reset_existing_password
             SettingsTest.test_add_new_user
             SettingsTest.test_reset_remote_access
             SettingsTest.test_reset_access_successively
             SettingsTest.test_reset_pw_after_capture
             SettingsTest.test_reset_pw_diff_auth
-            FuncTest.test_setup_install
             FuncTest.test_setup_register_service
             FuncTest.test_waagent_register_service
             FuncTest.test_waagent_run_exthandlers
@@ -63,6 +58,29 @@ azure_mode: !mux
             SubscriptionTest.test_rhui
             NetworkTest.test_connectivity_check
             NetworkTest.test_endpoint_check
+            FuncTest.test_run_waagent_command_under_events_folder
+            GeneralTest.test_verify_autoupdate_disabled
+            StorageTest.test_disk_attach_detach_standard
+            StorageTest.test_disk_attach_detach_premium
+            GeneralTest.test_check_sshdconfig_permission
+            GeneralTest.test_check_shadow_permission
+            GeneralTest.test_check_selinux_status
+            LifeCycleTest.test_live_capture_specialized_image
+            LifeCycleTest.test_shutdown_capture_specialized_image
+            LifeCycleTest.test_capture_generalized_image
+            NetworkTest.test_check_dns
+            NetworkTest.test_change_hostname_check_dns
+            NetworkTest.test_nmcli_change_hostname
+            NetworkTest.test_kill_exthandler_change_hostname
+            NetworkTest.test_check_dhclient
+            NetworkTest.test_change_hostname_several_times
+            SettingsTest.test_reset_existing_sshkey
+            SettingsTest.test_check_python_version_requirement
+            WALAConfTest.test_ssh_host_key_pair_type
+            WALAConfTest.test_attach_disk_check_device_timeout
+            WALAConfTest.test_autorecover_device_timeout
+            WALAConfTest.test_check_useless_parameters
+            WALAConfTest.test_resource_disk_noninteger_swapsize
     arm:
         cases:
             ImgPrepTest.test_00_preparation
@@ -73,12 +91,12 @@ azure_mode: !mux
             LifeCycleTest.test_shutdown_vm
             LifeCycleTest.test_start_vm
             LifeCycleTest.test_delete_vm
-            StorageTest.test_disk_attach_new
-            StorageTest.test_disk_detach
-            StorageTest.test_disk_attach_exist
+            StorageTest.test_disk_attach_detach_standard
+            StorageTest.test_disk_attach_detach_premium
             StorageTest.test_change_os_disk_size
             SettingsTest.test_resize_vm
             SettingsTest.test_reset_existing_password
+            SettingsTest.test_reset_existing_sshkey
             SettingsTest.test_add_new_user
             SettingsTest.test_reset_remote_access
             SettingsTest.test_reset_access_successively
@@ -102,3 +120,4 @@ azure_mode: !mux
             SubscriptionTest.test_product_certificate
             SubscriptionTest.test_rhui
             NetworkTest.test_connectivity_check
+            NetworkTest.test_check_dns
