@@ -369,10 +369,15 @@ class WALAConfTest(Test):
                         "Cannot login the VM")
         time.sleep(30)
         # Retry 10 times (300s in total) to wait for the swap file created.
+        # The real swapsize is a little smaller than standard. So the std_swapsize is swapsize-1
+        if int(swapsize) == 0:
+            std_swapsize = swapsize
+        else:
+            std_swapsize = int(swapsize) - 1
         max_retry = 10
         for retry in range(1, max_retry+1):
             real_swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
-            if real_swapsize == str(int(swapsize)-1):
+            if real_swapsize == str(std_swapsize):
                 break
             else:
                 self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
@@ -403,66 +408,13 @@ class WALAConfTest(Test):
         # 2. ResourceDisk.Enable=y
         #    ResourceDisk.SwapSizeMB=2048
         self._swapsize_check(swapsize="2048")
-#        self.log.info("ResourceDisk.SwapSizeMB=2048")
-#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
-#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "2048", self.conf_file))
-#        self.vm_test01.session_close()
-#        self.assertEqual(self.vm_test01.restart(), 0,
-#                         "Fail to restart the VM")
-#        self.assertTrue(self.vm_test01.wait_for_running(),
-#                        "Cannot start the VM")
-#        self.assertTrue(self.vm_test01.verify_alive(),
-#                        "Cannot login the VM")
-#        time.sleep(30)
-#        # Retry 10 times (300s in total) to wait for the swap file created.
-#        max_retry = 10
-#        for retry in range(1, max_retry+1):
-#            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
-#            if swapsize == "2047":
-#                break
-#            else:
-#                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
-#                time.sleep(30)
-#        else:
-#            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=2048 doesn't work." % max_retry)
-##        self.assertEqual(self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False), "2047",
-##                         "ResourceDisk.SwapSizeMB=2048 doesn't work.")
 
     def test_resource_disk_large_swap_file(self):
         """
         Check ResourceDisk.SwapSizeMB=70000 on Small(A1) VM
         """
         self.log.info("WALA conf: Resource disk - large swap file")
-        # Disable the default swap
         self._swapsize_check(swapsize="70000")
-#        if float(self.project) < 7.0:
-#            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/VolGroup-lv_swap/s/^/#/' /etc/fstab")
-#        else:
-#            self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/rhel-swap/s/^/#/' /etc/fstab")
-#        # 1. ResourceDisk.Enable=y
-#        #    ResourceDisk.SwapSizeMB=70000
-#        self.log.info("ResourceDisk.SwapSizeMB=70000")
-#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
-#        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", "70000", self.conf_file))
-#        self.vm_test01.session_close()
-#        self.assertEqual(self.vm_test01.restart(), 0,
-#                         "Fail to restart the VM")
-#        self.assertTrue(self.vm_test01.wait_for_running(),
-#                        "Cannot start the VM")
-#        self.assertTrue(self.vm_test01.verify_alive(),
-#                        "Cannot login the VM")
-#        time.sleep(30)
-#        # Retry 10 times (300s in total) to wait for the swap file created.
-#        max_retry = 10
-#        for retry in range(1, max_retry+1):
-#            swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
-#            if swapsize == "69999":
-#                break
-#            else:
-#                self.log.info("Swap size is wrong. Retry %d/%d times." % (retry, max_retry))
-#                time.sleep(10)
-#        else:
-#            self.fail("After retry %d times, ResourceDisk.SwapSizeMB=70000 doesn't work." % max_retry)
 
     def test_resource_disk_noninteger_swapsize(self):
         """
@@ -470,6 +422,51 @@ class WALAConfTest(Test):
         """
         self.log.info("Resource disk - swap size - non-integer multiple of 64M'")
         self._swapsize_check(swapsize="1025")
+
+    def test_resource_disk_zero_size(self):
+        """
+        Resource disk - swap size - zero size
+        """
+        self.log.info("Resource disk - swap size - zero size")
+        self._swapsize_check(swapsize="0")
+        self.assertEqual(self.vm_test01.check_waagent_log(), "",
+                         "There're error logs")
+
+    def test_resource_disk_gpt_partition(self):
+        """
+        Resource disk GPT partition
+        """
+        self.log.info("WALA conf: Resource disk GPT partition")
+        # Set resource disk
+        swapsize_std = "5242880"
+        self.log.info("ResourceDisk.SwapSizeMB=5242880")
+        self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Format", "y", self.conf_file))
+        self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Filesystem", "ext4", self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
+        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", swapsize_std, self.conf_file))
+        self.vm_test01.session_close()
+        self.assertEqual(self.vm_test01.restart(), 0,
+                         "Fail to restart the VM")
+        self.assertTrue(self.vm_test01.wait_for_running(),
+                        "Cannot start the VM")
+        time.sleep(300)
+        self.assertTrue(self.vm_test01.verify_alive(),
+                        "Cannot login the VM")
+        # Retry 10 times (300s in total) to wait for the swap file created.
+        for count in range(1, 11):
+            swapsize = self.vm_test01.get_output("cat /proc/meminfo|grep SwapTotal|awk '{print $2}'", sudo=False)
+            if (int(swapsize)+4)/1024 == int(swapsize_std):
+                break
+            else:
+                self.log.info("Swap size is wrong. Retry %d times." % count)
+                time.sleep(30)
+        else:
+            self.log.debug(self.vm_test01.get_output("tail -10 /var/log/waagent.log"))
+            self.fail("ResourceDisk.SwapSizeMB=%s doesn't work in GPT partition" % swapsize_std)
+        #        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=5242880 doesn't work in GPT partition")
+        # Check waagent.log
+        self.assertIn("GPT detected", self.vm_test01.get_output("grep -R GPT /var/log/waagent.log"),
+                      "Doesn't detect GPT partition")
 
     def test_monitor_hostname(self):
         """
@@ -813,42 +810,6 @@ class WALAConfTest(Test):
                           self.vm_test01.get_output("mount|grep /dev/sdb"),
                           "Fail to set mount options")
 
-    def test_resource_disk_gpt_partition(self):
-        """
-        Resource disk GPT partition
-        """
-        self.log.info("WALA conf: Resource disk GPT partition")
-        # Set resource disk
-        swapsize_std = "5242880"
-        self.log.info("ResourceDisk.SwapSizeMB=5242880")
-        self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Format", "y", self.conf_file))
-        self.assertTrue(self.vm_test01.verify_value("ResourceDisk\.Filesystem", "ext4", self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
-        self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", swapsize_std, self.conf_file))
-        self.vm_test01.session_close()
-        self.assertEqual(self.vm_test01.restart(), 0,
-                         "Fail to restart the VM")
-        self.assertTrue(self.vm_test01.wait_for_running(),
-                        "Cannot start the VM")
-        time.sleep(300)
-        self.assertTrue(self.vm_test01.verify_alive(),
-                        "Cannot login the VM")
-        # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in range(1, 11):
-            swapsize = self.vm_test01.get_output("cat /proc/meminfo|grep SwapTotal|awk '{print $2}'", sudo=False)
-            if (int(swapsize)+4)/1024 == int(swapsize_std):
-                break
-            else:
-                self.log.info("Swap size is wrong. Retry %d times." % count)
-                time.sleep(30)
-        else:
-            self.log.debug(self.vm_test01.get_output("tail -10 /var/log/waagent.log"))
-            self.fail("ResourceDisk.SwapSizeMB=%s doesn't work in GPT partition" % swapsize_std)
-#        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=5242880 doesn't work in GPT partition")
-        # Check waagent.log
-        self.assertIn("GPT detected", self.vm_test01.get_output("grep -R GPT /var/log/waagent.log"),
-                      "Doesn't detect GPT partition")
-
     def test_ssh_host_key_pair_type(self):
         """
         Ssh host key pair type
@@ -860,8 +821,8 @@ class WALAConfTest(Test):
             # Provisioning.SshHostKeyPairType
             self.assertTrue(self.vm_test01.verify_value("Provisioning\.RegenerateSshHostKeyPair", "y"))
             self.assertTrue(self.vm_test01.modify_value("Provisioning\.SshHostKeyPairType", key_type))
-            self.vm_test01.waagent_deprovision(user=False)
             # Generate all key files by sshd
+            self.vm_test01.get_output("waagent -deprovision -force")
             self.vm_test01.get_output("service sshd restart")
             old_md5 = self.vm_test01.get_output("md5sum /etc/ssh/ssh_host_{0}_key".format(key_type))
             # Capture VM and create new
@@ -942,7 +903,7 @@ class WALAConfTest(Test):
         self.assertEqual(output, "",
                          "There're useless parameters: {0}".format(output))
 
-    def test_execute_custom_data(self):
+    def test_decode_execute_custom_data(self):
         """
         execute custom data
         """
@@ -950,11 +911,57 @@ class WALAConfTest(Test):
         # Prepare custom script
         script = """\
 #!/bin/bash
-echo 'teststring' >> /root/test.log
+echo 'teststring' >> /root/test.log\
 """
         with open("/tmp/customdata.sh", 'w') as f:
             f.write(script)
 
+        def _decode_execute_customdata(decode, execute, invoke_customdata=True):
+            # Provisioning.DecodeCustomData
+            self.vm_test01.modify_value("Provisioning\.DecodeCustomData", decode)
+            # Provisioning.ExecuteCustomData
+            self.vm_test01.modify_value("Provisioning\.ExecuteCustomData", execute)
+            # Capture VM and create new
+            self.vm_test01.get_output("waagent -deprovision -force")
+            vm_image_name = self.vm_test01.name + "-customdata" + self.vm_test01.postfix()
+            self.assertEqual(self.vm_test01.shutdown(), 0,
+                             "Fail to shutdown VM")
+            self.assertTrue(self.vm_test01.wait_for_deallocated(),
+                            "Fail to deallocate VM")
+            cmd_params = dict()
+            cmd_params["os_state"] = "Generalized"
+            self.assertEqual(self.vm_test01.capture(vm_image_name, cmd_params), 0,
+                             "Fails to capture the vm: azure cli fail")
+            self.assertTrue(self.vm_test01.wait_for_delete(check_cloudservice=False))
+            time.sleep(10)
+            prep = Setup(self.params)
+            prep.get_vm_params(Image=vm_image_name)
+            options = ""
+            if invoke_customdata:
+                options += "--custom-data /tmp/customdata.sh"
+            self.assertTrue(prep.vm_create(options=options), "Fail to create VM")
+            self.vm_test01 = prep.vm_test01
+            if decode == "y":
+                self.assertEqual(self.vm_test01.get_output("grep '' /var/lib/waagent/CustomData"), script,
+                                 "The custom data is not decoded")
+            else:
+                self.assertNotIn("teststring", self.vm_test01.get_output("grep '' /var/lib/waagent/CustomData"),
+                                 "The custom data should not be decoded")
+            if execute == "y":
+                self.assertEqual(self.vm_test01.get_output("cat /root/test.log"), "teststring",
+                                 "The custom script is not executed")
+            else:
+                self.assertIn("No such file", self.vm_test01.get_output("cat /root/test.log"),
+                              "The custom script should not be executed")
+            # Clean environment
+            self.vm_test01.get_output("rm -f /root/test.log")
+
+        _decode_execute_customdata(decode="n", execute="n")
+        _decode_execute_customdata(decode="y", execute="n")
+        _decode_execute_customdata(decode="y", execute="y")
+        _decode_execute_customdata(decode="n", execute="y")
+        self.assertEqual(self.vm_test01.check_waagent_log(), "",
+                         "There're error logs in waagent.log")
 
     def tearDown(self):
         self.log.debug("tearDown")
@@ -972,7 +979,8 @@ echo 'teststring' >> /root/test.log
                            "reset_system_account",
                            "resource_disk_gpt_partition",
                            "test_ssh_host_key_pair_type",
-                           "test_attach_disk_check_device_timeout"]
+                           "test_attach_disk_check_device_timeout",
+                           "custom_data"]
             reboot_list = ["resource_disk_mount_point",
                            "resource_disk_swap_check",
                            "resource_disk_large_swap_file"]

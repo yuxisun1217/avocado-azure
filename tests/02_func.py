@@ -591,6 +591,42 @@ class FuncTest(Test):
                       self.vm_test01.get_output("cd /var/lib/waagent/events;waagent -version"),
                       "Run waagent command under /var/lib/waagent/events is failed")
 
+    def test_interrupt_ctrl_c(self):
+        """
+        Interrupt "waagent -deprovision" by "ctrl -c"
+        """
+        self.log.info("Interrupt \"waagent -deprovision\" by \"ctrl -c\"")
+        # Start 2 threads:
+        # session1 is for running deprovision command and getting output
+        # session2 is for getting pid and killing process,
+
+        def session1(q):
+            session = self.vm_test01.wait_for_login()
+            session.cmd_output("echo {0} | sudo -S sh -c ''".format(self.vm_test01.password))
+            session.cmd_output("sudo su -")
+            q.put(session.cmd_output("waagent -deprovision").rstrip('\n'))
+
+        def session2():
+            time.sleep(5)
+            pid = self.vm_test01.get_pid("deprovision")
+            self.vm_test01.get_output("kill -2 {0}".format(pid))
+
+        import threading
+        from Queue import Queue
+        q = Queue()
+        thread1 = threading.Thread(target=session1, args=(q,))
+        thread1.setDaemon(True)
+        thread1.start()
+        thread2 = threading.Thread(target=session2)
+        thread2.setDaemon(True)
+        thread2.start()
+        thread1.join()
+        output = q.get()
+        q.task_done()
+        self.log.debug(output)
+        self.assertNotIn("message=Traceback", output,
+                         "Should not raise exception.")
+
     def tearDown(self):
         self.log.debug("tearDown")
         if "depro" in self.name.name or \
