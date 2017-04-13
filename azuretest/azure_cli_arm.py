@@ -330,6 +330,119 @@ def network_vnet_delete(vnet_name, rg_name, params=None, options='', **kwargs):
     return command(cmd, **kwargs)
 
 
+# Network Security Group
+def network_nsg_create(name, rg_name, params=None, options='', **kargs):
+    """
+    Create Network Security Group
+
+    :param name: NSG name
+    :param rg_name: Resource Group name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg create %s %s %s" % (rg_name, name, options)
+    if params:
+        cmd += add_option("--location", params.get("location", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nic_set(name, rg_name, params=None, options='', **kargs):
+    """
+    Set NIC
+
+    :param name: NSG name
+    :param rg_name: Resource Group name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nic set %s %s %s" % (rg_name, name, options)
+    if params:
+        cmd += add_option("--nsg-name", params.get("nsg_name", None))
+        cmd += add_option("--nsg_id", params.get("nsg_id", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nsg_show(name, rg_name, params=None, options='', **kargs):
+    """
+    Show Network Security Group properties
+
+    :param name: NSG name
+    :param rg_name: Resource Group name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg show %s %s %s" % (rg_name, name, options)
+    if params:
+        cmd += add_option("--subscription", params.get("subscription", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nsg_delete(name, rg_name, params=None, options='', **kargs):
+    """
+    Delete Network Security Group
+
+    :param name: NSG name
+    :param rg_name: Resource Group name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg delete %s %s %s --quiet" % (rg_name, name, options)
+    if params:
+        cmd += add_option("--subscription", params.get("subscription", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+# Network Security Group Rule
+def network_nsg_rule_create(name, rg_name, params=None, options='', **kargs):
+    """
+    Create Network Security Group Rule
+
+    :param name: NSG Rule name
+    :param rg_name: Resource Group name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg rule create %s %s %s" % (rg_name, name, options)
+    if params:
+        cmd += add_option("--nsg-name", params.get("nsg_name", None))
+        cmd += add_option("--protocol", params.get("protocol", None))
+        cmd += add_option("--source-address-prefix", params.get("source_address_prefix", None))
+        cmd += add_option("--source-port-range", params.get("source_port_range", None))
+        cmd += add_option("--destination-address-prefix", params.get("destination_address_prefix", None))
+        cmd += add_option("--destination-port-range", params.get("destination_port_range", None))
+        cmd += add_option("--action", params.get("action", None))
+        cmd += add_option("--priority", params.get("priority", None))
+        cmd += add_option("--type", params.get("type", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nsg_rule_show(name, rg_name, params=None, options='', **kargs):
+    """
+    Show Network Security Group Rule
+
+    :param name: NSG Rule name
+    :param rg_name: Resource Group name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg rule show %s %s %s" % (rg_name, name, options)
+    if params:
+        cmd += add_option("--nsg-name", params.get("nsg_name", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
 # VM disk
 def vm_disk_attach(vm_name, rg_name, disk_image_name, params=None, options='', **kwargs):
     """
@@ -772,6 +885,7 @@ def blob_upload(name, params=None, options='', **kwargs):
     """
     return
 
+
 # Storage container
 def container_create(name, params=None, options='', **kwargs):
     """
@@ -886,3 +1000,21 @@ def resource_group_create(name, params, options='', **kwargs):
         cmd += add_option("--location",
                           params.get("location", None))
     return command(cmd, **kwargs)
+
+
+def resource_group_delete(name, params, options='', **kwargs):
+    """
+    Delete a resource group
+    :param name: Resource Group name
+    :param params: Params for creating resource group
+    :param options: Other options
+    :param kwargs: Other flags
+    :return:
+    """
+    cmd = "azure group delete %s %s --quiet" % (name, options)
+    if params:
+        cmd += add_option("--subscription",
+                          params.get("subscription", None))
+    return command(cmd, **kwargs)
+
+

@@ -514,11 +514,14 @@ class Image(object):
         """
         return azure_cli_asm.vm_image_show(self.name, params, options).stdout
 
-    def update(self):
+    def update(self, params=None):
         """
         Update details of the specified storage container
         """
-        self.params = self.show()
+        if params is None:
+            self.params = self.show()
+        else:
+            self.params = params
 
     def check_exist(self, params=None, options=''):
         """
@@ -709,14 +712,14 @@ class Blob(object):
         params.setdefault("connection_string", self.connection_string)
         params.setdefault("container", self.container)
         try:
-            azure_cli_asm.blob_show(self.name, params, options=options, debug=False, error_debug=False)
+            self.show(params, options, debug=False, error_debug=False)
         except Exception, e:
             logging.debug("No blob %s exists. Exception: %s" % (self.name, str(e)))
             return False
         logging.debug("Blob %s exists" % self.name)
         return True
 
-    def show(self, params=None, options=''):
+    def show(self, params=None, options='', **kargs):
         """
         Show details of the specified storage blob
 
@@ -728,15 +731,18 @@ class Blob(object):
             params = dict()
         params["container"] = self.container
         params["connection_string"] = self.connection_string
-        return azure_cli_asm.blob_show(self.name, params, options).stdout
+        return azure_cli_asm.blob_show(self.name, params, options, **kargs).stdout
 
-    def update(self):
+    def update(self, params=None):
         """
         Update details of the specified storage container
 
         :return:
         """
-        self.params = self.show()
+        if params is None:
+            self.params = self.show()
+        else:
+            self.params = params
 
 
 class Container(object):
@@ -784,7 +790,7 @@ class Container(object):
             params = dict()
         params.setdefault("connection_string", self.connection_string)
         try:
-            azure_cli_asm.container_show(self.name, params, options=options)
+            self.show(params, options)
         except Exception, e:
             logging.debug("No container %s exists. Exception: %s" % (self.name, str(e)))
             return False
@@ -829,13 +835,17 @@ class Container(object):
         params.setdefault("connection_string", self.connection_string)
         return azure_cli_asm.container_delete(self.name, params, options=options).stdout
 
-    def update(self):
+    def update(self, params=None):
         """
         Update details of the specified storage blob
 
+        :param params: A dict containing container params
         :return:
         """
-        self.params = self.show()
+        if params is None:
+            self.params = self.show()
+        else:
+            self.params = params
 
 
 class StorageAccount(object):
@@ -887,10 +897,11 @@ class StorageAccount(object):
         self.connectionstring = None
         logging.info("Azure Storage Account '%s'", self.name)
 
-    def create(self, params, options=''):
+    def create(self, params=None, options=''):
         """
         This helps to create a Storage Account
 
+        :param params: A dict containing Storage Account params
         :param options: extra options
         :return: Zero if success to create VM
         """
@@ -903,8 +914,8 @@ class StorageAccount(object):
         :param params: A dict containing Storage Account params
         """
         if params is None:
-            self.params = self.show().stdout
-            self.keys = self.keys_list().stdout
+            self.params = self.show()
+            self.keys = self.keys_list()
             self.connectionstring = self.conn_show()
         else:
             self.params = params
@@ -916,7 +927,7 @@ class StorageAccount(object):
         :param options: extra options
         :return: True if exists
         """
-        rt = azure_cli_asm.sto_acct_check(self.params["name"], options).stdout
+        rt = azure_cli_asm.sto_acct_check(self.name, options).stdout
         if rt.get("nameAvailable") == False:
             return True
         else:
@@ -929,7 +940,7 @@ class StorageAccount(object):
         :param options: extra options
         :return: params - A dict containing storage account params
         """
-        return azure_cli_asm.sto_acct_show(self.params["name"], options).stdout
+        return azure_cli_asm.sto_acct_show(self.name, options).stdout
 
     def delete(self, options='', timeout=DELETE_TIMEOUT):
         """
@@ -939,7 +950,7 @@ class StorageAccount(object):
         :param timeout: Delete timeout
         :return: Zero if success to delete VM
         """
-        return azure_cli_asm.sto_acct_delete(self.params["name"],
+        return azure_cli_asm.sto_acct_delete(self.name,
                                              options, timeout=timeout).exit_status
 
     def conn_show(self, options=''):
@@ -948,8 +959,7 @@ class StorageAccount(object):
 
         :param options: extra options
         """
-        return azure_cli_asm.sto_acct_conn_show(self.params["name"],
-                                                options).stdout.get("string")
+        return azure_cli_asm.sto_acct_conn_show(self.name, options).stdout.get("string")
 
     def keys_list(self, options=''):
         """
@@ -957,6 +967,206 @@ class StorageAccount(object):
 
         :param options: extra options
         """
-        return azure_cli_asm.sto_acct_keys_list(self.params["name"],
-                                                options).stdout
+        return azure_cli_asm.sto_acct_keys_list(self.name, options).stdout
 
+
+class NetworkSecurityGroup(object):
+    """
+    This class handles all basic NetworkSecurityGroup operations for ASM.
+    """
+    DEFAULT_TIMEOUT = 240
+    DELETE_TIMEOUT = 240
+
+    def __init__(self, name, params=None):
+        """
+        Initialize the object and set a few attributes.
+
+        :param name: The name of the object
+        :param params: A dict containing NSG params
+         params sample:
+         {
+          "rules": [
+            {
+              "name": "ALLOW VNET OUTBOUND",
+              "type": "Outbound",
+              "priority": 65000,
+              "action": "Allow",
+              "sourceAddressPrefix": "VIRTUAL_NETWORK",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "VIRTUAL_NETWORK",
+              "destinationPortRange": "*",
+              "protocol": "*",
+              "state": "Active",
+              "isDefault": true
+            },
+            {
+              "name": "DENY ALL INBOUND",
+              "type": "Inbound",
+              "priority": 65500,
+              "action": "Deny",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "*",
+              "protocol": "*",
+              "state": "Active",
+              "isDefault": true
+            }
+          ],
+          "name": "walatestnsg",
+          "location": "East US",
+          "statusCode": 200,
+          "requestId": "fa666856a63f73048b6bc0b159380ff1"
+        }
+        """
+        self.name = name
+        self.mode = "ASM"
+        self.params = params
+        self.keys = None
+        logging.info("Azure NSG '%s'", self.name)
+
+    def create(self, params=None, options=''):
+        """
+        This helps to create an NSG
+
+        :param params: A dict containing NetworkSecurityGroup params
+        :param options: extra options
+        :return: Zero if success to create VM
+        """
+        return azure_cli_asm.network_nsg_create(self.name, params, options).exit_status
+
+    def update(self, params=None):
+        """
+        This helps to update NSG info
+
+        :param params: A dict containing NSG params
+        """
+        if params is None:
+            self.params = self.show()
+        else:
+            self.params = params
+
+    def check_exist(self, options=''):
+        """
+        Help to check if the NSG is existing
+
+        :param options: extra options
+        :return: True if exists
+        """
+        try:
+            self.show(options=options)
+        except Exception, e:
+            logging.debug("No NSG %s exists. Exception: %s" % (self.name, str(e)))
+            return False
+        return True
+
+    def show(self, options=''):
+        """
+        Help to show an NSG
+
+        :param options: extra options
+        :return: params - A dict containing NSG params
+        """
+        return azure_cli_asm.network_nsg_show(self.name, options).stdout
+
+    def delete(self, options='', timeout=DELETE_TIMEOUT):
+        """
+        Help to delete an NSG
+
+        :param options: extra options
+        :param timeout: Delete timeout
+        :return: Zero if success to delete NSG
+        """
+        return azure_cli_asm.network_nsg_delete(self.name, options, timeout=timeout).exit_status
+
+
+class NetworkSecurityGroupRule(object):
+    """
+    This class handles all basic NetworkSecurityGroup Rule operations for ASM.
+    """
+    DEFAULT_TIMEOUT = 240
+    DELETE_TIMEOUT = 240
+
+    def __init__(self, name, params=None):
+        """
+        Initialize the object and set a few attributes.
+
+        :param name: The name of the object
+        :param params: A dict containing NSG Rule params
+         params sample:
+         {
+          "name": "ALLOW VNET OUTBOUND",
+          "type": "Outbound",
+          "priority": 65000,
+          "action": "Allow",
+          "sourceAddressPrefix": "VIRTUAL_NETWORK",
+          "sourcePortRange": "*",
+          "destinationAddressPrefix": "VIRTUAL_NETWORK",
+          "destinationPortRange": "*",
+          "protocol": "*",
+          "state": "Active",
+          "isDefault": true
+        }
+        """
+        self.name = name
+        self.mode = "ASM"
+        self.params = params
+        self.keys = None
+        logging.info("Azure NSG Rule '%s'", self.name)
+
+    def create(self, params=None, options=''):
+        """
+        This helps to create an NSG Rule
+
+        :param params: A dict containing NetworkSecurityGroup params
+        :param options: extra options
+        :return: Zero if success to create VM
+        """
+        return azure_cli_asm.network_nsg_rule_create(self.name, params, options).exit_status
+
+    def update(self, params=None):
+        """
+        This helps to update NSG info
+
+        :param params: A dict containing NSG Rule params
+        """
+        if params is None:
+            self.params = self.show()
+        else:
+            self.params = params
+
+    def check_exist(self, params=None, options=''):
+        """
+        Help to check if the NSG Rule is existing
+
+        :param params: A dict containing NetworkSecurityGroup params
+        :param options: extra options
+        :return: True if exists
+        """
+        if not params:
+            params = dict()
+        try:
+            self.show()
+        except Exception, e:
+            logging.debug("No NSG %s exists. Exception: %s" % (self.name, str(e)))
+            return False
+        return True
+
+    def show(self, options=''):
+        """
+        Help to show an NSG Rule
+
+        :param options: extra options
+        :return: params - A dict containing NSG Rule params
+        """
+        return azure_cli_asm.network_nsg_rule_show(self.name, options).stdout
+
+    def delete(self, options='', timeout=DELETE_TIMEOUT):
+        """
+        Help to delete an NSG Rule
+
+        :param options: extra options
+        :param timeout: Delete timeout
+        :return: Zero if success to delete NSG Rule
+        """
+        return azure_cli_asm.network_nsg_delete(self.name, options, timeout=timeout).exit_status

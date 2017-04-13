@@ -1011,3 +1011,203 @@ class ResourceGroup(object):
         return None
 #        return azure_cli_arm.resource_group_delete(self.name, options, timeout=timeout).exit_status
 
+
+class NetworkSecurityGroup(object):
+    """
+    This class handles all basic NetworkSecurityGroup operations for ASM.
+    """
+    DEFAULT_TIMEOUT = 240
+    DELETE_TIMEOUT = 240
+
+    def __init__(self, name, params=None):
+        """
+        Initialize the object and set a few attributes.
+
+        :param name: The name of the object
+        :param params: A dict containing NSG params
+         params sample:
+         {
+          "rules": [
+            {
+              "name": "ALLOW VNET OUTBOUND",
+              "type": "Outbound",
+              "priority": 65000,
+              "action": "Allow",
+              "sourceAddressPrefix": "VIRTUAL_NETWORK",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "VIRTUAL_NETWORK",
+              "destinationPortRange": "*",
+              "protocol": "*",
+              "state": "Active",
+              "isDefault": true
+            },
+            {
+              "name": "DENY ALL INBOUND",
+              "type": "Inbound",
+              "priority": 65500,
+              "action": "Deny",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "*",
+              "protocol": "*",
+              "state": "Active",
+              "isDefault": true
+            }
+          ],
+          "name": "walatestnsg",
+          "location": "East US",
+          "statusCode": 200,
+          "requestId": "fa666856a63f73048b6bc0b159380ff1"
+        }
+        """
+        self.name = name
+        self.rg_name = copy.copy(params.get("ResourceGroupName"))
+        self.mode = "ARM"
+        self.params = params
+        self.keys = None
+        logging.info("Azure NSG '%s'", self.name)
+
+    def create(self, params=None, options=''):
+        """
+        This helps to create an NSG
+
+        :param params: A dict containing NetworkSecurityGroup params
+        :param options: extra options
+        :return: Zero if success to create VM
+        """
+        return azure_cli_arm.network_nsg_create(self.name, self.rg_name, params, options).exit_status
+
+    def update(self, params=None):
+        """
+        This helps to update NSG info
+
+        :param params: A dict containing NSG params
+        """
+        if params is None:
+            self.params = self.show()
+        else:
+            self.params = params
+
+    def check_exist(self, options=''):
+        """
+        Help to check if the NSG is existing
+
+        :param options: extra options
+        :return: True if exists
+        """
+        try:
+            self.show(options=options)
+        except Exception, e:
+            logging.debug("No NSG %s exists. Exception: %s" % (self.name, str(e)))
+            return False
+        return True
+
+    def show(self, options=''):
+        """
+        Help to show an NSG
+
+        :param options: extra options
+        :return: params - A dict containing NSG params
+        """
+        return azure_cli_arm.network_nsg_show(self.name, self.rg_name, options).stdout
+
+    def delete(self, options='', timeout=DELETE_TIMEOUT):
+        """
+        Help to delete an NSG
+
+        :param options: extra options
+        :param timeout: Delete timeout
+        :return: Zero if success to delete NSG
+        """
+        return azure_cli_arm.network_nsg_delete(self.name, self.rg_name, options, timeout=timeout).exit_status
+
+
+class NetworkSecurityGroupRule(object):
+    """
+    This class handles all basic NetworkSecurityGroup Rule operations for ASM.
+    """
+    DEFAULT_TIMEOUT = 240
+    DELETE_TIMEOUT = 240
+
+    def __init__(self, name, params=None):
+        """
+        Initialize the object and set a few attributes.
+
+        :param name: The name of the object
+        :param params: A dict containing NSG Rule params
+         params sample:
+         {
+          "name": "ALLOW VNET OUTBOUND",
+          "type": "Outbound",
+          "priority": 65000,
+          "action": "Allow",
+          "sourceAddressPrefix": "VIRTUAL_NETWORK",
+          "sourcePortRange": "*",
+          "destinationAddressPrefix": "VIRTUAL_NETWORK",
+          "destinationPortRange": "*",
+          "protocol": "*",
+          "state": "Active",
+          "isDefault": true
+        }
+        """
+        self.name = name
+        self.rg_name = copy.copy(params.get("ResourceGroupName"))
+        self.mode = "ASM"
+        self.params = params
+        self.keys = None
+        logging.info("Azure NSG Rule '%s'", self.name)
+
+    def create(self, params=None, options=''):
+        """
+        This helps to create an NSG Rule
+
+        :param params: A dict containing NetworkSecurityGroup params
+        :param options: extra options
+        :return: Zero if success to create VM
+        """
+        return azure_cli_arm.network_nsg_rule_create(self.name, self.rg_name, params, options).exit_status
+
+    def update(self, params=None):
+        """
+        This helps to update NSG info
+
+        :param params: A dict containing NSG Rule params
+        """
+        if params is None:
+            self.params = self.show()
+        else:
+            self.params = params
+
+    def check_exist(self, options=''):
+        """
+        Help to check if the NSG Rule is existing
+
+        :param options: extra options
+        :return: True if exists
+        """
+        try:
+            self.show(options=options)
+        except Exception, e:
+            logging.debug("No NSG %s exists. Exception: %s" % (self.name, str(e)))
+            return False
+        return True
+
+    def show(self, options=''):
+        """
+        Help to show an NSG Rule
+
+        :param options: extra options
+        :return: params - A dict containing NSG Rule params
+        """
+        return azure_cli_arm.network_nsg_rule_show(self.name, self.rg_name, options).stdout
+
+    def delete(self, options='', timeout=DELETE_TIMEOUT):
+        """
+        Help to delete an NSG Rule
+
+        :param options: extra options
+        :param timeout: Delete timeout
+        :return: Zero if success to delete NSG Rule
+        """
+        return azure_cli_arm.network_nsg_delete(self.name, self.rg_name, options, timeout=timeout).exit_status

@@ -88,6 +88,8 @@ azure_mode: !mux
             WALAConfTest.test_decode_execute_custom_data
             WALAConfTest.test_resource_disk_zero_size
             FuncTest.test_interrupt_ctrl_c
+            GeneralTest.test_host_plugin_autoupdate
+            GeneralTest.test_host_plugin_extension
     arm:
         cases:
             ImgPrepTest.test_00_preparation
