@@ -81,6 +81,9 @@ azure_mode: !mux
             WALAConfTest.test_autorecover_device_timeout
             WALAConfTest.test_check_useless_parameters
             WALAConfTest.test_resource_disk_noninteger_swapsize
+            WALAConfTest.test_decode_execute_custom_data
+            WALAConfTest.test_resource_disk_zero_size
+            FuncTest.test_interrupt_ctrl_c
     arm:
         cases:
             ImgPrepTest.test_00_preparation
