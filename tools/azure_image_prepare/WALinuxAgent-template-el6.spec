@@ -14,8 +14,9 @@ Name: %{name}
 Version: %{version}
 Release: %{release}%{?dist}
 Source0: %{name}-%{unmangled_version}.tar.gz
-Patch0: agent-no-auto-update.patch
-Patch1: agent-no-auto-update-when-upgrading.patch
+Patch0002: 0002-Disable-auto-update.patch
+Patch0003: 0003-Disable-auto-update-when-upgrading.patch
+
 License: Apache License Version 2.0
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
@@ -68,8 +69,9 @@ images that are built to run in the Azure environment.
 
 %prep
 %setup -n %{name}-%{unmangled_version} -n %{name}-%{unmangled_version}
-%patch0 -p1
-%patch1 -p1
+
+%patch0002 -p1
+%patch0003 -p1
 
 %build
 python setup.py build
@@ -118,25 +120,27 @@ fi
 %defattr(-,root,root)
 
 %changelog
-* Thu Nov 03 2016 Dave Anderson <anderson@redhat.com> - 2.2.0-3
-- Set implicit default of AutoUpdate.Enabled=n when upgrading
-  Resolves: rhbz#1374115
+* Mon Mar 01 2017 Miroslav Rezanina <mrezanin@redhat.com> - 2.2.4-1
+- Rebase to 2.2.4 [bz#1419200]
+- Resolves: bz#1419200
+  WALA 2.2.4
 
-* Fri Oct 28 2016 Dave Anderson <anderson@redhat.com> - 2.2.0-2
+* Fri Nov 04 2016 Dave Anderson <anderson@redhat.com> - 2.2.0-2
 - Set AutoUpdate.Enabled=n
-  Resolves: rhbz#1374115
+- Set implicit default of AutoUpdate.Enabled=n when upgrading
+  Resolves: rhbz#1387784
 
 * Fri Sep 30 2016 Dave Anderson <anderson@redhat.com> - 2.2.0-1
 - Update to v2.2.0
-  Resolves: rhbz#1360492
+  Resolves: rhbz#1360493
 
 * Wed Sep 21 2016 Dave Anderson <anderson@redhat.com> - 2.1.5-2
 - Several QE updates to this file
-  Resolves: rhbz#1360492
+  Resolves: rhbz#1360493
 
 * Tue Sep 13 2016 Dave Anderson <anderson@redhat.com> - 2.1.5-1
 - Update to v2.1.5
-  Resolves: rhbz#1360492
+  Resolves: rhbz#1360493
 
 * Thu Jan 14 2016 Dave Anderson <anderson@redhat.com> - 2.0.16-1
 - Update to 2.0.16

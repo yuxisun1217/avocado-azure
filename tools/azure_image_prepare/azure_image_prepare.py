@@ -529,7 +529,8 @@ def download_wala_upstream(version=None):
            (version, version)) != 0:
         ErrorAndExit("No such WALA build %s" % tag)
     Run("mv WALinuxAgent-%s.tar.gz %s/SOURCES/" % (version, p.rpmbuildPath))
-    with open("%s/WALinuxAgent-template.spec" % p.realpath, 'r') as f:
+    spec_file = "{0}/WALinuxAgent-template-el{1}.spec".format(p.realpath, p.Project.split('.')[0])
+    with open(spec_file, 'r') as f:
         spec_data = f.read()
     with open("%s/SPECS/WALinuxAgent-upstream.spec" % p.rpmbuildPath, 'w') as f:
         f.write(spec_data.replace("upstream_version", version))

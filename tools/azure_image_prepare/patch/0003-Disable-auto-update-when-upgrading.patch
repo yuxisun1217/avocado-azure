@@ -1,0 +1,25 @@
+From d3f66f3aadf4c277a3b22182a0648d618e0fa2cb Mon Sep 17 00:00:00 2001
+From: Miroslav Rezanina <mrezanin@redhat.com>
+Date: Wed, 8 Feb 2017 11:25:26 +0100
+Subject: Disable auto update when upgrading
+
+---
+ azurelinuxagent/common/conf.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/azurelinuxagent/common/conf.py b/azurelinuxagent/common/conf.py
+index 7911699..c45ec96 100644
+--- a/azurelinuxagent/common/conf.py
++++ b/azurelinuxagent/common/conf.py
+@@ -219,7 +219,7 @@ def get_autoupdate_gafamily(conf=__conf__):
+ 
+ 
+ def get_autoupdate_enabled(conf=__conf__):
+-    return conf.get_switch("AutoUpdate.Enabled", True)
++    return conf.get_switch("AutoUpdate.Enabled", False)
+ 
+ 
+ def get_autoupdate_frequency(conf=__conf__):
+-- 
+1.8.3.1
+
