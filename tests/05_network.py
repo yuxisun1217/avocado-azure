@@ -148,10 +148,10 @@ lo eth0\
             self.vm_test01.modify_value("Provisioning.MonitorHostName", 'y')
             self.vm_test01.waagent_service_restart()
         # Kill -run-exthandlers process
-        pid = self.vm_test01.get_pid("-run-exthandlers")
+        pid = self.vm_test01.get_pid("run-exthandlers")
         self.vm_test01.get_output("kill -9 {0}".format(pid))
-        if self.vm_test01.get_pid("-run-exthandlers"):
-            self.vm_test01.get_output("kill -9 {0}".format(self.vm_test01.get_pid("-run-exthandlers")))
+        if self.vm_test01.get_pid("run-exthandlers"):
+            self.vm_test01.get_output("kill -9 {0}".format(self.vm_test01.get_pid("run-exthandlers")))
         # Change hostname
         old_hostname = self.vm_test01.name
         new_hostname = self.vm_test01.name + "new"
@@ -160,7 +160,7 @@ lo eth0\
         max_retry = 10
         for retry in xrange(0, max_retry):
             time.sleep(10)
-            if self.vm_test01.get_pid("-run-exthandlers"):
+            if self.vm_test01.get_pid("run-exthandlers"):
                 break
         else:
             self.fail("After retry {0} times, fail to start waagent -run-exthandlers process")
