@@ -941,18 +941,20 @@ echo 'teststring' >> /root/test.log\
                 options += "--custom-data /tmp/customdata.sh"
             self.assertTrue(prep.vm_create(options=options), "Fail to create VM")
             self.vm_test01 = prep.vm_test01
-            if decode == "y":
-                self.assertEqual(self.vm_test01.get_output("grep '' /var/lib/waagent/CustomData"), script,
-                                 "The custom data is not decoded")
-            else:
-                self.assertNotIn("teststring", self.vm_test01.get_output("grep '' /var/lib/waagent/CustomData"),
-                                 "The custom data should not be decoded")
             if execute == "y":
                 self.assertEqual(self.vm_test01.get_output("cat /root/test.log"), "teststring",
                                  "The custom script is not executed")
+                self.assertEqual(self.vm_test01.get_output("grep '' /var/lib/waagent/CustomData"), script,
+                                 "The custom data is not decoded")
             else:
                 self.assertIn("No such file", self.vm_test01.get_output("cat /root/test.log"),
                               "The custom script should not be executed")
+                if decode == "y":
+                    self.assertEqual(self.vm_test01.get_output("grep '' /var/lib/waagent/CustomData"), script,
+                                     "The custom data is not decoded")
+                else:
+                    self.assertNotIn("teststring", self.vm_test01.get_output("grep '' /var/lib/waagent/CustomData"),
+                                     "The custom data should not be decoded")
             # Clean environment
             self.vm_test01.get_output("rm -f /root/test.log")
 
@@ -960,6 +962,7 @@ echo 'teststring' >> /root/test.log\
         _decode_execute_customdata(decode="y", execute="n")
         _decode_execute_customdata(decode="y", execute="y")
         _decode_execute_customdata(decode="n", execute="y")
+        # Check waagent.log
         self.assertEqual(self.vm_test01.check_waagent_log(), "",
                          "There're error logs in waagent.log")
 
