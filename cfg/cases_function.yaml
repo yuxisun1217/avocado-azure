@@ -63,7 +63,7 @@ azure_mode: !mux
             GeneralTest.test_check_cpu_mem_disk
             StorageTest.test_attach_detach_64_disks
             FuncTest.test_run_waagent_command_under_events_folder
-            GeneralTest.test_verify_autoupdate_disabled
+            GeneralTest.test_verify_autoupdate_enabled
             StorageTest.test_disk_attach_detach_standard
             StorageTest.test_disk_attach_detach_premium
             GeneralTest.test_check_sshdconfig_permission
@@ -127,9 +127,9 @@ azure_mode: !mux
             GeneralTest.test_start_waagent_repeatedly
             GeneralTest.test_check_hyperv_modules
             GeneralTest.test_install_uninstall_wala
+            GeneralTest.test_check_cpu_mem_disk
             SubscriptionTest.test_register_to_subscription
             SubscriptionTest.test_product_certificate
             SubscriptionTest.test_rhui
             NetworkTest.test_connectivity_check
-            GeneralTest.test_check_cpu_mem_disk
             NetworkTest.test_check_dns

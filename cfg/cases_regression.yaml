@@ -59,7 +59,7 @@ azure_mode: !mux
             NetworkTest.test_connectivity_check
             NetworkTest.test_endpoint_check
             FuncTest.test_run_waagent_command_under_events_folder
-            GeneralTest.test_verify_autoupdate_disabled
+            GeneralTest.test_verify_autoupdate_enabled
             StorageTest.test_disk_attach_detach_standard
             StorageTest.test_disk_attach_detach_premium
             GeneralTest.test_check_sshdconfig_permission
