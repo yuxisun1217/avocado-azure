@@ -26,7 +26,6 @@ from exceptions import WaagentStartError
 from exceptions import WaagentServiceError
 
 
-
 class VMDeadError(Exception):
     """
     Define VMDeadError exception
@@ -48,7 +47,10 @@ MESSAGES_IGNORELIST = ["failed to get extended button data",
                        "rngd.service: main process exited, code=exited, status=1/FAILURE",
                        "Unit rngd.service entered failed state",
                        "rngd.service failed",
-                       "Fast TSC calibration failed"] + WAAGENT_IGNORELIST
+                       "Fast TSC calibration failed",
+                       "failed to prefill DIMM database from DMI data"] + WAAGENT_IGNORELIST
+
+
 class BaseVM(object):
 
     """
