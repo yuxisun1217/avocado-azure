@@ -35,6 +35,7 @@ class GeneralTest(Test):
         else:
             prep.get_vm_params()
         prep.login()
+        self.azure_mode = prep.azure_mode
         self.project = prep.project
         self.wala_version = prep.wala_version
         self.conf_file = prep.conf_file
@@ -330,12 +331,21 @@ class GeneralTest(Test):
 
     def test_verify_autoupdate_disabled(self):
         """
-        Verify AutoUpdate is disabled
+        Verify AutoUpdate is disabled(deprecated after WALA-2.2.4-2)
         """
         self.log.info("Verify AutoUpdate is disabled")
         # 1. Check AutoUpdate.enabled value
         self.assertTrue(self.vm_test01.verify_value("AutoUpdate\.Enabled", 'n'),
                         "The AutoUpdate.enabled is not 'n' after installing WALA rpm package.")
+
+    def test_verify_autoupdate_enabled(self):
+        """
+        Verify AutoUpdate is enabled
+        """
+        self.log.info("Verify AutoUpdate is enabled")
+        # 1. Check AutoUpdate.enabled value
+        self.assertFalse(self.vm_test01.verify_value("AutoUpdate\.Enabled", 'n'),
+                         "There should not be AutoUpdate.enabled=n after installing WALA rpm package.")
 
     def _check_file_permission(self, filename, std_permission):
         """
@@ -367,6 +377,24 @@ class GeneralTest(Test):
         selinux = self.vm_test01.get_output("getenforce")
         self.assertEqual(selinux, "Enforcing",
                          "SELinux status is wrong. Standard: Enforcing. Real: {0}".format(selinux))
+
+    def test_host_plugin_autoupdate(self):
+        """
+        host plugin - AutoUpdate
+        """
+        self.log.info("host plugin - AutoUpdate")
+        nsg_params = dict()
+        if self.azure_mode == "asm":
+            nsg_params["ResourceGroupName"] = self.vm_params["ResourceGroupName"]
+            nsg_params["location"] = self.vm_params["Location"]
+#            nsg_params["subnet_name"] = self.vm_params["VnetSubnetName"]
+            nsg = azure_asm_vm.NetworkSecurityGroup(name="walablock",
+                                                    params=nsg_params)
+            if not nsg.check_exist():
+                nsg.create()
+
+
+
 
     def tearDown(self):
         self.log.debug("tearDown")
