@@ -242,7 +242,7 @@ class LifeCycleTest(Test):
         """
         Live capture specialized image and create VM. (VM is running. VM will not be deleted.)
         """
-        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+#        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
         # 1. Capture specialized image
         self.log.debug("Live capture the vm %s -- Specialized", self.vm_params["VMName"])
         capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
@@ -252,7 +252,7 @@ class LifeCycleTest(Test):
         cmd_params["os_state"] = "Specialized"
         self.assertEqual(self.vm_test01.capture(capture_image.name, cmd_params),
                          0, "Fail to capture the vm: azure cli fail")
-        self.vm_test01.get_output("touch /var/lib/waagent/provisioned")
+#        self.vm_test01.get_output("touch /var/lib/waagent/provisioned")
         self.assertEqual(capture_image.verify_exist(), 0,
                          "Fail to get the captured vm image: verify_exist")
         capture_image.vm_image_update()
@@ -288,7 +288,7 @@ class LifeCycleTest(Test):
         """
         Shutdown and capture specialized image and create VM. (VM is stopped(deallocated). VM will not be deleted.)
         """
-        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+#        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
         self.vm_test01.shutdown()
         self.assertTrue(self.vm_test01.wait_for_deallocated(),
                         "Fail to stop VM before capturing")
@@ -331,7 +331,7 @@ class LifeCycleTest(Test):
                          "",
                          "There're error logs in waagent.log")
         self.assertFalse(self.vm_test01.verify_alive(username=new_username, timeout=10),
-                           "New username should not work")
+                         "New username should not work")
 
     def test_capture_generalized_image(self):
         """
@@ -357,10 +357,9 @@ class LifeCycleTest(Test):
                          "The VM image state is not Generalized.")
         self.vm_test01.vm_update()
         self.assertFalse(self.vm_test01.exists(),
-                           "Original VM should be deleted.")
+                         "Original VM should be deleted.")
         self.log.info("Success to capture the vm as image %s -- Generalized" % capture_image.name)
         # 2. Create a VM base on this image
-        old_hostname = self.vm_params["VMName"]
         old_username = self.vm_test01.username
         new_username = old_username + "new"
         prep = Setup(self.params)
