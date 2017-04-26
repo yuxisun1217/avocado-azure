@@ -963,7 +963,9 @@ echo 'teststring' >> /root/test.log\
         _decode_execute_customdata(decode="y", execute="y")
         _decode_execute_customdata(decode="n", execute="y")
         # Check waagent.log
-        self.assertEqual(self.vm_test01.check_waagent_log(), "",
+        self.assertEqual(self.vm_test01.check_waagent_log(additional_ignore_list=
+                                                          ["Failed to enable swap [000005] Invalid swap size [0]"]),
+                         "",
                          "There're error logs in waagent.log")
 
     def tearDown(self):
