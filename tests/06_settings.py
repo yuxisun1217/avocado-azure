@@ -181,11 +181,13 @@ class SettingsTest(Test):
                                                        method="password",
                                                        version="1.4"), 0,
                          "Fail to reset password before capture")
+        # Sleep 10s to wait for the extension downloading and installing
+        time.sleep(10)
         self.assertTrue(self.vm_test01.verify_alive(username=old_username, password=old_password, timeout=50))
         # capture and create VM
         vm_image_name = self.vm_test01.name + "-rstpwac" + self.vm_test01.postfix()
-        self.assertEqual(self.vm_test01.shutdown(), 0)
-        self.assertTrue(self.vm_test01.wait_for_deallocated())
+        self.assertEqual(self.vm_test01.shutdown(), 0, "Fail to shutdown VM")
+        self.assertTrue(self.vm_test01.wait_for_deallocated(), "VM is not shutdown")
         cmd_params = dict()
         cmd_params["os_state"] = "Specialized"
         self.assertEqual(self.vm_test01.capture(vm_image_name, cmd_params), 0,
