@@ -64,6 +64,8 @@ class LifeCycleTest(Test):
         self.log.info("Restart a VM")
         before = self.vm_test01.get_output("who -b", sudo=False)
 #        self.vm_test01.session_close()
+        # Sleep 60s to prevent rebooting in 1 minute
+        time.sleep(60)
         self.log.debug("Restart the vm %s", self.vm_params["VMName"])
         self.assertEqual(self.vm_test01.restart(), 0,
                          "Fail to restart the vm")
