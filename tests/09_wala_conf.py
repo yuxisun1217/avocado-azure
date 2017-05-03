@@ -429,7 +429,7 @@ class WALAConfTest(Test):
         """
         self.log.info("Resource disk - swap size - zero size")
         self._swapsize_check(swapsize="0")
-        self.assertEqual(self.vm_test01.check_waagent_log(), "",
+        self.assertEqual(self.vm_test01.check_waagent_log(additional_ignore_list=["ERROR Failed to enable swap [000005] Invalid swap size [0]"]), "",
                          "There're error logs")
 
     def test_resource_disk_gpt_partition(self):
@@ -985,7 +985,7 @@ echo 'teststring' >> /root/test.log\
                            "resource_disk_gpt_partition",
                            "test_ssh_host_key_pair_type",
                            "test_attach_disk_check_device_timeout",
-                           "custom_data"]
+                           "customdata"]
             reboot_list = ["resource_disk_mount_point",
                            "resource_disk_swap_check",
                            "resource_disk_large_swap_file"]
