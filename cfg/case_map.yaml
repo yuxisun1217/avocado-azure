@@ -32,6 +32,7 @@ GeneralTest.test_check_password_sshkey: 'WALA-TC: [General] Access the VM with b
 GeneralTest.test_logrotate: 'WALA-TC: [General] Logrotate'
 GeneralTest.test_extension_update: 'WALA-TC: [General] Extension update'
 GeneralTest.test_verify_autoupdate_disabled: 'WALA-TC: [General] Verify AutoUpdate is disabled'
+GeneralTest.test_verify_autoupdate_enabled: 'WALA-TC: [General] Verify AutoUpdate is enabled'
 GeneralTest.test_check_shadow_permission: 'WALA-TC: [General] Check /etc/shadow permission'
 GeneralTest.test_check_sshdconfig_permission: 'WALA-TC: [General] Check /etc/ssh/sshd_config permission'
 GeneralTest.test_extension_update: 'WALA-TC: [General] Extension update'
