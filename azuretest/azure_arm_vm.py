@@ -302,7 +302,7 @@ class VM(azure_vm.BaseVM):
             logging.debug("VM doesn't exist.")
             self.vm_status = -1
         else:
-            status = self.params['instanceView']['statuses'][1]['displayStatus']
+            status = self.params['instanceView']['statuses'][-1]['displayStatus']
             logging.debug("VM status: %s", status)
             if status == "VM stopped":
                 self.vm_status = 2
