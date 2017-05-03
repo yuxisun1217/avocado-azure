@@ -478,8 +478,8 @@ class VM(azure_vm.BaseVM):
 
         :return:
         """
-        return utils_misc.host_command("host %s|awk \'{print $NF}\'" % self.dns_name).strip('\n')
-#        return self.dns_name
+#        return utils_misc.host_command("host %s|awk \'{print $NF}\'" % self.dns_name).strip('\n')
+        return self.dns_name
 
     def get_ssh_port(self):
         """
@@ -1166,6 +1166,8 @@ class NetworkSecurityGroupRule(object):
         :param options: extra options
         :return: Zero if success to create VM
         """
+        if not params:
+            params = self.params
         return azure_cli_arm.network_nsg_rule_create(self.name, self.rg_name, params, options).exit_status
 
     def update(self, params=None):
