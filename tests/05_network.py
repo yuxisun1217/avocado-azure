@@ -155,7 +155,7 @@ lo eth0\
         # Change hostname
         old_hostname = self.vm_test01.name
         new_hostname = self.vm_test01.name + "new"
-        self.vm_test01.get_output("nmcli gen hostname {0}".format(new_hostname))
+        self.vm_test01.get_output("hostname {0}".format(new_hostname))
         # Wait for the -run-exthandlers process running
         max_retry = 10
         for retry in xrange(0, max_retry):
