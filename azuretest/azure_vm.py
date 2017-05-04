@@ -561,17 +561,17 @@ EOF
     def postfix(self):
         return utils_misc.postfix()
 
-    def _check_log(self, logfile, ignore_list, additional_ignore_list=None):
+    def _check_log(self, logfile, ignore_list, additional_ignore_list=None, sudo=True):
         if additional_ignore_list:
             ignore_list += additional_ignore_list
         if ignore_list:
             cmd = "cat {0} | grep -iE 'error|fail' | grep -vE '{1}'".format(logfile, '|'.join(ignore_list))
         else:
             cmd = "cat {0} | grep -iE 'error|fail'".format(logfile)
-        return self.get_output(cmd)
+        return self.get_output(cmd, sudo=sudo)
 
     def check_waagent_log(self, additional_ignore_list=None):
-        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST, additional_ignore_list)
+        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST, additional_ignore_list, sudo=False)
 
     def check_messages_log(self, additional_ignore_list=None):
         return self._check_log("/var/log/messages", MESSAGES_IGNORELIST, additional_ignore_list)
