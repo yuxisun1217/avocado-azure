@@ -34,6 +34,12 @@ class GeneralTest(Test):
                                ssh_key=prep.host_pubkey_file)
         else:
             prep.get_vm_params()
+        if float(prep.project) < 7.0:
+            if "verify_autoupdate_enabled" in self.name.name:
+                self.skip("AutoUpdate should be disabled in RHEL{0}".format(prep.project))
+        else:
+            if "verify_autoupdate_disabled" in self.name.name:
+                self.skip("AutoUpdate should be enabled in RHEL{0}".format(prep.project))
         prep.login()
         self.azure_mode = prep.azure_mode
         self.project = prep.project
