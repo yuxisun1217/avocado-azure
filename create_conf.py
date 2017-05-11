@@ -89,10 +89,10 @@ azure_mode: !mux
             vnet_address_prefix: 172.16.0.0/24
             vnet_subnet_address_prefix: 172.16.0.0/24
         proxy:
-            name: wala-squid
+            name: walaproxy
             username: root
             password: %(vm_password)s
-            resource_group: walaautoarmwestus
+            resource_group: walaproxy
             location: West US
             proxy_ip: 172.20.0.254
             proxy_port: 3128
