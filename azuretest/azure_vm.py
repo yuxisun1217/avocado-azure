@@ -48,7 +48,8 @@ MESSAGES_IGNORELIST = ["failed to get extended button data",
                        "Unit rngd.service entered failed state",
                        "rngd.service failed",
                        "Fast TSC calibration failed",
-                       "failed to prefill DIMM database from DMI data"] + WAAGENT_IGNORELIST
+                       "failed to prefill DIMM database from DMI data",
+                       "augenrules: failure 1"] + WAAGENT_IGNORELIST
 
 
 class BaseVM(object):
