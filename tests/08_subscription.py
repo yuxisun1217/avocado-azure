@@ -81,9 +81,9 @@ class SubscriptionTest(Test):
         # Cannot check UI. Skip this step.
         self.log.info("Cannot check UI. Skip this step.")
         # Unregister
-        self.assertEqual("System has been unregistered.",
-                         self.vm_test01.get_output("subscription-manager unregister"),
-                         "Fail to unregister from subscription server")
+        self.assertIn("System has been unregistered.",
+                      self.vm_test01.get_output("subscription-manager unregister"),
+                      "Fail to unregister from subscription server")
 
     def test_product_certificate(self):
         """
