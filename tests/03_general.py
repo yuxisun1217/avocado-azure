@@ -294,7 +294,12 @@ class GeneralTest(Test):
             # Create VM
             vm = Setup(self.params)
             vm.get_vm_params(vm_size=vm_size)
-            vm.vm_create()
+            if not vm.vm_create():
+                self.log.error("Fail to create VM {0}. Skip.".format(vm_size))
+                error_log += "Fail to create VM {0}. Skip.\n".format(vm_size)
+                result_flag = False
+                vm.vm_delete()
+                continue
             # Check Resources
             cpu_std = vm.vm_params['cpu']
             memory_std = vm.vm_params['memory']*1024*1024
