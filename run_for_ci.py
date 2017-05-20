@@ -180,8 +180,14 @@ def runtest():
 
 def import_result():
     if SUBMIT_RESULT:
+        logging.info("=============== Combine ASM/ARM results ===============")
+        ret = command("/usr/bin/python {0}/tools/combine_azuremode_result.py -p {0} -o {0}/merged_result.xml".format(RESULT_PATH), debug=True).exit_status
+        logging.info("=============== Convert avocado result to xUnit format ===============")
+        xunit_project = "rhel{0}".format(PROJECT.split('.')[0])
+        ret += command("/usr/bin/python %s/xen-ci/utils/convert_result2xunit.py -f {0}/merged_result.xml -t azure -p {1} -r {2} -o {0}/xUnit.xml".format(RESULT_PATH, xunit_project, TESTRUN_PREFIX), debug=True).exit_status
         logging.info("=============== Import result to polarion ===============")
-        ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
+#        ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
+        ret += command("curl -k -u {0}_machine:polarion -X POST -F file=@{1}/xUnit.xml https://polarion.engineering.redhat.com/polarion/import/xunit".format(RESULT_PATH, xunit_project), debug=True).exit_status
         logging.info("Import result successful")
         return ret
     else:
@@ -311,5 +317,23 @@ if __name__ == "__main__":
     TEARDOWN = options.teardown
 
     TYPE = options.type if options.type else yaml.load(file('%s/config.yaml' % AVOCADO_PATH)).get("type", "onpremise")
+
+    # Set testrun prefix
+    if conf["TYPE"] and conf["TYPE"].lower() != "none":
+        runtype = ' ' + conf["TYPE"]
+    else:
+        runtype = ''
+    if conf["TAG"] and conf["TAG"].lower() != "none":
+        tag = '-' + conf["TAG"]
+    else:
+        tag = ''
+    TESTRUN_PREFIX = "WALinuxAgent-{wala_version}{tag} {rhel_version}{runtype}".format(
+        wala_version=conf["WALA_VERSION"].replace('.', '_'),
+        tag=tag,
+        runtype=runtype,
+        rhel_version=conf["RHEL_VERSION"].replace('.','_'))
+
+    # Get results path
+    RESULT_PATH = conf["RESULT_PATH"]
 
     main()
