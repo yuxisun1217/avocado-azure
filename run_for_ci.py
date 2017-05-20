@@ -181,10 +181,10 @@ def runtest():
 def import_result():
     if SUBMIT_RESULT:
         logging.info("=============== Combine ASM/ARM results ===============")
-        ret = command("/usr/bin/python {0}/tools/combine_azuremode_result.py -p {0} -o {0}/merged_result.xml".format(RESULT_PATH), debug=True).exit_status
+        ret = command("/usr/bin/python {0}/tools/combine_azuremode_result.py -p {1} -o {1}/merged_result.xml".format(AVOCADO_PATH, RESULT_PATH), debug=True).exit_status
         logging.info("=============== Convert avocado result to xUnit format ===============")
         xunit_project = "rhel{0}".format(PROJECT.split('.')[0])
-        ret += command("/usr/bin/python %s/xen-ci/utils/convert_result2xunit.py -f {0}/merged_result.xml -t azure -p {1} -r {2} -o {0}/xUnit.xml".format(RESULT_PATH, xunit_project, TESTRUN_PREFIX), debug=True).exit_status
+        ret += command("/usr/bin/python {0}/xen-ci/utils/convert_result2xunit.py -f {1}/merged_result.xml -t azure -p {2} -r {3} -o {1}/xUnit.xml".format(AVOCADO_PATH, RESULT_PATH, xunit_project, TESTRUN_PREFIX), debug=True).exit_status
         logging.info("=============== Import result to polarion ===============")
 #        ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
         ret += command("curl -k -u {0}_machine:polarion -X POST -F file=@{1}/xUnit.xml https://polarion.engineering.redhat.com/polarion/import/xunit".format(RESULT_PATH, xunit_project), debug=True).exit_status
