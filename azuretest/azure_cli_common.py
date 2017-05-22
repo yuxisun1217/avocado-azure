@@ -44,7 +44,8 @@ def login_azure(username, password):
     :return: True if operate successfully
     """
     for retry in xrange(1, 11):
-        login_ret = command("azure login -u %s -p %s" % (username, password), ignore_status=True, timeout=60)
+        logging.debug("azure login -u %s -p ******" % username)
+        login_ret = command("azure login -u %s -p %s" % (username, password), ignore_status=True, timeout=60, debug=False)
 #        login_ret = command("azure account show --json")
         if login_ret.exit_status == 0:
             logging.debug("Login successfully with: %s", username)
