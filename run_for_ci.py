@@ -316,11 +316,30 @@ if __name__ == "__main__":
     IMPORT_ONLY = options.import_only
     TEARDOWN = options.teardown
 
-    TYPE = options.type if options.type else yaml.load(file('%s/config.yaml' % AVOCADO_PATH)).get("type", "onpremise")
+    CUR_PATH = os.path.dirname(os.path.realpath(__file__))
+    # Parse polarion_config.yaml
+    CONFIG_FILE = '%s/../cfg/polarion_config.yaml' % CUR_PATH
+    if not os.path.exists(CONFIG_FILE):
+        logging.error("No config file: %s" % CONFIG_FILE)
+        sys.exit(1)
+    with open(CONFIG_FILE) as f:
+        conf = yaml.load(f.read())
+
+#    TYPE = options.type if options.type else yaml.load(file('%s/config.yaml' % AVOCADO_PATH)).get("type", "onpremise")
+    TYPE = options.type if options.type else conf.get("TYPE", "onpremise")
+
+#    # Set project id
+#    if int(conf["PROJECT"]) == 6:
+#        PROJ_ID = 'RHEL6'
+#    elif int(conf["PROJECT"]) == 7:
+#        PROJ_ID = 'RedHatEnterpriseLinux7'
+#    else:
+#        logging.error("Wrong project. Project: %s" % conf["PROJECT"])
+#        sys.exit(1)
 
     # Set testrun prefix
-    if conf["TYPE"] and conf["TYPE"].lower() != "none":
-        runtype = ' ' + conf["TYPE"]
+    if TYPE and TYPE.lower() != "none":
+        runtype = ' ' + TYPE
     else:
         runtype = ''
     if conf["TAG"] and conf["TAG"].lower() != "none":
@@ -331,7 +350,7 @@ if __name__ == "__main__":
         wala_version=conf["WALA_VERSION"].replace('.', '_'),
         tag=tag,
         runtype=runtype,
-        rhel_version=conf["RHEL_VERSION"].replace('.','_'))
+        rhel_version=conf["RHEL_VERSION"].replace('.', '_'))
 
     # Get results path
     RESULT_PATH = conf["RESULT_PATH"]
