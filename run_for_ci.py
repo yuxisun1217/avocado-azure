@@ -210,7 +210,7 @@ def import_result():
         logging.info("=============== Combine ASM/ARM results ===============")
         ret = command("/usr/bin/python {0}/tools/combine_azuremode_result.py -p {1} -o {1}/merged_result.xml".format(AVOCADO_PATH, result_path), debug=True, stdout=True).exit_status
         logging.info("=============== Import result to polarion ===============")
-        ret += command("/usr/bin/python {0}/xen-ci/utils/import_XunitResult2Polarion.py -f {1}/merged_result.xml -d {0}/xen-ci/database/testcases.db -t azure -p {2} -r \"{3}\" -o {1}/xUnit.xml -k {4}".format(AVOCADO_PATH, result_path, xunit_project, TESTRUN_PREFIX, CIUSER_PASSWORD), debug=True, stdout=True).exit_status
+        ret += command("/usr/bin/python {0}/xen-ci/utils/import_XunitResult2Polarion.py -f {1}/merged_result.xml -d {0}/xen-ci/database/testcases.db -t azure -p {2} -r \"{3}\" -o {1}/xUnit.xml -k {4} -v".format(AVOCADO_PATH, result_path, xunit_project, TESTRUN_PREFIX, CIUSER_PASSWORD), debug=True, stdout=True).exit_status
 #        ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
 #        ret += command("curl -k -u {0}_machine:polarion -X POST -F file=@{1}/xUnit.xml https://polarion.engineering.redhat.com/polarion/import/xunit".format(xunit_project, result_path), debug=True, stdout=True).exit_status
         logging.info("Import result successful")
