@@ -8,7 +8,7 @@ function case1()
     DISKTYPE="P10"
     FILENAME="/dev/sdc"
     FORMAT="raw"
-    NAME="rhel68-storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
+    NAME="storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
     for i in `seq 3`
     do
         ./fio_test.sh --vmsize $VMSIZE --disktype $DISKTYPE --filename $FILENAME --format $FORMAT --postfix 1 --casename $NAME
@@ -23,7 +23,7 @@ function case2()
     DISKTYPE="P10"
     FILENAME="/mnt/newdisk1/fio1"
     FORMAT="fs"
-    NAME="rhel68-storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
+    NAME="storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
     for i in `seq 3`
     do
         ./fio_test.sh --vmsize $VMSIZE --disktype $DISKTYPE --filename $FILENAME --format $FORMAT --postfix 1 --casename $NAME
@@ -38,7 +38,7 @@ function case3()
     DISKTYPE="P30"
     FILENAME="/dev/sdd"
     FORMAT="raw"
-    NAME="rhel68-storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
+    NAME="storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
     for i in `seq 3`
     do
         ./fio_test.sh --vmsize $VMSIZE --disktype $DISKTYPE --filename $FILENAME --format $FORMAT --postfix 1 --casename $NAME
@@ -53,7 +53,7 @@ function case4()
     DISKTYPE="P30"
     FILENAME="/mnt/newdisk1/fio1"
     FORMAT="fs"
-    NAME="rhel68-storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
+    NAME="storage-$VMSIZE-$DISKTYPE-$FORMAT-perf"
     for i in `seq 3`
     do
         ./fio_test.sh --vmsize $VMSIZE --disktype $DISKTYPE --filename $FILENAME --format $FORMAT --postfix 1 --casename $NAME
