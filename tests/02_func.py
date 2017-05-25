@@ -407,6 +407,7 @@ class FuncTest(Test):
                        "-install|-uninstall|-deprovision[+user]|-version|-serialconsole|-daemon]"
         else:
             help_msg = "usage: /usr/sbin/waagent [-verbose] [-force] [-help] " \
+                       "-configuration-path:<path to configuration file>"\
                        "-deprovision[+user]|-register-service|-version|-daemon|-start|-run-exthandlers]"
         self.log.debug("help_msg: \n" + help_msg)
         self.assertEqual(help_msg, self.vm_test01.get_output("waagent -help", sudo=False).strip('\n'),
