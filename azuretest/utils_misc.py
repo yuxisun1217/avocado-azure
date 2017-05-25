@@ -196,6 +196,7 @@ def command(cmd, timeout=1200, **kwargs):
     """
     azure_json = kwargs.get('azure_json', False)
     debug = kwargs.get('debug', True)
+    stdout = kwargs.get('stdout', True)
     ignore_status = kwargs.get('ignore_status', False)
     error_debug = kwargs.get('error_debug', True)
 #    timeout = kwargs.get('timeout', None)
@@ -231,8 +232,9 @@ def command(cmd, timeout=1200, **kwargs):
         raise
     if debug:
         logging.debug("status: %s", ret.exit_status)
-#        logging.debug("stdout: %s", ret.stdout.strip())
         logging.debug("stderr: %s", ret.stderr.strip())
+    if stdout:
+        logging.debug("stdout: %s", ret.stdout.strip())
     if azure_json and not ret.exit_status:
         try:
             ret.stdout = json.loads(ret.stdout)
