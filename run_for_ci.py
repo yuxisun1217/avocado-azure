@@ -180,8 +180,39 @@ def runtest():
 
 def import_result():
     if SUBMIT_RESULT:
+        # Parse polarion_config.yaml
+        config_file = '%s/cfg/polarion_config.yaml' % AVOCADO_PATH
+        if not os.path.exists(config_file):
+            logging.error("No config file: %s" % config_file)
+            sys.exit(1)
+        with open(config_file) as f:
+            conf = yaml.load(f.read())
+        # Set testrun prefix
+        runtype = conf.get("TYPE", None)
+        if runtype and runtype.lower() != "none":
+            runtype = ' ' + runtype
+        else:
+            runtype = ''
+        if conf["TAG"] and conf["TAG"].lower() != "none":
+            tag = '-' + conf["TAG"]
+        else:
+            tag = ''
+        TESTRUN_PREFIX = "WALinuxAgent-{wala_version}{tag} {rhel_version}{runtype}".format(
+            wala_version=conf["WALA_VERSION"].replace('.', '_'),
+            tag=tag,
+            runtype=runtype,
+            rhel_version=conf["RHEL_VERSION"].replace('.', '_'))
+        logging.debug("Testrun prefix: {0}".format(TESTRUN_PREFIX))
+        xunit_project = "rhel{0}".format(str(conf["PROJECT"]).split('.')[0])
+        # Get results path
+        result_path = conf["RESULT_PATH"]
+        # Main process
+        logging.info("=============== Combine ASM/ARM results ===============")
+        ret = command("/usr/bin/python {0}/tools/combine_azuremode_result.py -p {1} -o {1}/merged_result.xml".format(AVOCADO_PATH, result_path), debug=True, stdout=True).exit_status
         logging.info("=============== Import result to polarion ===============")
-        ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
+        ret += command("/usr/bin/python {0}/xen-ci/utils/import_XunitResult2Polarion.py -f {1}/merged_result.xml -d {0}/xen-ci/database/testcases.db -t azure -p {2} -r \"{3}\" -o {1}/xUnit.xml -k {4} -v".format(AVOCADO_PATH, result_path, xunit_project, TESTRUN_PREFIX, CIUSER_PASSWORD), debug=True, stdout=True).exit_status
+#        ret = command("/usr/bin/python %s/tools/import_JunitResult2Polarion.py" % AVOCADO_PATH, debug=True).exit_status
+#        ret += command("curl -k -u {0}_machine:polarion -X POST -F file=@{1}/xUnit.xml https://polarion.engineering.redhat.com/polarion/import/xunit".format(xunit_project, result_path), debug=True, stdout=True).exit_status
         logging.info("Import result successful")
         return ret
     else:
@@ -302,6 +333,8 @@ if __name__ == "__main__":
     parser.add_option('-t', '--type', dest='type', action='store',
                       help='The type of the test. Default value is onpremise. '
                            '(onpremise/ondemand/customize)', metavar='TYPE')
+    parser.add_option('-k', '--ci-user-password', dest='ci_user_password', action='store',
+                      help='The ci-user password.', metavar='CIUSER_PASSWORD')
 
     options, args = parser.parse_args()
     AZURE_MODE = options.azure_mode.lower()
@@ -309,7 +342,7 @@ if __name__ == "__main__":
     RUN_ONLY = options.run_only
     IMPORT_ONLY = options.import_only
     TEARDOWN = options.teardown
-
+    CIUSER_PASSWORD = options.ci_user_password
     TYPE = options.type if options.type else yaml.load(file('%s/config.yaml' % AVOCADO_PATH)).get("type", "onpremise")
 
     main()

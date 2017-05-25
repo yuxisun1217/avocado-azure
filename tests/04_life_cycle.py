@@ -13,91 +13,31 @@ from azuretest import azure_asm_vm
 from azuretest import azure_arm_vm
 from azuretest import azure_image
 from azuretest import utils_misc
-
-
-def collect_vm_params(params):
-    return
+from azuretest.setup import Setup
 
 
 class LifeCycleTest(Test):
 
     def setUp(self):
-        # Get azure mode and choose test cases
-        self.azure_mode = self.params.get('azure_mode', '*/azure_mode/*')
-        self.log.debug("AZURE_MODE: %s", self.azure_mode)
-        if self.name.name.split(':')[-1] not in self.params.get('cases', '*/azure_mode/*'):
-            self.skip("Skip case %s in Azure Mode %s" % (self.name.name, self.azure_mode))
-        # Login Azure and change the mode
-        self.azure_username = self.params.get('username', '*/AzureSub/*')
-        self.azure_password = self.params.get('password', '*/AzureSub/*')
-        azure_cli_common.login_azure(username=self.azure_username,
-                                     password=self.azure_password)
-        azure_cli_common.set_config_mode(self.azure_mode)
-
-        # Prepare the vm parameters and create a vm
-        self.vm_params = dict()
-        self.vm_params["username"] = self.params.get('username', '*/VMUser/*')
-        self.vm_params["password"] = self.params.get('password', '*/VMUser/*')
-        self.vm_params["VMSize"] = self.params.get('vm_size', '*/azure_mode/*')
-        self.vm_params["VMName"] = self.params.get('vm_name', '*/azure_mode/*')
-        self.vm_params["VMName"] += self.vm_params["VMSize"].split('_')[-1].lower()
-        self.vm_params["Location"] = self.params.get('location', '*/resourceGroup/*')
-        self.vm_params["region"] = self.params.get('region', '*/resourceGroup/*')
-        self.vm_params["StorageAccountName"] = self.params.get('storage_account', '*/resourceGroup/*')
-        self.vm_params["Container"] = self.params.get('container', '*/resourceGroup/*')
-        self.vm_params["DiskBlobName"] = self.params.get('name', '*/DiskBlob/*')
-        self.vm_params["PublicPort"] = self.params.get('public_port', '*/network/*')
-        if self.azure_mode == "asm":
-            self.vm_params["Image"] = self.params.get('name', '*/Image/*')
-            self.vm_params["Image"] += "-" + self.vm_params["StorageAccountName"]
-            self.vm_params["DNSName"] = self.vm_params["VMName"] + ".cloudapp.net"
-            self.vm_test01 = azure_asm_vm.VMASM(self.vm_params["VMName"],
-                                                self.vm_params["VMSize"],
-                                                self.vm_params["username"],
-                                                self.vm_params["password"],
-                                                self.vm_params)
-        else:
-            self.vm_params["ResourceGroupName"] = self.params.get('rg_name', '*/resourceGroup/*')
-            self.vm_params["URN"] = "https://%s.blob.core.windows.net/%s/%s" % (self.vm_params["StorageAccountName"],
-                                                                                self.vm_params["Container"],
-                                                                                self.vm_params["DiskBlobName"])
-            self.vm_params["NicName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpName"] = self.vm_params["VMName"]
-            self.vm_params["PublicIpDomainName"] = self.vm_params["VMName"]
-            self.vm_params["VnetName"] = self.vm_params["ResourceGroupName"]
-            self.vm_params["VnetSubnetName"] = self.vm_params["ResourceGroupName"]
-            self.vm_params["VnetAddressPrefix"] = self.params.get('vnet_address_prefix', '*/network/*')
-            self.vm_params["VnetSubnetAddressPrefix"] = self.params.get('vnet_subnet_address_prefix', '*/network/*')
-            self.vm_params["DNSName"] = self.vm_params["PublicIpDomainName"] + "." + self.vm_params["region"] + ".cloudapp.azure.com"
-            self.vm_test01 = azure_arm_vm.VMARM(self.vm_params["VMName"],
-                                                self.vm_params["VMSize"],
-                                                self.vm_params["username"],
-                                                self.vm_params["password"],
-                                                self.vm_params)
-        self.log.debug("Create the vm %s", self.vm_params["VMName"])
-        # If vm doesn't exist, create it. If it exists, start it.
-        self.vm_test01.vm_update()
-        if "create_vm" in self.name.name:
-            if self.vm_test01.exists():
-                self.vm_test01.delete()
-                self.vm_test01.wait_for_delete()
+        args = []
+        prep = Setup(self.params)
+        if not prep.selected_case(self.name):
+            self.skip()
+        prep.get_vm_params()
+        prep.login()
+        self.project = prep.project
+        self.wala_version = prep.wala_version
+        self.conf_file = prep.conf_file
+        self.host_pubkey_file = prep.host_pubkey_file
+        self.vm_test01 = prep.vm_test01
+        self.vm_params = prep.vm_params
+        if "test_create_vm" in self.name.name:
+            self.assertTrue(prep.vm_delete(), "Delete VM failed.")
             return
-        if "start_vm" in self.name.name:
-            if self.vm_test01.is_stopped() or self.vm_test01.is_deallocated():
-                return
-        if not self.vm_test01.exists():
-            self.vm_test01.vm_create(self.vm_params)
-            self.vm_test01.wait_for_running()
-        else:
-            if not self.vm_test01.is_running():
-                self.vm_test01.start()
-                self.vm_test01.wait_for_running()
-        if not self.vm_test01.verify_alive():
-            self.error("VM %s is not available. Exit." % self.vm_params["VMName"])
-        self.project = self.params.get("Project", "*/Common/*")
-        self.conf_file = "/etc/waagent.conf"
-        # Increase sudo password timeout
-        self.vm_test01.modify_value("Defaults timestamp_timeout", "-1", "/etc/sudoers", "=")
+        elif "test_start_vm" in self.name.name:
+#             "test_shutdown_capture_specialized_image" in self.name.name:
+            args.append("stop")
+        self.assertTrue(prep.vm_create(args=args), "Setup Failed.")
 
     def test_create_vm(self):
         """
@@ -124,6 +64,8 @@ class LifeCycleTest(Test):
         self.log.info("Restart a VM")
         before = self.vm_test01.get_output("who -b", sudo=False)
 #        self.vm_test01.session_close()
+        # Sleep 60s to prevent rebooting in 1 minute
+        time.sleep(60)
         self.log.debug("Restart the vm %s", self.vm_params["VMName"])
         self.assertEqual(self.vm_test01.restart(), 0,
                          "Fail to restart the vm")
@@ -141,27 +83,28 @@ class LifeCycleTest(Test):
         else:
             self.vm_test01.get_output("swapoff /dev/mapper/rhel-swap")
         # Retry 10 times (300s in total) to wait for the swap file created.
-        for count in xrange(1, 11):
+        max_retry = 10
+        for count in xrange(1, max_retry+1):
             swapsize = self.vm_test01.get_output("free -m|grep Swap|awk '{print $2}'", sudo=False)
             if swapsize == "2047":
                 break
             else:
                 self.log.info("Swap size is wrong. Retry %d times." % count)
                 time.sleep(30)
-        else:
-            self.fail("Swap is not on after VM restart")
-#        self.assertNotEqual(10, count, "Swap is not on after VM restart")
+        self.assertNotEqual(max_retry, count, "Swap is not on after VM restart")
 
     def test_reboot_vm_inside_guest(self):
         """
         reboot inside guest
         """
         self.log.info("Reboot a VM inside guest")
+        # sleep 60s to prevent the 2 boots in the same minute
+        time.sleep(60)
         before = self.vm_test01.get_output("who -b", sudo=False)
         self.log.debug("Reboot the vm %s", self.vm_params["VMName"])
-        self.vm_test01.get_output("reboot")
+        self.vm_test01.get_output("reboot", timeout=1, max_retry=0, ignore_status=True)
         # wait for reboot finished
-        time.sleep(20)
+        time.sleep(30)
         self.assertTrue(self.vm_test01.verify_alive(),
                         "Fail to start the vm after restart: verify_alive")
         after = self.vm_test01.get_output("who -b", sudo=False)
@@ -297,10 +240,150 @@ class LifeCycleTest(Test):
         self.assertFalse(self.vm_test01.verify_alive(timeout=10),
                          "New user account should not work")
 
+    def test_live_capture_specialized_image(self):
+        """
+        Live capture specialized image and create VM. (VM is running. VM will not be deleted.)
+        """
+#        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+        # 1. Capture specialized image
+        self.log.debug("Live capture the vm %s -- Specialized", self.vm_params["VMName"])
+        capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
+        capture_image = azure_image.VMImage(name=capture_vm_name)
+
+        cmd_params = dict()
+        cmd_params["os_state"] = "Specialized"
+        self.assertEqual(self.vm_test01.capture(capture_image.name, cmd_params),
+                         0, "Fail to capture the vm: azure cli fail")
+#        self.vm_test01.get_output("touch /var/lib/waagent/provisioned")
+        self.assertEqual(capture_image.verify_exist(), 0,
+                         "Fail to get the captured vm image: verify_exist")
+        capture_image.vm_image_update()
+        self.assertEqual(capture_image.params["oSDiskConfiguration"]["oSState"], "Specialized",
+                         "The VM image state is not Specialized.")
+        self.vm_test01.vm_update()
+        self.assertTrue(self.vm_test01.exists(),
+                        "Original VM should not be deleted.")
+        self.log.info("Success to capture the vm as image %s -- Specialized" % capture_image.name)
+        # 2. Create a VM base on this image
+        old_hostname = self.vm_params["VMName"]
+        old_username = self.vm_test01.username
+        new_username = old_username + "new"
+        prep = Setup(self.params)
+        prep.get_vm_params(Image=capture_image.name,
+                           vmname_tag="spe",
+                           username=new_username)
+        self.vm_test01 = prep.vm_test01
+        self.assertTrue(prep.vm_create("not_alive"),
+                        "Fail to create VM base on the Specialized image")
+        # Verify old/new user account and hostname
+        self.assertTrue(self.vm_test01.verify_alive(username=old_username),
+                        "Fail to login with old username")
+        self.assertEqual(old_hostname, self.vm_test01.get_output("hostname", sudo=False),
+                         "Hostname should not be changed")
+        self.assertEqual(prep.vm_test01.check_waagent_log(additional_ignore_list=["did not terminate cleanly",
+                                                                                  "Failed to get dvd device"]), "",
+                         "There're error logs in waagent.log")
+        self.assertFalse(self.vm_test01.verify_alive(username=new_username, timeout=10),
+                         "New username should not work")
+
+    def test_shutdown_capture_specialized_image(self):
+        """
+        Shutdown and capture specialized image and create VM. (VM is stopped(deallocated). VM will not be deleted.)
+        """
+#        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+        self.vm_test01.shutdown()
+        self.assertTrue(self.vm_test01.wait_for_deallocated(),
+                        "Fail to stop VM before capturing")
+        # 1. Capture specialized image
+        self.log.debug("Shutdown and capture the vm %s -- Specialized", self.vm_params["VMName"])
+        capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
+        capture_image = azure_image.VMImage(name=capture_vm_name)
+
+        cmd_params = dict()
+        cmd_params["os_state"] = "Specialized"
+        self.assertEqual(self.vm_test01.capture(capture_image.name, cmd_params),
+                         0, "Fail to capture the vm: azure cli fail")
+        self.assertEqual(capture_image.verify_exist(), 0,
+                         "Fail to get the captured vm image: verify_exist")
+        capture_image.vm_image_update()
+        self.assertEqual(capture_image.params["oSDiskConfiguration"]["oSState"], "Specialized",
+                         "The VM image state is not Specialized.")
+        self.vm_test01.vm_update()
+        self.assertTrue(self.vm_test01.exists(),
+                        "Original VM should not be deleted.")
+        self.log.info("Success to capture the vm as image %s -- Specialized" % capture_image.name)
+        # 2. Create a VM base on this image
+        old_hostname = self.vm_params["VMName"]
+        old_username = self.vm_test01.username
+        new_username = old_username + "new"
+        prep = Setup(self.params)
+        prep.get_vm_params(Image=capture_image.name,
+                           vmname_tag="spe",
+                           username=new_username)
+        self.vm_test01 = prep.vm_test01
+        self.assertTrue(prep.vm_create("not_alive"),
+                        "Fail to create VM base on the Specialized image")
+        # Verify old/new user account and hostname
+        self.assertTrue(self.vm_test01.verify_alive(username=old_username),
+                        "Fail to login with old username")
+        self.assertEqual(old_hostname, self.vm_test01.get_output("hostname", sudo=False),
+                         "Hostname should not be changed")
+        self.assertEqual(prep.vm_test01.check_waagent_log(additional_ignore_list=["did not terminate cleanly",
+                                                                                  "Failed to get dvd device"]),
+                         "",
+                         "There're error logs in waagent.log")
+        self.assertFalse(self.vm_test01.verify_alive(username=new_username, timeout=10),
+                         "New username should not work")
+
+    def test_capture_generalized_image(self):
+        """
+        Capture a VM to generalized image (VM is stopped(deallocated). VM will be deleted.)
+        """
+        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
+        self.vm_test01.shutdown()
+        self.assertTrue(self.vm_test01.wait_for_deallocated(),
+                        "Fail to stop VM before capturing")
+        # 1. Capture generalized image
+        self.log.debug("Capture the vm %s -- Generalized", self.vm_params["VMName"])
+        capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Generalized"
+        capture_image = azure_image.VMImage(name=capture_vm_name)
+
+        cmd_params = dict()
+        cmd_params["os_state"] = "Generalized"
+        self.assertEqual(self.vm_test01.capture(capture_image.name, cmd_params),
+                         0, "Fail to capture the vm: azure cli fail")
+        self.assertEqual(capture_image.verify_exist(), 0,
+                         "Fail to get the captured vm image: verify_exist")
+        capture_image.vm_image_update()
+        self.assertEqual(capture_image.params["oSDiskConfiguration"]["oSState"], "Generalized",
+                         "The VM image state is not Generalized.")
+        self.vm_test01.vm_update()
+        self.assertFalse(self.vm_test01.exists(),
+                         "Original VM should be deleted.")
+        self.log.info("Success to capture the vm as image %s -- Generalized" % capture_image.name)
+        # 2. Create a VM base on this image
+        old_username = self.vm_test01.username
+        new_username = old_username + "new"
+        prep = Setup(self.params)
+        prep.get_vm_params(Image=capture_image.name,
+                           vmname_tag="gen",
+                           username=new_username)
+        new_hostname = prep.vm_params["VMName"]
+        self.vm_test01 = prep.vm_test01
+        self.assertTrue(prep.vm_create("not_alive"),
+                        "Fail to create VM base on the Generalized image")
+        # Verify old/new user account and hostname
+        self.assertTrue(self.vm_test01.verify_alive(username=new_username),
+                        "Fail to login with new username")
+        self.assertEqual(new_hostname, self.vm_test01.get_output("hostname", sudo=False),
+                         "Hostname is not changed")
+        self.assertEqual(prep.vm_test01.check_waagent_log(additional_ignore_list=["did not terminate cleanly"]), "",
+                         "There're error logs in waagent.log")
+
     def tearDown(self):
         self.log.debug("tearDown")
         if "create_without_deprovision" in self.name.name or \
-           "capture_vm" in self.name.name:
+           "capture" in self.name.name:
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()
         # Clean ssh sessions

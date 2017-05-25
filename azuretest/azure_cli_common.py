@@ -44,7 +44,8 @@ def login_azure(username, password):
     :return: True if operate successfully
     """
     for retry in xrange(1, 11):
-        login_ret = command("azure login -u %s -p %s" % (username, password), ignore_status=True, timeout=60)
+        logging.debug("azure login -u %s -p ******" % username)
+        login_ret = command("azure login -u %s -p %s" % (username, password), ignore_status=True, timeout=60, debug=False)
 #        login_ret = command("azure account show --json")
         if login_ret.exit_status == 0:
             logging.debug("Login successfully with: %s", username)
@@ -128,7 +129,7 @@ def set_config_mode(mode="asm"):
 #        return True
     ret = command(cmd, timeout=60)
     if ret.exit_status == 0:
-        logging.debug("Success to change the azure config mode: %s", mode)
+        logging.debug("Succeed in changing azure config mode: %s", mode)
         return ret.exit_status
     else:
         logging.error("Fail to change the azure config mode: %s", mode)

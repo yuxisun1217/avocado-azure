@@ -1,0 +1,26 @@
+From d4e4125d4b2ee0b7de0c51dc562bf2d7be0fff9b Mon Sep 17 00:00:00 2001
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Fri, 7 Apr 2017 13:52:46 +0200
+Subject: Revert "No auto update when upgrading"
+
+This reverts commit 520440a24b021855c71956e1417cfaa67cb72e8c.
+---
+ azurelinuxagent/common/conf.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/azurelinuxagent/common/conf.py b/azurelinuxagent/common/conf.py
+index c45ec96..7911699 100644
+--- a/azurelinuxagent/common/conf.py
++++ b/azurelinuxagent/common/conf.py
+@@ -219,7 +219,7 @@ def get_autoupdate_gafamily(conf=__conf__):
+ 
+ 
+ def get_autoupdate_enabled(conf=__conf__):
+-    return conf.get_switch("AutoUpdate.Enabled", False)
++    return conf.get_switch("AutoUpdate.Enabled", True)
+ 
+ 
+ def get_autoupdate_frequency(conf=__conf__):
+-- 
+2.9.3
+

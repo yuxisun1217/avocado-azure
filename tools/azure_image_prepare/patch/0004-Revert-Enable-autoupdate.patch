@@ -1,0 +1,26 @@
+From bcf57b1e17a680a9e1a5843f5b34d520867a3ae1 Mon Sep 17 00:00:00 2001
+From: Vitaly Kuznetsov <vkuznets@redhat.com>
+Date: Fri, 7 Apr 2017 13:52:27 +0200
+Subject: Revert "Enable autoupdate"
+
+This reverts commit d95545f77f66e5556e6d96003d0c08c31f6ae12b.
+---
+ config/waagent.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config/waagent.conf b/config/waagent.conf
+index 77a0c7e..8a69462 100644
+--- a/config/waagent.conf
++++ b/config/waagent.conf
+@@ -86,7 +86,7 @@ OS.OpensslPath=None
+ # OS.EnableRDMA=y
+ 
+ # Enable or disable goal state processing auto-update, default is enabled
+-AutoUpdate.Enabled=n
++# AutoUpdate.Enabled=y
+ 
+ # Determine the update family, this should not be changed
+ # AutoUpdate.GAFamily=Prod
+-- 
+2.9.3
+

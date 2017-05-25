@@ -21,6 +21,10 @@ from aexpect.exceptions import ShellError
 from aexpect.exceptions import ShellProcessTerminatedError
 from aexpect.exceptions import ShellStatusError
 from aexpect.exceptions import ShellTimeoutError
+from exceptions import WaagentStopError
+from exceptions import WaagentStartError
+from exceptions import WaagentServiceError
+
 
 class VMDeadError(Exception):
     """
@@ -43,7 +47,11 @@ MESSAGES_IGNORELIST = ["failed to get extended button data",
                        "rngd.service: main process exited, code=exited, status=1/FAILURE",
                        "Unit rngd.service entered failed state",
                        "rngd.service failed",
-                       "Fast TSC calibration failed"] + WAAGENT_IGNORELIST
+                       "Fast TSC calibration failed",
+                       "failed to prefill DIMM database from DMI data",
+                       "augenrules: failure 1"] + WAAGENT_IGNORELIST
+
+
 class BaseVM(object):
 
     """
@@ -184,8 +192,8 @@ EOF
             logging.error("Fail to part disk %s" % disk)
             raise Exception
         output = self.get_output("partprobe", sudo=sudo)
-        if "Warning" in output and reboot is True:
-            self.get_output("reboot", sudo=sudo)
+        if "the kernel failed to re-read the partition table on %s" % disk in output and reboot is True:
+            self.get_output("reboot", sudo=sudo, max_retry=0, timeout=1, ignore_status=True)
             time.sleep(60)
             self.verify_alive(authentication=authentication)
         self.get_output("fdisk -l %s" % disk, sudo=sudo)
@@ -220,16 +228,26 @@ EOF
         return self.get_output("echo `sudo %s`" % cmd, sudo=False)
 
     def waagent_service_restart(self, project=6.0):
+        try:
+            old_pid = self.get_output("ps aux|grep \"[w]aagent -daemon\"").split()[1]
+        except Exception as e:
+            logging.warn("waagent service is not running before restart. {0}".format(e))
+            old_pid = None
         if float(project) < 7.0:
             cmd = "service waagent restart"
         else:
             cmd = "systemctl restart waagent"
         self.get_output(cmd)
         time.sleep(1)
-        if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
-            return True
+        daemon_process = self.get_output("ps aux|grep \"[w]aagent -daemon\"")
+        if "/sbin/waagent -daemon" in daemon_process:
+            new_pid = daemon_process.split()[1]
+            if new_pid != old_pid:
+                return True
+            else:
+                raise WaagentServiceError("waagent service is not restarted. Pid isn't changed.")
         else:
-            return False
+            raise WaagentStartError
 
     def waagent_service_start(self, project=6.0):
         if float(project) < 7.0:
@@ -241,7 +259,7 @@ EOF
         if "/sbin/waagent -daemon" in self.get_output("ps aux|grep [w]aagent"):
             return True
         else:
-            return False
+            raise WaagentStartError
 
     def waagent_service_stop(self, project=6.0):
         if float(project) < 7.0:
@@ -255,7 +273,7 @@ EOF
         if self.get_output("ps aux|grep [w]aagent") == "":
             return True
         else:
-            return False
+            raise WaagentStopError
 
     def login(self, timeout=LOGIN_TIMEOUT,
               username=None, password=None, authentication="password"):
@@ -321,7 +339,7 @@ EOF
                 if sudo:
                     self.session.cmd_output(sudo_cmd)
                 output = self.session.cmd_output(cmd, timeout).rstrip('\n')
-            except ShellTimeoutError, e:
+            except (ShellTimeoutError, ShellProcessTerminatedError) as e:
                 logging.debug("Run command %s timeout. Retry %d/%d" % (cmd, retry, max_retry))
                 self.verify_alive()
                 continue
@@ -331,10 +349,10 @@ EOF
             else:
                 break
         else:
-            logging.debug("After retry %d times, run command %s timeout. Exception: %s" % (retry, cmd, e))
             if ignore_status:
                 return None
             else:
+                logging.debug("After retry %d times, run command %s timeout. Exception: %s" % (retry, cmd, e))
                 raise
         logging.debug(output)
         return output
@@ -373,7 +391,7 @@ EOF
         else:
             return True
 
-    def wait_for_login(self, username=None, password=None, timeout=10, authentication="password"):
+    def wait_for_login(self, username=None, password=None, timeout=10, authentication="password", options=''):
         """
 
         :param username: VM username
@@ -397,7 +415,8 @@ EOF
             session = remote.wait_for_login(client="ssh", host=host, port=port,
                                             username=username, password=password,
                                             prompt=prompt, timeout=timeout,
-                                            authentication=authentication)
+                                            authentication=authentication,
+                                            options=options)
         except Exception, e:
             logging.debug("Timeout. Cannot login VM. Exception: %s", str(e))
             raise
@@ -424,8 +443,8 @@ EOF
         if not password:
             password = self.password
 #            password = self.params.get("password", "")
-        logging.debug(username)
-        logging.debug(password)
+#        logging.debug(username)
+#        logging.debug(password)
         client = self.params.get("file_transfer_client", "scp")
         address = self.get_public_address()
         port = self.get_ssh_port()
@@ -470,13 +489,14 @@ EOF
         utils_misc.close_log_file(log_filename)
 
     def verify_alive(self, username=None, password=None, timeout=LOGIN_WAIT_TIMEOUT,
-                     authentication="password"):
+                     authentication="password", options=''):
         """
 
         :param username: VM username
         :param password: VM password
         :param timeout: Retry timeout
-        :param authentication: Authentication PreferredAuthentications. (password|ssh_key)
+        :param authentication: Authentication PreferredAuthentications. (password|publickey)
+        :param options: Other options of ssh
         :return: False if timeout.
         """
         if username is None:
@@ -484,7 +504,7 @@ EOF
         if password is None:
             password = self.password
         try:
-            session = self.wait_for_login(username, password, timeout, authentication)
+            session = self.wait_for_login(username, password, timeout, authentication, options)
         except Exception, e:
             logging.error("VM is not alive. Exception: %s", str(e))
             return False
@@ -542,18 +562,35 @@ EOF
     def postfix(self):
         return utils_misc.postfix()
 
-    def _check_log(self, logfile, ignore_list):
+    def _check_log(self, logfile, ignore_list, additional_ignore_list=None, sudo=True):
+        if additional_ignore_list:
+            ignore_list += additional_ignore_list
         if ignore_list:
             cmd = "cat {0} | grep -iE 'error|fail' | grep -vE '{1}'".format(logfile, '|'.join(ignore_list))
         else:
             cmd = "cat {0} | grep -iE 'error|fail'".format(logfile)
-        return self.get_output(cmd)
+        return self.get_output(cmd, sudo=sudo)
 
-    def check_waagent_log(self):
-        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST)
+    def check_waagent_log(self, additional_ignore_list=None):
+        return self._check_log("/var/log/waagent.log", WAAGENT_IGNORELIST, additional_ignore_list, sudo=False)
 
-    def check_messages_log(self):
-        return self._check_log("/var/log/messages", MESSAGES_IGNORELIST)
+    def check_messages_log(self, additional_ignore_list=None):
+        return self._check_log("/var/log/messages", MESSAGES_IGNORELIST, additional_ignore_list)
+
+    def get_pid(self, process_key):
+        """
+        Return process pid according to the process_key string
+        :param process_key: The process key string
+        :return: pid
+        """
+        pid = self.get_output("ps aux|grep \\\"{0}\\\"|grep -v grep|tr -s ' '".format(process_key))
+        if pid == "":
+            return None
+        else:
+            pid = pid.split(' ')[1]
+            logging.debug("PID: {0}".format(pid))
+            return pid
+
 
 
 

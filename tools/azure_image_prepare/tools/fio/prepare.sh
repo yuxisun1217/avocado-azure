@@ -30,7 +30,7 @@ function d_pre_work()
     fi
     #1.
     #Check VM whether or not add data disk
-    local disk_number=`lsblk | grep disk | egrep -v '\<sda\>|\<sdb\>' | wc -l`
+    local disk_number=`lsblk | grep  '\<disk\>' | egrep -v '\<sda\>|\<sdb\>|\<fd0\>' | wc -l`
     if [ ${disk_number} != 2 -a ${disk_number} != 32 ];then
         echo "Data disk number doesn't meet requirment!"
         echo 'VM D1_V2 should contain 2 data disks'
@@ -75,7 +75,7 @@ function d_pre_work()
 
     #3.
     #Get device and operate it
-    local result=`lsblk | grep disk | grep -v '\<sda\>' | grep -v '\<sdb\>' | cut -d ' ' -f 1 | sort`
+    local result=`lsblk | grep '\<disk\>' | egrep -v '\<sda\>|\<sdb\>|\<fd0\>' | cut -d ' ' -f 1 | sort`
     device_list=''
     local temp=''
     local x=''
@@ -145,7 +145,7 @@ function ds_pre_work()
     fi
     #1.
     #Check VM whether or not add data disk
-    local disk_number=`lsblk | grep disk | egrep -v '\<sda\>|\<sdb\>' | wc -l`
+    local disk_number=`lsblk | grep  '\<disk\>' | egrep -v '\<sda\>|\<sdb\>|\<fd0\>' | wc -l`
     if [ ${disk_number} != 2 ];then
         echo "Data disk number doesn't meet requirment!"
         echo 'VM DS1&DS14 should contain 2 data disks'
@@ -189,12 +189,12 @@ function ds_pre_work()
 
     if [ $1 == 'case2' ];then
         #Invoke function format_device to partition&format device
-		#device=`lsblk | grep disk | egrep -v '\<sda\>|\<sdb\>'| awk '{print $1,$4}' | sort -n -k 2 -t ' ' | head -n 1 | cut -d ' ' -f 1`
+		#device=`lsblk | grep '\<disk\>' | egrep -v '\<sda\>|\<sdb\>'| awk '{print $1,$4}' | sort -n -k 2 -t ' ' | head -n 1 | cut -d ' ' -f 1`
 		device='/dev/sdc'
         format_device ${device}
         mount ${device}1 ${MOUNT_POINT}
     elif [ $1 == 'case4' ];then
-		#device=`lsblk | grep disk | egrep -v '\<sda\>|\<sdb\>'| awk '{print $1,$4}' | sort -r -n -k 2 -t ' ' | head -n 1 | cut -d ' ' -f 1`
+		#device=`lsblk | grep '\<disk\>' | egrep -v '\<sda\>|\<sdb\>'| awk '{print $1,$4}' | sort -r -n -k 2 -t ' ' | head -n 1 | cut -d ' ' -f 1`
 		device='/dev/sdd'
         format_device ${device}
         mount ${device}1 ${MOUNT_POINT}

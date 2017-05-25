@@ -200,7 +200,7 @@ def handle_prompts(session, username, password, prompt, timeout=10,
 def remote_login(client, host, port, username, password, prompt,
                  log_filename=None, timeout=10, interface=None,
                  status_test_command="echo $?", verbose=False,
-                 authentication="password"):
+                 authentication="password", options=''):
     """
     Log into a remote host (guest) using SSH/Telnet/Netcat.
 
@@ -240,8 +240,9 @@ def remote_login(client, host, port, username, password, prompt,
         cmd = ("ssh %s -o UserKnownHostsFile=/dev/null "
                "-o StrictHostKeyChecking=no "
                "-o PreferredAuthentications=%s "
-               "-p %s %s@%s" %
-               (verbose, authentication, port, username, host))
+               "-p %s %s@%s "
+               "%s" %
+               (verbose, authentication, port, username, host, options))
     elif client == "telnet":
         cmd = "telnet -l %s %s %s" % (username, host, port)
     elif client == "nc":
@@ -283,7 +284,7 @@ class AexpectIOWrapperOut(messenger.StdIOWrapperOutBase64):
 
 def wait_for_login(client, host, port, username, password, prompt,
                    log_filename=None, timeout=240, internal_timeout=10,
-                   interface=None, authentication="password"):
+                   interface=None, authentication="password", options=''):
     """
     Make multiple attempts to log into a guest until one succeeds or timeouts.
 
@@ -305,7 +306,8 @@ def wait_for_login(client, host, port, username, password, prompt,
         try:
             return remote_login(client, host, port, username, password, prompt,
                                 log_filename, internal_timeout, interface,
-                                verbose=verbose, authentication=authentication)
+                                verbose=verbose, authentication=authentication,
+                                options=options)
         except LoginError, e:
             logging.debug(e)
             verbose = True
@@ -314,7 +316,8 @@ def wait_for_login(client, host, port, username, password, prompt,
     return remote_login(client=client, host=host, port=port,
                         username=username, password=password, prompt=prompt,
                         log_filename=log_filename, timeout=internal_timeout,
-                        interface=interface, authentication=authentication)
+                        interface=interface, authentication=authentication,
+                        options=options)
 
 
 def _remote_scp(

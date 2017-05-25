@@ -566,6 +566,7 @@ def service_show(name, params=None, options='', **kwargs):
     cmd += " " + options
     return command(cmd, azure_json=True, **kwargs)
 
+
 # Storage Account
 def sto_acct_check(name, params=None, options='', **kwargs):
     """
@@ -873,4 +874,109 @@ def container_list(params=None, options='', **kwargs):
     return command(cmd, azure_json=True, **kwargs)
 
 
+# Network Security Group
+def network_nsg_create(name, params=None, options='', **kargs):
+    """
+    Create Network Security Group
 
+    :param name: NSG name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg create %s %s" % (name, options)
+    if params:
+        cmd += add_option("--location", params.get("location", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nsg_subnet_add(name, params=None, options='', **kargs):
+    """
+    Attach a Network Security Group to a subnet
+
+    :param name: NSG name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg subnet add %s" % options
+    if params:
+        cmd += add_option("--nsg-name", name)
+        cmd += add_option("--vnet-name", params.get("vnet_name", None))
+        cmd += add_option("--subnet-name", params.get("subnet_name", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nsg_show(name, params=None, options='', **kargs):
+    """
+    Show Network Security Group properties
+
+    :param name: NSG name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg show %s %s" % (name, options)
+    if params:
+        cmd += add_option("--subscription", params.get("subscription", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nsg_delete(name, params=None, options='', **kargs):
+    """
+    Delete Network Security Group
+
+    :param name: NSG name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg delete %s %s --quiet" % (name, options)
+    if params:
+        cmd += add_option("--subscription", params.get("subscription", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+# Network Security Group Rule
+def network_nsg_rule_create(name, params=None, options='', **kargs):
+    """
+    Create Network Security Group Rule
+
+    :param name: NSG Rule name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg rule create %s %s" % (name, options)
+    if params:
+        cmd += add_option("--nsg-name", params.get("nsg_name", None))
+        cmd += add_option("--protocol", params.get("protocol", None))
+        cmd += add_option("--source-address-prefix", params.get("source_address_prefix", None))
+        cmd += add_option("--source-port-range", params.get("source_port_range", None))
+        cmd += add_option("--destination-address-prefix", params.get("destination_address_prefix", None))
+        cmd += add_option("--destination-port-range", params.get("destination_port_range", None))
+        cmd += add_option("--action", params.get("action", None))
+        cmd += add_option("--priority", params.get("priority", None))
+        cmd += add_option("--type", params.get("type", None))
+    return command(cmd, azure_json=True, **kargs)
+
+
+def network_nsg_rule_show(name, params=None, options='', **kargs):
+    """
+    Show Network Security Group Rule
+
+    :param name: NSG Rule name
+    :param params: Command properties
+    :param options: extra options
+    :param kargs: Additional args for running the command
+    :return: CmdResult object
+    """
+    cmd = "azure network nsg rule show %s %s" % (name, options)
+    if params:
+        cmd += add_option("--nsg-name", params.get("nsg_name", None))
+    return command(cmd, azure_json=True, **kargs)
