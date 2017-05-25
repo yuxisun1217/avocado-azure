@@ -1033,6 +1033,8 @@ class NetworkSecurityGroup(object):
         :param options: extra options
         :return: Zero if success to create VM
         """
+        if not params:
+            params = self.params
         return azure_cli_asm.network_nsg_create(self.name, params, options).exit_status
 
     def update(self, params=None):
@@ -1041,7 +1043,7 @@ class NetworkSecurityGroup(object):
 
         :param params: A dict containing NSG params
         """
-        if params is None:
+        if not params:
             self.params = self.show()
         else:
             self.params = params
@@ -1078,6 +1080,17 @@ class NetworkSecurityGroup(object):
         :return: Zero if success to delete NSG
         """
         return azure_cli_asm.network_nsg_delete(self.name, options, timeout=timeout).exit_status
+
+    def subnet_add(self, params=None, options=''):
+        """
+        Attach NSG to subnet
+        :param params: A dict containing NetworkSecurityGroup params
+        :param options: extra options
+        :return: Zero if success
+        """
+        if not params:
+            params = self.params
+        return azure_cli_asm.network_nsg_subnet_add(self.name, params, options).exit_status
 
 
 class NetworkSecurityGroupRule(object):
@@ -1135,18 +1148,15 @@ class NetworkSecurityGroupRule(object):
         else:
             self.params = params
 
-    def check_exist(self, params=None, options=''):
+    def check_exist(self, options=''):
         """
         Help to check if the NSG Rule is existing
 
-        :param params: A dict containing NetworkSecurityGroup params
         :param options: extra options
         :return: True if exists
         """
-        if not params:
-            params = dict()
         try:
-            self.show()
+            self.show(options=options)
         except Exception, e:
             logging.debug("No NSG %s exists. Exception: %s" % (self.name, str(e)))
             return False
