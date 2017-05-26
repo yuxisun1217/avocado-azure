@@ -136,7 +136,7 @@ class StorageTest(Test):
                                                                             disk_name)
         except IndexError, e:
             self.fail("Fail to get datadisk name. Exception: %s" % str(e))
-        self.log.debug("DISKNAME: %s", disk_name)
+        self.log.info("DISKNAME: %s", disk_name)
         # Detach disk
         self.assertEqual(self.vm_test01.disk_detach(disk_lun=0), 0,
                          "Fail to detach disk before re-attach: azure cli fail")
@@ -147,7 +147,7 @@ class StorageTest(Test):
             try:
                 self.vm_test01.disk_attach(disk_name)
             except:
-                self.log.debug("Attach disk retry %d/%d times." % (retry, max_retry))
+                self.log.info("Attach disk retry %d/%d times." % (retry, max_retry))
             else:
                 break
         else:
@@ -212,7 +212,7 @@ class StorageTest(Test):
                                                                             disk_name)
         except IndexError, e:
             self.fail("Fail to get datadisk name. Exception: %s" % str(e))
-        self.log.debug("DISKNAME: %s", disk_name)
+        self.log.info("DISKNAME: %s", disk_name)
         self.assertEqual(self.vm_test01.disk_detach(disk_lun=0), 0,
                          "Fail to detach disk: azure cli fail")
         time.sleep(5)
@@ -246,7 +246,7 @@ class StorageTest(Test):
             try:
                 self.vm_test01.disk_attach(disk_name)
             except:
-                self.log.debug("Attach disk retry %d/%d times." % (retry, max_retry))
+                self.log.info("Attach disk retry %d/%d times." % (retry, max_retry))
             else:
                 break
         else:
@@ -317,7 +317,7 @@ class StorageTest(Test):
                 break
         # remove /dev/sda and /dev/sdb
         dev_list = dev_list[2:]
-        self.log.debug(dev_list)
+        self.log.info(dev_list)
         # Check the devices
         fdisk_list = self.vm_test01.get_output("ls /dev/sd*").split()
         self.assertTrue(set(dev_list).issubset(fdisk_list),
@@ -354,7 +354,7 @@ class StorageTest(Test):
         os_blob = copy.deepcopy(self.blob_list[0])
         os_blob.name = os_disk_name
         os_blob.update()
-        self.log.debug(os_blob.params)
+        self.log.info(os_blob.params)
         current_size_kb = int(os_blob.params.get("contentLength"))
         current_size = (current_size_kb-512)/1024/1024/1024
         smaller_size = current_size - 2

@@ -409,7 +409,7 @@ class FuncTest(Test):
             help_msg = "usage: /usr/sbin/waagent [-verbose] [-force] [-help] " \
                        "-configuration-path:<path to configuration file>"\
                        "-deprovision[+user]|-register-service|-version|-daemon|-start|-run-exthandlers]"
-        self.log.debug("help_msg: \n" + help_msg)
+        self.log.info("help_msg: \n" + help_msg)
         self.assertEqual(help_msg, self.vm_test01.get_output("waagent -help", sudo=False).strip('\n'),
                          "waagent help message is wrong")
 
@@ -624,12 +624,12 @@ class FuncTest(Test):
         thread1.join()
         output = q.get()
         q.task_done()
-        self.log.debug(output)
+        self.log.info(output)
         self.assertNotIn("message=Traceback", output,
                          "Should not raise exception.")
 
     def tearDown(self):
-        self.log.debug("tearDown")
+        self.log.info("tearDown")
         if "depro" in self.name.name or \
            "uninstall" in self.name.name or \
            "setup_install" in self.name.name or \

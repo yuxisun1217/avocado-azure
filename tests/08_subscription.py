@@ -122,7 +122,7 @@ class SubscriptionTest(Test):
                       "yum remove expect fail")
 
     def tearDown(self):
-        self.log.debug("tearDown")
+        self.log.info("tearDown")
         # Clean ssh sessions
         utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 

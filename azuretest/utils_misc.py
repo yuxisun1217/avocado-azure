@@ -203,7 +203,7 @@ def command(cmd, timeout=1200, **kwargs):
     if azure_json:
         cmd += " --json"
     if debug:
-        logging.debug("command: %s", cmd)
+        logging.info("command: %s", cmd)
     if timeout:
         try:
             timeout = int(timeout)
@@ -221,20 +221,20 @@ def command(cmd, timeout=1200, **kwargs):
         if "azure" in cmd and error_debug == True:
             azure_err = "/root/.azure/azure.err"
             if os.path.isfile(azure_err):
-                logging.debug(azure_err)
+                logging.info(azure_err)
                 with open(azure_err, 'r') as f:
                     azure_error_msg = f.read()
-                logging.debug(azure_error_msg)
+                logging.info(azure_error_msg)
                 if "TooManyRequests" in azure_error_msg:
-                    logging.debug("Too many requests. Wait for 300s.")
+                    logging.info("Too many requests. Wait for 300s.")
                     time.sleep(300)
-        logging.debug(str(e))
+        logging.info(str(e))
         raise
     if debug:
-        logging.debug("status: %s", ret.exit_status)
-        logging.debug("stderr: %s", ret.stderr.strip())
+        logging.info("status: %s", ret.exit_status)
+        logging.info("stderr: %s", ret.stderr.strip())
     if stdout:
-        logging.debug("stdout: %s", ret.stdout.strip())
+        logging.info("stdout: %s", ret.stdout.strip())
     if azure_json and not ret.exit_status:
         try:
             ret.stdout = json.loads(ret.stdout)
@@ -279,13 +279,13 @@ def check_dns(dns):
     try:
         ip = socket.getaddrinfo(dns, None)[0][4][0]
     except:
-        logging.debug("Wrong Domain Name: %s", dns)
+        logging.info("Wrong Domain Name: %s", dns)
         raise
     if ip == '0.0.0.0':
-        logging.debug("Cloud Service is Stopped(deallocated).")
+        logging.info("Cloud Service is Stopped(deallocated).")
         return False
     else:
-        logging.debug("Cloud Service is Running.")
+        logging.info("Cloud Service is Running.")
         return True
 
 

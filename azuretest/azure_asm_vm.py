@@ -141,14 +141,14 @@ class VM(azure_vm.BaseVM):
 
         :param params: A dict containing VM params
         """
-        logging.debug("Update VM params")
+        logging.info("Update VM params")
         if params is None:
             for retry in range(1, self.VM_UPDATE_RETRY_TIMES+1):
                 try:
                     self.params = azure_cli_asm.vm_show(self.name, timeout=timeout).stdout
 #                except ValueError, e:
                 except Exception, e:
-                    logging.debug("azure vm show failed. Exception: %s Retry times: %d/%d" %
+                    logging.info("azure vm show failed. Exception: %s Retry times: %d/%d" %
                                   (str(e), retry, self.VM_UPDATE_RETRY_TIMES))
                     continue
                 break
@@ -206,11 +206,11 @@ class VM(azure_vm.BaseVM):
         if (not isinstance(self.params, dict)) and \
                 (self.params.strip("\n") == "No VMs found" or
                  self.params.strip("\n") == ""):
-            logging.debug("VM doesn't exist.")
+            logging.info("VM doesn't exist.")
             self.vm_status = -1
         else:
             status = self.get_params("InstanceStatus")
-            logging.debug("VM status: %s", status)
+            logging.info("VM status: %s", status)
             if status == "StoppedVM":
                 self.vm_status = 2
             elif status == "StoppedDeallocated":
@@ -219,7 +219,7 @@ class VM(azure_vm.BaseVM):
                 self.vm_status = 0
             else:
                 self.vm_status = 1
-        logging.debug("VM status code: %d", self.vm_status)
+        logging.info("VM status code: %d", self.vm_status)
 
     def restart(self, timeout=azure_vm.BaseVM.RESTART_TIMEOUT):
         """
@@ -264,7 +264,7 @@ class VM(azure_vm.BaseVM):
         :param times: Retry times of vm_update()
         :return: True if running.
         """
-        logging.debug("Wait for running")
+        logging.info("Wait for running")
         r = 0
         interval = 10
         while r < times:
@@ -272,9 +272,9 @@ class VM(azure_vm.BaseVM):
             if self.is_running():
                 return True
             r += 1
-            logging.debug("Retry times: %d", r)
+            logging.info("Retry times: %d", r)
             time.sleep(interval)
-        logging.debug("After retry %d times, VM is not running.", r)
+        logging.info("After retry %d times, VM is not running.", r)
         return False
 
     def wait_for_deallocated(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT):
@@ -283,7 +283,7 @@ class VM(azure_vm.BaseVM):
         :param timeout:
         :return:
         """
-        logging.debug("Wait for deallocated")
+        logging.info("Wait for deallocated")
         r = 0
         interval = 30
         while (r * interval) < timeout:
@@ -291,9 +291,9 @@ class VM(azure_vm.BaseVM):
             if self.is_deallocated():
                 return True
             r += 1
-            logging.debug("Retry times: %d", r)
+            logging.info("Retry times: %d", r)
             time.sleep(interval)
-        logging.debug("After retry %d times, VM is not deallocated.", r)
+        logging.info("After retry %d times, VM is not deallocated.", r)
         return False
 
     def wait_for_delete(self, timeout=azure_vm.BaseVM.WAIT_FOR_RETRY_TIMEOUT, check_cloudservice=False):
@@ -303,7 +303,7 @@ class VM(azure_vm.BaseVM):
         :param check_cloudservice: The flag of checking cloud service status
         :return: True if the VM and Cloud Service both do not exist.
         """
-        logging.debug("Wait for delete")
+        logging.info("Wait for delete")
         r = 0
         interval = 30
         while (r * interval) < timeout:
@@ -315,9 +315,9 @@ class VM(azure_vm.BaseVM):
                         return False
                 return True
             r += 1
-            logging.debug("Retry times: %d", r)
+            logging.info("Retry times: %d", r)
             time.sleep(interval)
-        logging.debug("After retry %d times, VM is not deleted.", r)
+        logging.info("After retry %d times, VM is not deleted.", r)
         return False
 
     def reset_password(self, username, password, method="password", private_config_path="/tmp/resetpassword.json",
@@ -341,7 +341,7 @@ class VM(azure_vm.BaseVM):
 "%s":"%s",
 "expiration":"2116-01-01"
 }""" % (username, method, password)
-        logging.debug(config_text)
+        logging.info(config_text)
         with open(private_config_path, 'w') as config_f:
             config_f.write(config_text)
         params.setdefault("private_config_path", private_config_path)
@@ -366,7 +366,7 @@ class VM(azure_vm.BaseVM):
 {
 "reset_ssh":"True"
 }"""
-        logging.debug(config_text)
+        logging.info(config_text)
         with open(private_config_path, 'w') as config_f:
             config_f.write(config_text)
         params.setdefault("private_config_path", private_config_path)
@@ -457,20 +457,20 @@ class VM(azure_vm.BaseVM):
         :param timeout:
         :return: True if cloud service doesn't exist
         """
-        logging.debug("Wait for cloud service delete")
+        logging.info("Wait for cloud service delete")
         r = 0
         interval = 30
         while (r * interval) < timeout:
             try:
                 self.cloudservice_show()
             except Exception, e:
-                logging.debug("Cloud Service doesn't exist. Exception: %s" % str(e))
+                logging.info("Cloud Service doesn't exist. Exception: %s" % str(e))
 #            if "does not exist" in output:
                 return True
             r += 1
-            logging.debug("Retry times: %d", r)
+            logging.info("Retry times: %d", r)
             time.sleep(interval)
-        logging.debug("After retry %d times, Cloud Service %s is not deleted." % (r, self.name))
+        logging.info("After retry %d times, Cloud Service %s is not deleted." % (r, self.name))
         return False
 
 
@@ -533,7 +533,7 @@ class Image(object):
         if not params:
             params = dict()
         if azure_cli_asm.vm_image_show(self.name, params, options=options).exit_status == 1:
-            logging.debug("No vm image %s exists." % self.name)
+            logging.info("No vm image %s exists." % self.name)
             return False
         return True
 
@@ -660,7 +660,7 @@ class Blob(object):
         while time.time() < end_time:
             rt = azure_cli_asm.blob_copy_show(dst_params).stdout
             status = rt.get("copy").get("status")
-            logging.debug(status)
+            logging.info(status)
             if rt.get("copy").get("status") == "success":
                 return True
             else:
@@ -698,7 +698,7 @@ class Blob(object):
 #        while time.time() < end_time:
 #            rt = azure_cli_asm.blob_copy_show(dst_params).stdout
 #            status = rt.get("copy").get("status")
-#            logging.debug(status)
+#            logging.info(status)
 #            if rt.get("copy").get("status") == "success":
 #                return True
 #            else:
@@ -714,9 +714,9 @@ class Blob(object):
         try:
             self.show(params, options, debug=False, error_debug=False)
         except Exception, e:
-            logging.debug("No blob %s exists. Exception: %s" % (self.name, str(e)))
+            logging.info("No blob %s exists. Exception: %s" % (self.name, str(e)))
             return False
-        logging.debug("Blob %s exists" % self.name)
+        logging.info("Blob %s exists" % self.name)
         return True
 
     def show(self, params=None, options='', **kargs):
@@ -792,7 +792,7 @@ class Container(object):
         try:
             self.show(params, options)
         except Exception, e:
-            logging.debug("No container %s exists. Exception: %s" % (self.name, str(e)))
+            logging.info("No container %s exists. Exception: %s" % (self.name, str(e)))
             return False
         return True
 
@@ -1058,7 +1058,7 @@ class NetworkSecurityGroup(object):
         try:
             self.show(options=options)
         except Exception, e:
-            logging.debug("No NSG %s exists. Exception: %s" % (self.name, str(e)))
+            logging.info("No NSG %s exists. Exception: %s" % (self.name, str(e)))
             return False
         return True
 
@@ -1158,7 +1158,7 @@ class NetworkSecurityGroupRule(object):
         try:
             self.show(options=options)
         except Exception, e:
-            logging.debug("No NSG %s exists. Exception: %s" % (self.name, str(e)))
+            logging.info("No NSG %s exists. Exception: %s" % (self.name, str(e)))
             return False
         return True
 

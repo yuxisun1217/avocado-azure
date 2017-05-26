@@ -107,14 +107,14 @@ azure_mode: !mux
             ImgPrepTest.test_03_import_image_to_azure
 """ % self.azure_mode
         rerun_cases_str += '            ' + '\n            '.join(rerun_list)
-        logging.debug(rerun_cases_str)
+        logging.info(rerun_cases_str)
         with open(rerun_cases_file, 'w') as f:
             f.write(rerun_cases_str)
 
     def provision_onpremise(self):
         logging.info("Onpremise provisioning...")
         cmd = "avocado run {0}/tests/01_img_prep.py --multiplex {0}/cfg/provision.yaml".format(self.avocado_path)
-        logging.debug(command(cmd, timeout=None, ignore_status=True, debug=True).stdout)
+        logging.info(command(cmd, timeout=None, ignore_status=True, debug=True).stdout)
         if self._get_rerun_list():
             logging.error("Onpremise provision failed!")
             sys.exit(1)
@@ -134,9 +134,9 @@ azure_mode: !mux
     def run(self):
         logging.info("=============== Test run begin: %s mode ===============" % self.azure_mode)
         cmd1 = "avocado run %s/tests/*.py --multiplex %s/cfg/test_%s.yaml" % (self.avocado_path, self.avocado_path, self.azure_mode)
-        logging.debug(cmd1)
+        logging.info(cmd1)
         ret = command(cmd1, timeout=None, ignore_status=True, debug=True)
-        logging.debug(ret.stdout)
+        logging.info(ret.stdout)
         run_exitstatus = ret.exit_status
         logging.info("Copy %s to %s" % (self.job_path, self.mode_path))
         shutil.copytree(self.job_path, self.mode_path)
@@ -148,7 +148,7 @@ azure_mode: !mux
             ret_rerun = command("avocado run %s/tests/*.py --multiplex %s/cfg/test_rerun.yaml" %
                                 (self.avocado_path, self.avocado_path),
                                 timeout=None, ignore_status=True, debug=True)
-            logging.debug(ret_rerun.stdout)
+            logging.info(ret_rerun.stdout)
             run_exitstatus += ret_rerun.exit_status
             shutil.copytree(self.job_path, "%s/rerun_result" % self.mode_path)
         logging.info("=============== Test run end:   %s mode ===============" % self.azure_mode)
@@ -202,7 +202,7 @@ def import_result():
             tag=tag,
             runtype=runtype,
             rhel_version=conf["RHEL_VERSION"].replace('.', '_'))
-        logging.debug("Testrun prefix: {0}".format(TESTRUN_PREFIX))
+        logging.info("Testrun prefix: {0}".format(TESTRUN_PREFIX))
         xunit_project = "rhel{0}".format(str(conf["PROJECT"]).split('.')[0])
         # Get results path
         result_path = conf["RESULT_PATH"]

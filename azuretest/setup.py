@@ -70,7 +70,7 @@ class Setup(object):
         for param in kargs:
             if param in self.vm_params:
                 self.vm_params[param] = kargs.get(param)
-        logging.debug(str(self.vm_params))
+        logging.info(str(self.vm_params))
         self.vm_test01 = self.vm.VM(self.vm_params["VMName"],
                                     self.vm_params["VMSize"],
                                     self.vm_params["username"],
@@ -97,7 +97,7 @@ class Setup(object):
         return proxy_params
 
     def login(self):
-        logging.debug("AZURE_MODE: %s", self.azure_mode)
+        logging.info("AZURE_MODE: %s", self.azure_mode)
         azure_cli_common.login_azure(username=self.azure_username,
                                      password=self.azure_password)
         azure_cli_common.set_config_mode(self.azure_mode)
@@ -144,13 +144,13 @@ class Setup(object):
                                                      params=self.blob_params)
             self.blob_list.append(copy.deepcopy(self.blob_test01))
         for i in self.blob_list:
-            logging.debug(i.params)
+            logging.info(i.params)
 
     def vm_create(self, args=None, options='', **kargs):
         # If vm doesn't exist, create it. If it exists, start it.
         if args is None:
             args = []
-        logging.debug("args: {0}".format(str(args)))
+        logging.info("args: {0}".format(str(args)))
         logging.info("Prepare the VM %s", self.vm_params["VMName"])
 #        if "delete" in args:
 #            if not self.vm_delete():

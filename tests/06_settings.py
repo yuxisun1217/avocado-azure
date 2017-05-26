@@ -277,7 +277,7 @@ class SettingsTest(Test):
                          "Fail to resize the VM: cpu number is wrong. Goal: %s Real: %s" % (goal_cpu, real_cpu))
         real_memory = int(self.vm_test01.get_output("free -m | grep Mem | awk '\"'{print $2}'\"'"))
         delta = int(goal_memory * 0.10)
-        self.log.debug(delta)
+        self.log.info(delta)
         self.assertAlmostEqual(goal_memory, real_memory, delta=delta,
                                msg="Fail to resize the VM: memory is wrong. Goal: %sM Real: %sM" %
                                    (goal_memory*1024, real_memory))
@@ -285,7 +285,7 @@ class SettingsTest(Test):
         self.assertEqual(goal_disk_size, real_disk_size,
                          "Fail to resize the VM: disk size is wrong. Goal: %sG Real: %sG" %
                          (goal_disk_size, real_disk_size))
-        self.log.debug("Resize the VM successfully")
+        self.log.info("Resize the VM successfully")
 
     def test_check_python_version_requirement(self):
         """
@@ -305,7 +305,7 @@ class SettingsTest(Test):
                              "The python version requirement is higher than 2.6")
 
     def tearDown(self):
-        self.log.debug("tearDown")
+        self.log.info("tearDown")
         if "reset_remote_access" in self.name.name or \
            "reset_pw_diff_auth" in self.name.name or \
            "add_new_user" in self.name.name or \

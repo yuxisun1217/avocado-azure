@@ -219,7 +219,7 @@ lo eth0\
             old_hostname = new_hostname
 
     def tearDown(self):
-        self.log.debug("Teardown.")
+        self.log.info("Teardown.")
         if "test_endpoint_check" in self.name.name:
             if float(self.project) < 7.0:
                 self.vm_test01.get_output("service iptables start")

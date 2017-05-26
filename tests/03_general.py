@@ -54,7 +54,7 @@ class GeneralTest(Test):
         if "check_account" in self.name.name or \
            "check_sshkey" in self.name.name or \
            "check_password_sshkey" in self.name.name:
-            self.log.debug("Case name is %s. Don't verify alive during setUp." % self.name.name)
+            self.log.info("Case name is %s. Don't verify alive during setUp." % self.name.name)
             args.append("not_alive")
         self.assertTrue(prep.vm_create(args=args), "Setup Failed.")
 
@@ -306,7 +306,7 @@ class GeneralTest(Test):
             disksize_std = vm.vm_params['disk_size']*1024*1024*1024
             # CPU
             cpu = int(vm.vm_test01.get_output("grep -r processor /proc/cpuinfo|wc -l"))
-            self.log.debug("%s CPU number: Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std))
+            self.log.info("%s CPU number: Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std))
             if cpu != cpu_std:
                 error_log += "%s: CPU number is wrong. Real: %d. Standard: %d\n" % (vm_size, cpu, cpu_std)
                 result_flag = False
@@ -315,7 +315,7 @@ class GeneralTest(Test):
             kdump_size = int(vm.vm_test01.get_output("cat /sys/kernel/kexec_crash_size"))/1024
             memory += kdump_size
             delta = float(memory_std - memory)/memory_std
-            self.log.debug("%s Memory: Real: %d, Standard: %d, Delta: %0.1f%%" % (vm_size, memory, memory_std, delta*100))
+            self.log.info("%s Memory: Real: %d, Standard: %d, Delta: %0.1f%%" % (vm_size, memory, memory_std, delta*100))
             if vm_size == "A0":
                 delta_std = 0.15
             else:
@@ -326,7 +326,7 @@ class GeneralTest(Test):
                 result_flag = False
             # disk_size
             disksize = int(vm.vm_test01.get_output("sudo fdisk -l /dev/sdb|grep -m1 /dev/sdb|awk '{print $5}'", sudo=False))
-            self.log.debug("%s Disk Size: Real: %d. Standard: %d\n" % (vm_size, disksize, disksize_std))
+            self.log.info("%s Disk Size: Real: %d. Standard: %d\n" % (vm_size, disksize, disksize_std))
             if disksize > disksize_std:
                 warn_log += "%s: Real disk size is larger than Standard. Real: %d. Standard: %d\n" % \
                             (vm_size, disksize, disksize_std)
@@ -408,7 +408,7 @@ class GeneralTest(Test):
 
 
     def tearDown(self):
-        self.log.debug("tearDown")
+        self.log.info("tearDown")
         if "check_sshkey" in self.name.name or \
            "install_uninstall_wala" in self.name.name or \
            "verify_package_signed" in self.name.name or \

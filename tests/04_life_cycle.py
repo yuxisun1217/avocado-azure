@@ -66,7 +66,7 @@ class LifeCycleTest(Test):
 #        self.vm_test01.session_close()
         # Sleep 60s to prevent rebooting in 1 minute
         time.sleep(60)
-        self.log.debug("Restart the vm %s", self.vm_params["VMName"])
+        self.log.info("Restart the vm %s", self.vm_params["VMName"])
         self.assertEqual(self.vm_test01.restart(), 0,
                          "Fail to restart the vm")
         # wait for restart finished
@@ -101,7 +101,7 @@ class LifeCycleTest(Test):
         # sleep 60s to prevent the 2 boots in the same minute
         time.sleep(60)
         before = self.vm_test01.get_output("who -b", sudo=False)
-        self.log.debug("Reboot the vm %s", self.vm_params["VMName"])
+        self.log.info("Reboot the vm %s", self.vm_params["VMName"])
         self.vm_test01.get_output("reboot", timeout=1, max_retry=0, ignore_status=True)
         # wait for reboot finished
         time.sleep(30)
@@ -131,12 +131,12 @@ class LifeCycleTest(Test):
         """
         self.log.info("Start a VM")
         if not (self.vm_test01.is_deallocated() or self.vm_test01.is_stopped()):
-            self.log.debug("Shutdown the vm %s first", self.vm_params["VMName"])
+            self.log.info("Shutdown the vm %s first", self.vm_params["VMName"])
             self.assertEqual(self.vm_test01.shutdown(), 0,
                              "Fail to shutdown the vm before start: azure cli fail")
             self.assertTrue(self.vm_test01.wait_for_deallocated(),
                             "Fail to shutdown the vm before start: wait_for_deallocated")
-        self.log.debug("Start the vm %s", self.vm_params["VMName"])
+        self.log.info("Start the vm %s", self.vm_params["VMName"])
         self.assertEqual(self.vm_test01.start(), 0,
                          "Fail to start the vm: azure cli fail")
         self.assertTrue(self.vm_test01.wait_for_running(),
@@ -167,7 +167,7 @@ class LifeCycleTest(Test):
 
         """
         # 1. Capture specialized image
-        self.log.debug("Capture the vm %s -- Specialized", self.vm_params["VMName"])
+        self.log.info("Capture the vm %s -- Specialized", self.vm_params["VMName"])
         capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
         capture_image = azure_image.VMImage(name=capture_vm_name)
 
@@ -181,7 +181,7 @@ class LifeCycleTest(Test):
         self.log.info("Success to capture the vm as image %s -- Specialized" % capture_image.name)
 
         # 2. Capture generalized image
-        self.log.debug("Capture the vm %s -- Generalized", self.vm_params["VMName"])
+        self.log.info("Capture the vm %s -- Generalized", self.vm_params["VMName"])
         capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Generalized"
         capture_image = azure_image.VMImage(name=capture_vm_name)
         cmd_params = dict()
@@ -200,7 +200,7 @@ class LifeCycleTest(Test):
 
 #    def test_create_endpoint(self):
 #        self.vm_test01.add_endpoint(self.vm_params["EndpointPort"])
-#        self.log.debug("Add endpoint, port: %s", self.vm_params["EndpointPort"])
+#        self.log.info("Add endpoint, port: %s", self.vm_params["EndpointPort"])
 #        self.assertEqual(self.vm_test01.add_endpoint(self.vm_params["EndpointPort"]), 0,
 #                         "Fails to create endpoint")
 
@@ -209,7 +209,7 @@ class LifeCycleTest(Test):
         Create a VM without deprovision
         """
         self.log.info("Create a VM without deprovision")
-        self.log.debug("Capture the vm %s -- Generalized", self.vm_params["VMName"])
+        self.log.info("Capture the vm %s -- Generalized", self.vm_params["VMName"])
         capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-nodeprovision"
 #        capture_image = azure_image.VMImage(name=capture_vm_name)
         cmd_params = dict()
@@ -246,7 +246,7 @@ class LifeCycleTest(Test):
         """
 #        self.vm_test01.get_output("rm -f /var/lib/waagent/provisioned")
         # 1. Capture specialized image
-        self.log.debug("Live capture the vm %s -- Specialized", self.vm_params["VMName"])
+        self.log.info("Live capture the vm %s -- Specialized", self.vm_params["VMName"])
         capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
         capture_image = azure_image.VMImage(name=capture_vm_name)
 
@@ -295,7 +295,7 @@ class LifeCycleTest(Test):
         self.assertTrue(self.vm_test01.wait_for_deallocated(),
                         "Fail to stop VM before capturing")
         # 1. Capture specialized image
-        self.log.debug("Shutdown and capture the vm %s -- Specialized", self.vm_params["VMName"])
+        self.log.info("Shutdown and capture the vm %s -- Specialized", self.vm_params["VMName"])
         capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Specialized"
         capture_image = azure_image.VMImage(name=capture_vm_name)
 
@@ -344,7 +344,7 @@ class LifeCycleTest(Test):
         self.assertTrue(self.vm_test01.wait_for_deallocated(),
                         "Fail to stop VM before capturing")
         # 1. Capture generalized image
-        self.log.debug("Capture the vm %s -- Generalized", self.vm_params["VMName"])
+        self.log.info("Capture the vm %s -- Generalized", self.vm_params["VMName"])
         capture_vm_name = self.vm_params["VMName"] + self.vm_test01.postfix() + "-Generalized"
         capture_image = azure_image.VMImage(name=capture_vm_name)
 
@@ -381,7 +381,7 @@ class LifeCycleTest(Test):
                          "There're error logs in waagent.log")
 
     def tearDown(self):
-        self.log.debug("tearDown")
+        self.log.info("tearDown")
         if "create_without_deprovision" in self.name.name or \
            "capture" in self.name.name:
             self.vm_test01.delete()

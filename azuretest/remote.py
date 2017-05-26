@@ -142,13 +142,13 @@ def handle_prompts(session, username, password, prompt, timeout=10,
             output += text
             if match == 0:  # "Are you sure you want to continue connecting"
                 if debug:
-                    logging.debug("Got 'Are you sure...', sending 'yes'")
+                    logging.info("Got 'Are you sure...', sending 'yes'")
                 session.sendline("yes")
                 continue
             elif match in [1, 2, 3, 10]:  # "password:"
                 if password_prompt_count == 0:
                     if debug:
-                        logging.debug("Got password prompt, sending '%s'",
+                        logging.info("Got password prompt, sending '%s'",
                                       password)
                     session.sendline(str(password))
                     password_prompt_count += 1
@@ -159,7 +159,7 @@ def handle_prompts(session, username, password, prompt, timeout=10,
             elif match == 4 or match == 9:  # "login:"
                 if login_prompt_count == 0 and password_prompt_count == 0:
                     if debug:
-                        logging.debug("Got username prompt; sending '%s'",
+                        logging.info("Got username prompt; sending '%s'",
                                       username)
                     session.sendline(username)
                     login_prompt_count += 1
@@ -178,16 +178,16 @@ def handle_prompts(session, username, password, prompt, timeout=10,
                 raise LoginError("Client said 'connection timeout'", text)
             elif match == 7:  # "Please wait"
                 if debug:
-                    logging.debug("Got 'Please wait'")
+                    logging.info("Got 'Please wait'")
                 timeout = 30
                 continue
             elif match == 8:  # "Warning added RSA"
                 if debug:
-                    logging.debug("Got 'Warning added RSA to known host list")
+                    logging.info("Got 'Warning added RSA to known host list")
                 continue
             elif match == 12:  # prompt
                 if debug:
-                    logging.debug("Got shell prompt -- logged in")
+                    logging.info("Got shell prompt -- logged in")
                 break
         except aexpect.ExpectTimeoutError, e:
             raise LoginTimeoutError(e.output)
@@ -251,7 +251,7 @@ def remote_login(client, host, port, username, password, prompt,
         raise LoginBadClientError(client)
 
     if verbose:
-        logging.debug("Login command: '%s'", cmd)
+        logging.info("Login command: '%s'", cmd)
     session = aexpect.ShellSession(cmd, linesep="\n", prompt=prompt,
                                    status_test_command=status_test_command)
     try:
@@ -298,7 +298,7 @@ def wait_for_login(client, host, port, username, password, prompt,
     :raise: Whatever remote_login() raises
     :return: A ShellSession object.
     """
-    logging.debug("Attempting to login to %s@%s:%s using %s (timeout %ds)",
+    logging.info("Attempting to login to %s@%s:%s using %s (timeout %ds)",
                   username, host, port, client, timeout)
     end_time = time.time() + timeout
     verbose = False
@@ -309,7 +309,7 @@ def wait_for_login(client, host, port, username, password, prompt,
                                 verbose=verbose, authentication=authentication,
                                 options=options)
         except LoginError, e:
-            logging.debug(e)
+            logging.info(e)
             verbose = True
         time.sleep(2)
 #    # Timeout expired; try one more time but don't catch exceptions
@@ -355,12 +355,12 @@ def _remote_scp(
                 [r"[Aa]re you sure", r"[Pp]assword:\s*", r"lost connection"],
                 timeout=timeout, internal_timeout=0.5)
             if match == 0:  # "Are you sure you want to continue connecting"
-                logging.debug("Got 'Are you sure...', sending 'yes'")
+                logging.info("Got 'Are you sure...', sending 'yes'")
                 session.sendline('yes')
                 continue
             elif match == 1:  # "password:"
                 if password_prompt_count == 0:
-                    logging.debug("Got password prompt, sending '%s'" %
+                    logging.info("Got password prompt, sending '%s'" %
                                   password_list[password_prompt_count])
                     session.sendline(password_list[password_prompt_count])
                     password_prompt_count += 1
@@ -369,7 +369,7 @@ def _remote_scp(
                         authentication_done = True
                     continue
                 elif password_prompt_count == 1 and scp_type == 2:
-                    logging.debug("Got password prompt, sending '%s'" %
+                    logging.info("Got password prompt, sending '%s'" %
                                   password_list[password_prompt_count])
                     session.sendline(password_list[password_prompt_count])
                     password_prompt_count += 1
@@ -388,7 +388,7 @@ def _remote_scp(
                 raise SCPAuthenticationTimeoutError(e.output)
         except aexpect.ExpectProcessTerminatedError, e:
             if e.status == 0:
-                logging.debug("SCP process terminated with status 0")
+                logging.info("SCP process terminated with status 0")
                 break
             else:
                 raise SCPTransferFailedError(e.status, e.output)
@@ -410,7 +410,7 @@ def remote_scp(command, password_list, log_filename=None, transfer_timeout=600,
             or the password prompt)
     :raise: Whatever _remote_scp() raises
     """
-    logging.debug("Trying to SCP with command '%s', timeout %ss",
+    logging.info("Trying to SCP with command '%s', timeout %ss",
                   command, transfer_timeout)
     if log_filename:
         output_func = utils_misc.log_line
@@ -558,7 +558,7 @@ def copy_files_to(address, client, username, password, port, local_path,
     :param address: Address of remote host(guest)
     :param limit: Speed limit of file transfer.
     :param log_filename: If specified, log all output to this file (SCP only)
-    :param verbose: If True, log some stats using logging.debug (RSS only)
+    :param verbose: If True, log some stats using logging.info (RSS only)
     :param timeout: The time duration (in seconds) to wait for the transfer to
             complete.
     :interface: The interface the neighbours attach to (only use when using ipv6
@@ -588,7 +588,7 @@ def copy_files_from(address, client, username, password, port, remote_path,
     :param address: Address of remote host(guest)
     :param limit: Speed limit of file transfer.
     :param log_filename: If specified, log all output to this file (SCP only)
-    :param verbose: If True, log some stats using ``logging.debug`` (RSS only)
+    :param verbose: If True, log some stats using ``logging.info`` (RSS only)
     :param timeout: The time duration (in seconds) to wait for the transfer to
                     complete.
     :interface: The interface the neighbours attach to (only use when using ipv6
@@ -623,7 +623,7 @@ class RemoteFile(object):
         :param remote_path: Path of file which we want to edit on remote.
         :param limit: Speed limit of file transfer.
         :param log_filename: If specified, log all output to this file(SCP only)
-        :param verbose: If True, log some stats using logging.debug (RSS only)
+        :param verbose: If True, log some stats using logging.info (RSS only)
         :param timeout: The time duration (in seconds) to wait for the
                         transfer tocomplete.
         """

@@ -26,7 +26,7 @@ class ImgPrepTest(Test):
             time.sleep(3)
         # Get azure mode and choose test cases
         self.azure_mode = self.params.get('azure_mode', '*/azure_mode/*')
-        self.log.debug("AZURE_MODE: %s", self.azure_mode)
+        self.log.info("AZURE_MODE: %s", self.azure_mode)
         if "test_test" in self.name.name:
             return
         if self.name.name.split(':')[-1] not in self.params.get('cases', '*/azure_mode/*'):
@@ -63,7 +63,7 @@ class ImgPrepTest(Test):
                                              storage_account=self.blob_params["storage_account"],
                                              params=self.blob_params)
         self.vhd_file = self.params.get('vhd_file_path', '*/Prepare/*') + self.blob_params["name"]
-        self.log.debug("VHD file fullpath: %s" % self.vhd_file)
+        self.log.info("VHD file fullpath: %s" % self.vhd_file)
         self.no_upload = False
         if self.blob_test01.check_exist():
             self.no_upload = True
@@ -97,7 +97,7 @@ class ImgPrepTest(Test):
             for vm_dict in vm_list:
                 if self.vm_basename in vm_dict["VMName"]:
                     utils_misc.host_command("azure vm delete %s -q" % vm_dict["VMName"])
-                    self.log.debug("Delete VM %s" % vm_dict["VMName"])
+                    self.log.info("Delete VM %s" % vm_dict["VMName"])
         else:
             storage_account_list = utils_misc.get_storage_account_list(self.azure_mode)
             for storage_account in storage_account_list:
@@ -112,7 +112,7 @@ class ImgPrepTest(Test):
                     if self.vm_basename in vm_dict["name"]:
                         utils_misc.host_command("azure vm delete %s %s -q" %
                                                 (storage_account_name, vm_dict["name"]))
-                        self.log.debug("Delete VM %s" % vm_dict["name"])
+                        self.log.info("Delete VM %s" % vm_dict["name"])
         self.log.info("All VMs are deleted.")
         # Delete Images
         if self.azure_mode == 'asm':
@@ -120,7 +120,7 @@ class ImgPrepTest(Test):
             image_list = image_ins.list(debug=False)
             for image in image_list:
                 if self.image_basename in image["name"]:
-                    self.log.debug("Delete image %s" % image["name"])
+                    self.log.info("Delete image %s" % image["name"])
                     image_ins.name = image["name"]
                     image_ins.delete()
         self.log.info("All Images are deleted.")
@@ -177,7 +177,7 @@ class ImgPrepTest(Test):
         # Get destination storage_account list
         azure_cli_common.set_config_mode(self.azure_mode)
         storage_account_list = utils_misc.get_storage_account_list(self.azure_mode)
-        self.log.debug(storage_account_list)
+        self.log.info(storage_account_list)
         for storage_account in storage_account_list:
             # Destination storage account instance
             sto_dst_params = dict()
@@ -263,7 +263,7 @@ class ImgPrepTest(Test):
         time.sleep(120)
 
     def tearDown(self):
-        self.log.debug("Teardown.")
+        self.log.info("Teardown.")
         # Clean ssh sessions
         utils_misc.host_command("ps aux|grep '[s]sh -o UserKnownHostsFile'|awk '{print $2}'|xargs kill -9", ignore_status=True)
 

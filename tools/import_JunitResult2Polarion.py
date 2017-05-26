@@ -154,7 +154,7 @@ def get_testRecords(xml_file):
                 continue
         workItems.append(workItem)
         testRecords.append(testRecord)
-        logging.debug('Get the test record %s from the xml file', testRecord)
+        logging.info('Get the test record %s from the xml file', testRecord)
 
     logging.info('======Finish to prepare the test cases and records from the xml file======')
 
@@ -238,7 +238,7 @@ def get_exits_workItems(proj_id, gs_doc, case_type):
     if workItems:
         logging.info('Found %s work items', len(workItems))
         for workItem in workItems:
-            logging.debug('%-12s %-20s %s', workItem.work_item_id, workItem.type, workItem.title)
+            logging.info('%-12s %-20s %s', workItem.work_item_id, workItem.type, workItem.title)
             exist_tests[workItem.title] = workItem.work_item_id
 
     logging.info('======Finish to get "%s" test cases from "%s"======', case_type, gs_doc)

@@ -210,7 +210,7 @@ class WALAConfTest(Test):
                     self.vm_test01.get_output("ls /mnt/resource-new/DATALOSS_WARNING_README.txt"):
                 break
             else:
-                self.log.debug("Retry %d/%d times" % (retry, max_retry))
+                self.log.info("Retry %d/%d times" % (retry, max_retry))
                 time.sleep(10)
         else:
             self.fail("There's no DATALOSS_WARNING_README.txt in the new resource path")
@@ -357,7 +357,7 @@ class WALAConfTest(Test):
             self.vm_test01.get_output("sed -i '/^\/dev\/mapper\/rhel-swap/s/^/#/' /etc/fstab")
         # 1. ResourceDisk.Enable=y
         #    ResourceDisk.SwapSizeMB=swapsize
-        self.log.debug("ResourceDisk.SwapSizeMB={0}".format(swapsize))
+        self.log.info("ResourceDisk.SwapSizeMB={0}".format(swapsize))
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.EnableSwap", "y", self.conf_file))
         self.assertTrue(self.vm_test01.modify_value("ResourceDisk\.SwapSizeMB", swapsize, self.conf_file))
         self.vm_test01.session_close()
@@ -461,7 +461,7 @@ class WALAConfTest(Test):
                 self.log.info("Swap size is wrong. Retry %d times." % count)
                 time.sleep(30)
         else:
-            self.log.debug(self.vm_test01.get_output("tail -10 /var/log/waagent.log"))
+            self.log.info(self.vm_test01.get_output("tail -10 /var/log/waagent.log"))
             self.fail("ResourceDisk.SwapSizeMB=%s doesn't work in GPT partition" % swapsize_std)
         #        self.assertNotEqual(10, count, "ResourceDisk.SwapSizeMB=5242880 doesn't work in GPT partition")
         # Check waagent.log
@@ -655,9 +655,9 @@ class WALAConfTest(Test):
                          "Fail to create new VM base on the capture image: azure cli fail")
         # Check if change the password
         self.vm_test01.vm_update()
-        self.log.debug(self.vm_test01.params)
-        self.log.debug(self.vm_test01.username)
-        self.log.debug(self.vm_test01.password)
+        self.log.info(self.vm_test01.params)
+        self.log.info(self.vm_test01.username)
+        self.log.info(self.vm_test01.password)
         self.assertTrue(self.vm_test01.verify_alive(username=self.vm_params["username"],
                                                     password=self.vm_params["password"], timeout=600),
                         "Password is changed. Shouldn't be changed.")
@@ -681,9 +681,9 @@ class WALAConfTest(Test):
         self.assertEqual(self.vm_test01.vm_create(new_vm_params), 0,
                          "Fail to create new VM base on the capture image: azure cli fail")
         self.vm_test01.vm_update()
-        self.log.debug(self.vm_test01.params)
-        self.log.debug(self.vm_test01.username)
-        self.log.debug(self.vm_test01.password)
+        self.log.info(self.vm_test01.params)
+        self.log.info(self.vm_test01.username)
+        self.log.info(self.vm_test01.password)
         # Check if change the password
         self.assertTrue(self.vm_test01.verify_alive(username=self.vm_params["username"],
                                                     password=new_vm_params["password"], timeout=600),
@@ -697,8 +697,8 @@ class WALAConfTest(Test):
         x, y, z = self.wala_version.split('.')
         low_version = "2.0.0"
         high_version = "{0}.{1}.{2}".format(int(x)+10, y, z)
-        self.log.debug(low_version)
-        self.log.debug(high_version)
+        self.log.info("Low version: "+low_version)
+        self.log.info("High version: "+high_version)
         if float(self.project) < 7.0:
             version_file = "/usr/lib/python2.6/site-packages/azurelinuxagent/common/version.py"
         else:
@@ -969,10 +969,10 @@ echo 'teststring' >> /root/test.log\
                          "There're error logs in waagent.log")
 
     def tearDown(self):
-        self.log.debug("tearDown")
+        self.log.info("tearDown")
         self.vm_test01.vm_update()
         if not self.vm_test01.exists():
-            self.log.debug("VM doesn't exist during tearDown")
+            self.log.info("VM doesn't exist during tearDown")
         elif not self.vm_test01.verify_alive(timeout=10):
             self.vm_test01.delete()
             self.vm_test01.wait_for_delete()

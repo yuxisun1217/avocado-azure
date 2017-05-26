@@ -62,7 +62,7 @@ class OndPrep(object):
                                            self.vm_params["password"],
                                            self.vm_params)
         logging.info("Finish making instance")
-        logging.debug(self.vm_instance.params)
+        logging.info(self.vm_instance.params)
 
     def create_vm(self):
         self.vm_instance.vm_update()
