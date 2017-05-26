@@ -1,0 +1,25 @@
+From cb83841b57b2d5f3f8a24cec4a6e9bc246bd15f8 Mon Sep 17 00:00:00 2001
+From: Miroslav Rezanina <mrezanin@redhat.com>
+Date: Mon, 16 Jan 2017 17:40:12 +0100
+Subject: Disable autoupdate
+
+---
+ config/waagent.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config/waagent.conf b/config/waagent.conf
+index 8a69462..77a0c7e 100644
+--- a/config/waagent.conf
++++ b/config/waagent.conf
+@@ -86,7 +86,7 @@ OS.OpensslPath=None
+ # OS.EnableRDMA=y
+ 
+ # Enable or disable goal state processing auto-update, default is enabled
+-# AutoUpdate.Enabled=y
++AutoUpdate.Enabled=n
+ 
+ # Determine the update family, this should not be changed
+ # AutoUpdate.GAFamily=Prod
+-- 
+2.9.3
+

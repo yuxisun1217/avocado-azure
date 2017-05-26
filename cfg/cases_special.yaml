@@ -1,0 +1,9 @@
+azure_mode: !mux
+    asm:
+        cases:
+            StorageTest.test_attach_detach_64_disks
+            GeneralTest.test_check_cpu_mem_disk
+    arm:
+        cases:
+            StorageTest.test_attach_detach_64_disks
+            GeneralTest.test_check_cpu_mem_disk
