@@ -178,6 +178,6 @@ iperf3
 
 2. Edit the cases list in cfg/cases.yaml.
 
-3. Run "python run.py"
+3. Run "python run_for_ci.py"
 
 4. "new_rhel_detect.py" is used to detect the latest RHEL build and run avocado-azure automatically. You can add this script into crontab.
