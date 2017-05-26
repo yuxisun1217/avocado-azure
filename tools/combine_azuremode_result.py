@@ -132,8 +132,8 @@ if __name__ == "__main__":
             am = AddAzuremode(RESULTPATH+"/"+azuremode+"/results.xml", azuremode)
             am_node = am.insert_azuremode_attrib()
             am_testsuite_dict = am.testsuite_attrib_dict
-            logging.debug(azuremode+" testsuite_dict:")
-            logging.debug(am_testsuite_dict)
+            logging.info(azuremode+" testsuite_dict:")
+            logging.info(am_testsuite_dict)
         except Skip:
             continue
         except Exception as e:
@@ -142,12 +142,14 @@ if __name__ == "__main__":
         total_testsuite_dict = _sum_dict(total_testsuite_dict, am_testsuite_dict)
         for testcase_node in am_node.findall("testcase"):
             testsuite_node.append(testcase_node)
+        logging.info("{0} result is merged.".format(azuremode))
     # Set errors/failures/skipped/tests/time of testsuite
-    logging.debug("total_testsuite_dict:")
-    logging.debug(total_testsuite_dict)
+    logging.info("total_testsuite_dict:")
+    logging.info(total_testsuite_dict)
     for attrib in total_testsuite_dict:
         testsuite_node.set(attrib, str(total_testsuite_dict[attrib]))
     _indent(root)
     tree.write(OUTPUTFILE)
+    logging.info("Result is merged into {0}.".format(OUTPUTFILE))
     
 
